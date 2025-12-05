@@ -31,6 +31,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configureRedirects();
     }
 
     /**
@@ -87,5 +88,14 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($throttleKey);
         });
+    }
+
+    private function configureRedirects(): void
+    {
+        // Nach erfolgreichem Login
+        Fortify::redirects('login', '/');
+
+        // Nach erfolgreicher Registrierung
+        Fortify::redirects('register', '/');
     }
 }

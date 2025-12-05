@@ -1,65 +1,93 @@
-<script setup lang="ts">
-import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
-import AuthLayout from '@/layouts/AuthLayout.vue';
-import { login } from '@/routes';
-import { email } from '@/routes/password';
-import { Form, Head } from '@inertiajs/vue3';
-
-defineProps<{
-    status?: string;
-}>();
-</script>
-
+<!-- resources/js/pages/auth/ForgotPassword.vue -->
 <template>
-    <AuthLayout
-        title="Forgot password"
-        description="Enter your email to receive a password reset link"
+    <div
+        class="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top_left,_#ffe4f0_0,_#fdf7ff_40%,_#e6f0ff_100%)] text-slate-900"
     >
-        <Head title="Forgot password" />
+        <Head title="Passwort vergessen – favRezepte" />
 
-        <div
-            v-if="status"
-            class="mb-4 text-center text-sm font-medium text-green-600"
-        >
-            {{ status }}
-        </div>
+        <div class="w-full max-w-md">
+            <div class="mb-6 text-center">
+                <h1 class="text-lg font-semibold text-slate-900">
+                    Passwort zurücksetzen
+                </h1>
+                <p class="mt-1 text-xs text-slate-500">
+                    Wir senden dir einen Link zum Zurücksetzen deines Passworts.
+                </p>
+            </div>
 
-        <div class="space-y-6">
-            <Form v-bind="email.form()" v-slot="{ errors, processing }">
-                <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        name="email"
-                        autocomplete="off"
-                        autofocus
-                        placeholder="email@example.com"
-                    />
-                    <InputError :message="errors.email" />
-                </div>
+            <div class="rounded-2xl bg-white/90 backdrop-blur shadow-xl border border-pink-100 px-6 py-7 space-y-6">
+                <p
+                    v-if="status"
+                    class="text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2"
+                >
+                    {{ status }}
+                </p>
 
-                <div class="my-6 flex items-center justify-start">
-                    <Button
-                        class="w-full"
-                        :disabled="processing"
-                        data-test="email-password-reset-link-button"
+                <form
+                    class="space-y-4"
+                    @submit.prevent="submit"
+                >
+                    <div class="space-y-1.5">
+                        <label
+                            class="text-xs font-medium text-slate-700"
+                            for="email"
+                        >
+                            E-Mail
+                        </label>
+                        <input
+                            id="email"
+                            v-model="form.email"
+                            type="email"
+                            required
+                            autocomplete="email"
+                            class="w-full rounded-lg border border-pink-100 bg-white/80 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-pink-300"
+                            placeholder="du@example.com"
+                        />
+                        <p
+                            v-if="errors.email"
+                            class="text-[11px] text-rose-500"
+                        >
+                            {{ errors.email }}
+                        </p>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-400 to-rose-400 text-white px-5 py-2.5 text-sm font-semibold shadow-md hover:brightness-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        :disabled="form.processing"
                     >
-                        <Spinner v-if="processing" />
-                        Email password reset link
-                    </Button>
-                </div>
-            </Form>
+                        Link senden
+                    </button>
+                </form>
 
-            <div class="space-x-1 text-center text-sm text-muted-foreground">
-                <span>Or, return to</span>
-                <TextLink :href="login()">log in</TextLink>
+                <p class="text-[11px] text-slate-500 text-center">
+                    <Link
+                        :href="route('login')"
+                        class="text-rose-500 hover:text-rose-600"
+                    >
+                        ← Zurück zum Login
+                    </Link>
+                </p>
             </div>
         </div>
-    </AuthLayout>
+    </div>
 </template>
+
+<script setup lang="ts">
+import { Head, Link, useForm } from '@inertiajs/vue3';
+
+interface Props {
+    status?: string | null;
+    errors: Record<string, string>;
+}
+
+defineProps<Props>();
+
+const form = useForm({
+    email: '',
+});
+
+function submit() {
+    form.post(route('password.email'));
+}
+</script>
