@@ -115,7 +115,7 @@ class RecipeController extends Controller
                 'name'        => $recipe->title,
                 'description' => $recipe->description,
                 'image'       => $primaryImage
-                    ? Storage::url($primaryImage->image_path)
+                    ? Storage::disk('public')->url($primaryImage->image_path)
                     : null,
 
                 'duration_minutes' => $recipe->duration_minutes,
@@ -153,7 +153,7 @@ class RecipeController extends Controller
 
                 $firstImage = $recipe->images->first();
                 $imageUrl = $firstImage?->image_path
-                    ? Storage::url($firstImage->image_path)
+                    ? Storage::disk('public')->url($firstImage->image_path)
                     : null;
 
                 return [
