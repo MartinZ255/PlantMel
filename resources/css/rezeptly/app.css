@@ -1,7 +1,7 @@
 :root {
     /* Flächenfarben */
-    --cream: #FAF7EF;            /* helle, warme Grundfläche für Karten */
-    --pink: #f3efe7;             /* leicht pastelliges Beige für Hauptfläche */
+    --cream: rgba(246, 229, 253, 0.42);            /* helle, warme Grundfläche für Karten */
+    --pink: #e9edeb;             /* leicht pastelliges Beige für Hauptfläche */
     --dark: rgba(40, 38, 33, 0.18); /* sanfter dunkler Ton für Kanten/Schatten */
 
     /* Linien / Schatten */
@@ -58,7 +58,7 @@ body {
 /* HEADER OBEN */
 
 .app-header {
-    background: linear-gradient(to top right, var(--cream), rgba(196, 241, 216, 0.46));
+    background: linear-gradient(to top right, var(--cream), rgba(211, 199, 213, 0.32));
     padding: 10px 24px;
     display: flex;
     align-items: center;
@@ -248,7 +248,7 @@ body {
 /* CONTENT-AREA RECHTS */
 
 .app-content {
-    background: linear-gradient(to bottom right, var(--pink), #fdf5e1);
+    background: linear-gradient(to top left, var(--pink), #fdf5e1);
     padding: 24px 28px 28px;
     display: flex;
     flex-direction: column;
@@ -560,21 +560,38 @@ body {
     color: var(--text-soft);
 }
 
-/* REZEPT-KARTE – HOCHKANT WIE SKIZZE */
+/* Äußere Karte im Grid */
+.recipe-card {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
 
+/* Link füllt die Karte komplett aus */
+.recipe-card__link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    text-decoration: none; /* optional */
+}
+
+/* Sichtbare Box (Cream, Schatten, Padding) */
 .recipe-detail-card {
     background: var(--cream);      /* #FFF5DB */
-    border-radius: 18px;
+    border-radius: 28px;
     box-shadow: var(--shadow-soft);
     padding: 10px 12px 12px;
-    width: 220px;                  /* schmal -> hochkant */
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative;           /* wichtig für Overlay ::after */
+    overflow: hidden;             /* saubere Kanten */
 }
 
-/* Bild oben über gesamte Breite */
 
+/* Rest (Bild, Body, etc.) */
 .recipe-card__image {
     background: #ffe4f0;
     border-radius: 10px;
@@ -657,6 +674,15 @@ body {
     text-align: right;
 }
 
+
+.section-header__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end; /* rechts ausrichten */
+}
+
+
 /* Buttons (falls du sie weiter nutzt) */
 
 .btn {
@@ -687,12 +713,19 @@ body {
     position: relative;
 }
 
-/* Button "Zur Sammlung hinzufügen" oben rechts */
-.recipe-button {
+.recipe-actions {
     position: absolute;
     top: 0.75rem;
     right: 0.75rem;
 
+    display: flex;
+    flex-direction: column;   /* <- macht sie untereinander */
+    align-items: flex-end;    /* rechtsbündig */
+    gap: 0.35rem;
+}
+
+/* Button "Zur Sammlung hinzufügen" oben rechts */
+.recipe-button {
     border-radius: var(--radius-pill);
     border: 1px solid var(--accent);
     background: var(--accent);
@@ -723,11 +756,16 @@ body {
     transform: scale(0.97);
 }
 
+.recipe-button--secondary {
+    background: #fff;
+    color: var(--accent);
+}
+
 /* Modal-Hintergrund */
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.25);
+    background: rgba(0, 0, 0, 0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -736,7 +774,7 @@ body {
 
 /* Modal-Box */
 .modal {
-    background: var(--cream);
+    background: rgb(246, 233, 251);;
     border-radius: var(--radius-lg);
     padding: 1.4rem 1.6rem;
     box-shadow: var(--shadow-soft);
@@ -1662,18 +1700,31 @@ body {
 
 .ingredient-row {
     display: flex;
-    gap: 0.9rem;
-    font-size: 0.95rem;
+    gap: 0.75rem;
+    align-items: baseline;
+}
+
+.ingredient-main-and-alts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .ingredient-amount {
-    min-width: 70px;
+    min-width: 5rem;
     font-weight: 500;
     color: var(--text-main);
 }
 
 .ingredient-name {
     color: var(--text-soft);
+    font-weight: 500;
+}
+
+.ingredient-alternatives {
+    margin-left: 2rem;
+    font-size: 0.9rem;
+    color: #6b7280;
 }
 
 /* Zubereitungsschritte */
@@ -1959,10 +2010,10 @@ body {
 }
 
 .ingredients-builder__row {
-    display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 2.1fr) auto;
-    gap: 0.5rem;
+    display: flex;
     align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
 }
 
 .ingredients-builder__amount {
@@ -1982,6 +2033,12 @@ body {
     margin-top: 0.4rem;
     align-self: flex-start;
     font-size: 0.83rem;
+}
+
+.ingredients-builder__action,
+.ingredients-builder__remove {
+    flex: 0 0 auto;
+    white-space: nowrap;    /* Text im Button soll nicht umbrechen */
 }
 
 /* Steps-Builder */
@@ -2219,6 +2276,41 @@ body {
 .ingredients-dropdown__item:hover {
     background: var(--cream);
     transform: translateY(-1px);
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 40;
+}
+
+.modal {
+    background: #fff;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 100%;
+}
+
+.modal__title {
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.modal__actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.modal__delete {
+
 }
 
 /* ======================================

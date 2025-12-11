@@ -31,6 +31,11 @@ class Recipe extends Model
         return $this->hasMany(RecipeIngredient::class);
     }
 
+    public function ingredientAlternatives()
+    {
+        return $this->hasMany(IngredientAlternative::class);
+    }
+
     public function categories()
     {
         return $this->belongsToMany(Category::class, 'recipe_categories');

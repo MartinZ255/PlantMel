@@ -40,6 +40,7 @@ interface Collection {
     id: number | string;
     name: string;
     description?: string | null;
+    recipeCount?: number;
 }
 
 const props = defineProps<{

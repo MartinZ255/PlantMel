@@ -6,8 +6,9 @@
                 <input
                     class="search-row__input"
                     type="text"
-                    placeholder="Rezeptname, Zutat ..."
+                    placeholder="Rezptname eingeben..."
                     v-model="searchTerm"
+                    @keyup="emitFilters"
                 />
                 <button
                     class="search-row__filter-button"
@@ -89,9 +90,9 @@
                     v-for="tag in visibleTags"
                     :key="tag.key"
                     class="tag-chip"
-                    :class="{ 'tag-chip--active': tag.key === activeTag }"
+                    :class="{ 'tag-chip--active': isTagActive(tag.key) }"
                     type="button"
-                    @click="setActiveTag(tag.key)"
+                    @click="toggleTag(tag.key)"
                 >
                     {{ tag.label }}
                 </button>
@@ -115,6 +116,7 @@
                     v-for="tag in extraTagStats"
                     :key="tag.key"
                     class="filter-panel__row"
+                    @click="toggleTag(tag.key)"
                 >
                     <span>{{ tag.label }}</span>
                     <span>{{ tag.count }}</span>
@@ -133,26 +135,49 @@ interface TagStat {
     count: number;
 }
 
+interface Filters {
+    search?: string | null;
+    includeIngredients?: string[];
+    excludeIngredients?: string[];
+    tags?: string[]; // mehrere aktive Tags
+}
+
 interface Props {
-    tags: string[];        // ['alle', 'scharf', 'schnell', 'glutenfrei', 'vegan']
+    tags: string[];        // ['alle', 'Dessert', 'Low Carb', ...]
     tagStats: TagStat[];   // Stats für Panel (scharf, schnell, glutenfrei, ...)
+    initialFilters?: Filters;
 }
 
 const props = defineProps<Props>();
 
-const searchTerm = ref('');
-const activeTag = ref('alle');
+const emit = defineEmits<{
+    (e: 'update:filters', payload: {
+        search: string;
+        includeIngredients: string[];
+        excludeIngredients: string[];
+        tags: string[];
+    }): void;
+}>();
+
+// State aus Initial-Filtern vorbelegen
+const searchTerm = ref(props.initialFilters?.search ?? '');
+const activeTags = ref<string[]>(props.initialFilters?.tags ?? []);
+
+const includeIngredients = ref(
+    (props.initialFilters?.includeIngredients ?? []).join(', ')
+);
+const excludeIngredients = ref(
+    (props.initialFilters?.excludeIngredients ?? []).join(', ')
+);
 
 const showIngredientFilter = ref(false);
 const showTagPanel = ref(false);
 
-const includeIngredients = ref('');
-const excludeIngredients = ref('');
-
 const frequentIngredients = ['Tomaten', 'Knoblauch', 'Zwiebeln', 'Paprika'];
 
 const visibleTags = computed(() =>
-    props.tags.filter((t) => t !== '...')
+    props.tags
+        .filter((t) => t !== '...')
         .map((t) => ({ key: t, label: t }))
 );
 
@@ -170,8 +195,40 @@ const toggleTagPanel = () => {
     showTagPanel.value = !showTagPanel.value;
 };
 
-const setActiveTag = (key: string) => {
-    activeTag.value = key;
+const parseIngredientList = (value: string): string[] =>
+    value
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+
+const isTagActive = (key: string): boolean => {
+    return activeTags.value.includes(key);
+};
+
+const toggleTag = (key: string) => {
+    // Optional: spezieller "alle"-Tag, der alle anderen zurücksetzt
+    if (key === 'alle') {
+        activeTags.value = [];
+        emitFilters();
+        return;
+    }
+
+    const current = activeTags.value;
+    if (current.includes(key)) {
+        activeTags.value = current.filter((t) => t !== key);
+    } else {
+        activeTags.value = [...current, key];
+    }
+    emitFilters();
+};
+
+const emitFilters = () => {
+    emit('update:filters', {
+        search: searchTerm.value.trim(),
+        includeIngredients: parseIngredientList(includeIngredients.value),
+        excludeIngredients: parseIngredientList(excludeIngredients.value),
+        tags: activeTags.value,
+    });
 };
 
 const appendIngredient = (name: string) => {
@@ -180,7 +237,7 @@ const appendIngredient = (name: string) => {
 };
 
 const applyFilters = () => {
-    // Hier später: Emit eines Events an die Seite (z.B. 'update:filters')
+    emitFilters();
     closeIngredientFilter();
 };
 </script>

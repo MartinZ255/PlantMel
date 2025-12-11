@@ -18,7 +18,8 @@ const emit = defineEmits<{
     (e: 'close'): void;
 }>();
 
-const selectedCollectionId = ref<number | null>(null);
+// Mehrfachauswahl: Array von IDs
+const selectedCollectionIds = ref<number[]>([]);
 
 const form = useForm({
     recipe_id: props.recipeId,
@@ -33,25 +34,40 @@ watch(
 );
 
 const close = () => {
-    selectedCollectionId.value = null;
+    selectedCollectionIds.value = [];
     form.reset();
     emit('close');
 };
 
 const addToCollection = () => {
-    if (!selectedCollectionId.value) return;
+    if (selectedCollectionIds.value.length === 0) return;
 
-    form.post(
-        route('collections.addRecipe', {
-            collection: selectedCollectionId.value,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                close();
-            },
+    // nacheinander in jede ausgewählte Collection posten
+    // (Backend erwartet offenbar eine einzelne collection-ID)
+    const ids = [...selectedCollectionIds.value];
+
+    const postNext = () => {
+        const id = ids.shift();
+        if (!id) {
+            close();
+            return;
         }
-    );
+
+        form.post(
+            route('collections.addRecipe', {
+                collection: id,
+            }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // nächste Collection, wenn noch welche übrig sind
+                    postNext();
+                },
+            }
+        );
+    };
+
+    postNext();
 };
 </script>
 
@@ -74,10 +90,10 @@ const addToCollection = () => {
                     class="modal__list-item"
                 >
                     <input
-                        type="radio"
+                        type="checkbox"
                         name="collection"
                         :value="collection.id"
-                        v-model="selectedCollectionId"
+                        v-model="selectedCollectionIds"
                     />
                     <span>{{ collection.name }}</span>
                 </label>
@@ -101,7 +117,7 @@ const addToCollection = () => {
                 <button
                     type="button"
                     class="primary-pill-button"
-                    :disabled="!selectedCollectionId || form.processing || collections.length === 0"
+                    :disabled="!selectedCollectionIds || form.processing || collections.length === 0"
                     @click="addToCollection"
                 >
                     Hinzufügen

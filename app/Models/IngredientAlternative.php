@@ -9,6 +9,7 @@ class IngredientAlternative extends Model
     protected $table = 'ingredient_alternatives';
 
     protected $fillable = [
+        'recipe_id',
         'ingredient_id',
         'alternative_ingredient_id',
         'note',
@@ -22,5 +23,10 @@ class IngredientAlternative extends Model
     public function alternativeIngredient()
     {
         return $this->belongsTo(Ingredient::class, 'alternative_ingredient_id');
+    }
+
+    public function recipe()
+    {
+        return $this->belongsTo(Recipe::class);
     }
 }

@@ -3,6 +3,7 @@ import AppLayout from '@/components/layout/AppLayout.vue';
 import AddToCollectionModal from '@/components/widgets/AddToCollectionModal.vue';
 import { route } from 'ziggy-js';
 import { computed, ref } from 'vue';
+import { router } from '@inertiajs/vue3';
 
 type RatingDimension = {
     id: number | null;
@@ -27,20 +28,22 @@ const props = defineProps<{
         difficulty: string | null;
         categories: string[];
         tags: string[];
-        rating: number | null;             // Gesamtbewertung
-        ratingCount: number;               // Anzahl Bewertungen
+        rating: number | null;
+        ratingCount: number;
         ratingDimensions: RatingDimension[];
         source: string | null;
-        ingredients: { amount: string | null; name: string | null }[];
+        ingredients: { amount: string | null; name: string | null; alternatives?: string[]; }[];
         steps: string[];
         notes: string[];
         createdAt: string | null;
         updatedAt: string | null;
     };
     collections: CollectionOption[];
+    isHost: boolean;
 }>();
 
 const recipe = props.recipe;
+const isHost = computed(() => props.isHost);
 
 const hasAnyRatings = computed(
     () => recipe.rating != null && recipe.ratingCount > 0,
@@ -63,6 +66,10 @@ const closeCollectionModal = () => {
     isCollectionModalOpen.value = false;
 };
 
+const openRecipeEdit = () => {
+    window.location.href = route('recipes.edit', recipe.id);
+};
+
 // Hilfsfunktion für Sterne 0–5
 const getStars = (value: number | null) => {
     if (value == null || Number.isNaN(value)) return { filled: 0, empty: 5 };
@@ -71,6 +78,19 @@ const getStars = (value: number | null) => {
         filled: clamped,
         empty: 5 - clamped,
     };
+};
+
+const deleteRecipe = () => {
+    if (!confirm('Möchtest du dieses Rezept wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+        return;
+    }
+
+    router.delete(
+        route('recipes.delete', recipe.id),
+        {
+            preserveScroll: true,
+        },
+    );
 };
 </script>
 
@@ -96,13 +116,34 @@ const getStars = (value: number | null) => {
 
                     <!-- Header-Content mit Button oben rechts -->
                     <div class="header-content recipe-container">
-                        <button
-                            type="button"
-                            class="recipe-button"
-                            @click="openCollectionModal"
-                        >
-                            Zur Sammlung hinzufügen
-                        </button>
+                        <!-- NEU: Button-Container oben rechts -->
+                        <div class="recipe-actions">
+                            <button
+                                type="button"
+                                class="recipe-button"
+                                @click="openCollectionModal"
+                            >
+                                Zur Sammlung hinzufügen
+                            </button>
+
+                            <button
+                                v-if="isHost"
+                                type="button"
+                                class="recipe-button recipe-button--secondary"
+                                @click="openRecipeEdit"
+                            >
+                                Rezept bearbeiten
+                            </button>
+
+                            <button
+                                v-if="isHost"
+                                type="button"
+                                class="recipe-button recipe-button--secondary"
+                                @click="deleteRecipe"
+                            >
+                                Rezept löschen
+                            </button>
+                        </div>
 
                         <h1 class="title">
                             {{ recipe.name }}
@@ -232,10 +273,21 @@ const getStars = (value: number | null) => {
                                 <span class="ingredient-amount">
                                     {{ ingredient.amount ?? '-' }}
                                 </span>
-                                <span class="ingredient-name">
-                                    {{ ingredient.name }}
+
+                                <span class="ingredient-main-and-alts">
+                                    <span class="ingredient-name">
+                                        {{ ingredient.name }}
+                                    </span>
+                                    <span
+                                        v-if="ingredient.alternatives && ingredient.alternatives.length"
+                                        class="ingredient-alternatives"
+                                    >
+                                        oder:
+                                        {{ ingredient.alternatives.join(' / ') }}
+                                    </span>
                                 </span>
                             </div>
+
                         </div>
                     </section>
 

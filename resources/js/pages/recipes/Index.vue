@@ -4,13 +4,16 @@
         <RecipeSearchArea
             :tags="tags"
             :tag-stats="tagStats"
+            :initial-filters="props.filters"
+            @update:filters="onUpdateFilters"
         />
 
         <a
+            v-if="props.isHost"
             :href="route('recipes.create')"
             class="content-section"
         >
-            Rezept erstellen (Testweise)
+            Rezept erstellen
         </a>
 
         <!-- Grid aus Karten unten -->
@@ -36,6 +39,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { route } from 'ziggy-js';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import RecipeSearchArea from '@/components/recipes/RecipeSearchArea.vue';
 import RecipeDetailCard from '@/components/recipes/RecipeDetailCard.vue';
@@ -57,14 +61,29 @@ interface TagStat {
     count: number;
 }
 
+interface Filters {
+    search?: string | null;
+    includeIngredients?: string[];
+    excludeIngredients?: string[];
+    tags?: string[];
+}
+
 const props = withDefaults(defineProps<{
     recipes?: Recipes[];
     tags?: string[];
     tagStats?: TagStat[];
+    filters?: Filters;
+    isHost: boolean;
 }>(), {
     recipes: () => [],
     tags: () => [],
     tagStats: () => [],
+    filters: () => ({
+        search: '',
+        includeIngredients: [],
+        excludeIngredients: [],
+        tags: [],
+    }),
 });
 
 const tags = computed(() => props.tags);
@@ -80,4 +99,27 @@ const recipeCards = computed(() =>
         image: r.image,
     })),
 );
+
+type FilterPayload = {
+    search: string;
+    includeIngredients: string[];
+    excludeIngredients: string[];
+    tags: string[];
+};
+
+const onUpdateFilters = (payload: FilterPayload) => {
+    router.get(
+        route('recipes.index'),
+        {
+            search: payload.search || undefined,
+            includeIngredients: payload.includeIngredients,
+            excludeIngredients: payload.excludeIngredients,
+            tags: payload.tags,
+        },
+        {
+            preserveState: true,
+            replace: true,
+        },
+    );
+};
 </script>

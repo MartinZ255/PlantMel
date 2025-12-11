@@ -1,56 +1,63 @@
 <template>
     <!-- Eine Karte pro Rezept -->
-    <article v-if="recipe" class="recipe-detail-card">
-        <a
-            :href="route('recipes.show', recipe.id)"
+    <article v-if="recipe" class="recipe-card">
+        <component
+            :is="disableLink ? 'div' : 'a'"
+            class="recipe-card__link"
+            v-bind="!disableLink ? { href: route('recipes.show', recipe.id) } : {}"
         >
-            <div class="recipe-card__image image-wrapper">
-                <img
-                    v-if="recipe.image"
-                    :src="recipe.image"
-                    :alt="recipe.name"
-                    class="recipe-card__image-img"
-                />
-                <div v-else class="recipe-card__image-placeholder">
-                    Bild
+            <div class="recipe-detail-card">
+                <div class="recipe-card__image image-wrapper">
+                    <img
+                        v-if="recipe.image"
+                        :src="recipe.image"
+                        :alt="recipe.name"
+                        class="recipe-card__image-img"
+                    />
+                    <div v-else class="recipe-card__image-placeholder">
+                        Bild
+                    </div>
+                </div>
+
+                <div class="recipe-card__body">
+                    <h3 class="recipe-card__title underline-text">
+                        {{ recipe.name }}
+                    </h3>
+
+                    <!-- Tags nur anzeigen, wenn vorhanden -->
+                    <div v-if="hasTags" class="recipe-card__tags">
+                        <span
+                            v-for="tag in recipe.tags"
+                            :key="tag"
+                            class="recipe-card__tag"
+                        >
+                            {{ tag }}
+                        </span>
+                    </div>
+
+                    <div class="recipe-card__rating-row">
+                        <span class="recipe-card__rating-label">gesamt</span>
+                        <div class="recipe-card__stars">
+                            <span class="recipe-card__stars--filled">
+                                {{ '★ '.repeat(filledStars).trim() }}
+                            </span>
+                            <span>
+                                {{ '★ '.repeat(emptyStars).trim() }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="recipe-card__footer">
+                        <span class="recipe-card__footer-right">
+                            Dauer: {{ recipe.time }}
+                        </span>
+                    </div>
                 </div>
             </div>
-
-        <div class="recipe-card__body">
-            <h3 class="recipe-card__title underline-text">{{ recipe.name }}</h3>
-
-            <!-- Tags nur anzeigen, wenn vorhanden -->
-            <div v-if="hasTags" class="recipe-card__tags">
-                <span
-                    v-for="tag in recipe.tags"
-                    :key="tag"
-                    class="recipe-card__tag"
-                >
-                    {{ tag }}
-                </span>
-            </div>
-
-            <div class="recipe-card__rating-row">
-                <span class="recipe-card__rating-label">gesamt</span>
-                <div class="recipe-card__stars">
-                    <span class="recipe-card__stars--filled">
-                        {{ '★ '.repeat(filledStars).trim() }}
-                    </span>
-                    <span>
-                        {{ '★ '.repeat(emptyStars).trim() }}
-                    </span>
-                </div>
-            </div>
-
-            <div class="recipe-card__footer">
-                <span class="recipe-card__footer-right">
-                    Dauer:   {{ recipe.time }}
-                </span>
-            </div>
-        </div>
-        </a>
+        </component>
     </article>
 </template>
+
 
 <script setup lang="ts">
 import { computed } from 'vue';
@@ -67,9 +74,12 @@ interface RecipeDetail {
 
 interface Props {
     recipe: RecipeDetail | null;
+    disableLink?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+    disableLink: false,
+});
 
 const hasTags = computed(
     () => !!props.recipe && Array.isArray(props.recipe.tags) && props.recipe.tags.length > 0,
