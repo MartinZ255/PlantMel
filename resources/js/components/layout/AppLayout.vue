@@ -30,6 +30,14 @@
             class="app-main"
             :class="{ 'app-main--sidebar-closed': !isSidebarOpen }"
         >
+
+            <!-- Backdrop: nur wenn Sidebar offen -->
+            <div
+                v-if="isSidebarOpen"
+                class="sidebar-backdrop"
+                @click="toggleSidebar"
+            ></div>
+
             <!-- SIDEBAR -->
             <aside
                 class="sidebar"
@@ -95,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { route } from 'ziggy-js';
 import SidebarSearchSubmenu from '@/components/widgets/SidebarSearchSubmenu.vue';
 
@@ -107,6 +115,12 @@ defineProps<Props>();
 
 const isSearchMenuOpen = ref(false);
 const isSidebarOpen = ref(true);
+
+onMounted(() => {
+    if (window.matchMedia('(max-width: 900px)').matches) {
+        isSidebarOpen.value = false;
+    }
+});
 
 const toggleSearchMenu = () => {
     isSearchMenuOpen.value = !isSearchMenuOpen.value;

@@ -1,6 +1,6 @@
 :root {
     /* Flächenfarben */
-    --cream: rgba(246, 229, 253, 0.42);            /* helle, warme Grundfläche für Karten */
+    --cream: rgba(246, 229, 253, 1);            /* helle, warme Grundfläche für Karten */
     --pink: #e9edeb;             /* leicht pastelliges Beige für Hauptfläche */
     --dark: rgba(40, 38, 33, 0.18); /* sanfter dunkler Ton für Kanten/Schatten */
 
@@ -130,7 +130,7 @@ body {
 /* SIDEBAR LINKS */
 
 .sidebar {
-    background: linear-gradient(to bottom left, var(--cream), rgba(196, 241, 216, 0.46));
+    background: linear-gradient(to bottom left, var(--cream), rgba(196, 241, 216, 1));
     padding: 18px 20px;
     display: flex;
     flex-direction: column;
@@ -2496,16 +2496,9 @@ body {
     color: var(--text-soft);
 }
 
-/* Mobile / kleine Screens */
-@media (max-width: 640px) {
-    .auth-form {
-        padding: 1.4rem 1.3rem;
-        max-width: 100%;
-    }
+.sidebar-backdrop {
+    display: none !important;
 }
-
-
-
 /* Responsive Anpassungen */
 
 @media (max-width: 900px) {
@@ -2555,6 +2548,111 @@ body {
     }
 }
 
+/* =========================
+   Mobile App-Shell / Sidebar
+   ========================= */
+
+@media (max-width: 900px) {
+
+    .app-header {
+        padding: 10px 14px;
+        gap: 12px;
+        position: relative;
+        z-index: 70; /* Header über Drawer */
+    }
+
+    .app-main {
+        grid-template-columns: 1fr;
+    }
+
+    .app-content {
+        padding: 14px 14px 18px;
+    }
+
+    /* Backdrop nur auf Mobile und nur wenn Element gerendert */
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 55;
+    }
+
+    /* Sidebar als Drawer */
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 56px;                 /* unter Header (passt zu 32px icon + padding) */
+        height: calc(100vh - 56px);
+        width: min(86vw, 320px);
+        z-index: 60;
+        opacity: 1;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+
+        /* wichtig: SOLID background, sonst scheint Content durch */
+
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+
+        transform: translateX(0);
+
+        pointer-events: auto;
+    }
+
+    /* geschlossen */
+    .sidebar.sidebar--closed {
+        transform: translateX(-110%);
+        pointer-events: none;
+        opacity: 1; /* nicht ausblenden – sonst „flackert“ es */
+    }
+
+    /* Submenu auf Mobile nicht absolut */
+    .sidebar-submenu {
+        position: static;
+        left: auto;
+        top: auto;
+        min-width: 0;
+        margin-top: 8px;
+        display: none;
+        box-shadow: none;
+        border: 1px solid var(--line-soft);
+    }
+
+    .sidebar-submenu.is-open {
+        display: block;
+    }
+
+    .recipes-layout {
+        grid-template-columns: 1fr;
+    }
+
+    /* Submenu auf Mobile nicht mehr absolut neben die Sidebar */
+    .sidebar-submenu {
+        position: static;
+        left: auto;
+        top: auto;
+        min-width: 0;
+        margin-top: 8px;
+        display: none;
+        box-shadow: none;
+        border: 1px solid var(--line-soft);
+    }
+
+    /* Wenn offen: per Klasse am Body/App-Wrapper aktivieren */
+    .sidebar.is-open {
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+
+    /* Desktop-Klasse .sidebar--closed auf Mobile nicht nutzen,
+       sondern nur über is-open steuern */
+    .sidebar--closed {
+        opacity: 1;
+        transform: translateX(-110%);
+        pointer-events: none;
+    }
+
+}
+
 @media (max-width: 720px) {
 
     .filter-panel--ingredients {
@@ -2584,5 +2682,45 @@ body {
 
     .rating-stars-input {
         padding-left: 0.1rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .auth-form {
+        padding: 1.4rem 1.3rem;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    .board-row { gap: 12px; }
+    .note-card {
+        width: 100%;
+        transform: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .ingredients-builder__row {
+        flex-wrap: wrap;
+    }
+    .ingredients-builder__action,
+    .ingredients-builder__remove {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .app-header__title { display: none; }
+    .app-header__icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+    }
+}
+
+@media (max-width: 420px) {
+    .recipes-grid,
+    .collections-grid {
+        grid-template-columns: 1fr;
     }
 }
