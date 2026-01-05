@@ -371,7 +371,7 @@ body {
     gap: 6px;
     background: rgba(255, 255, 255, 0.85);
     border-radius: 16px;
-    padding: 8px 12px;
+    padding: 8px 20px;
     border: 1px dashed var(--line-soft);
     font-size: 13px;
     cursor: pointer;
@@ -2665,6 +2665,7 @@ body {
     .filter-panel--ingredients {
         right: auto;
         left: 0;
+        width: auto;
     }
 
     .form-row-split {
