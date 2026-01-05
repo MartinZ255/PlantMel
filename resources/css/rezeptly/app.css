@@ -2558,7 +2558,7 @@ body {
         padding: 10px 14px;
         gap: 12px;
         position: relative;
-        z-index: 70; /* Header über Drawer */
+        z-index: 1100;
     }
 
     .app-main {
@@ -2574,17 +2574,17 @@ body {
         position: fixed;
         inset: 0;
         background: rgba(0,0,0,0.35);
-        z-index: 55;
+        z-index: 900;
     }
 
     /* Sidebar als Drawer */
     .sidebar {
         position: fixed;
         left: 0;
-        top: 56px;                 /* unter Header (passt zu 32px icon + padding) */
-        height: calc(100vh - 56px);
+        top: 50px;                 /* unter Header (passt zu 32px icon + padding) */
+        height: calc(100vh - 50px);
         width: min(86vw, 320px);
-        z-index: 60;
+        z-index: 1000;
         opacity: 1;
         overflow: auto;
         -webkit-overflow-scrolling: touch;
