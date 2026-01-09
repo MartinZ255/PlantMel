@@ -90,6 +90,61 @@ body {
     gap: 10px;
 }
 
+.user-menu {
+    position: relative;
+}
+
+.user-menu__dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 200px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--line-soft);
+    padding: 6px 0;
+    z-index: 1200;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    transition:
+        opacity var(--transition-fast),
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.user-menu__dropdown.is-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.user-menu__item {
+    width: 100%;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: var(--text-main);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: block;
+    text-decoration: none;
+}
+
+.user-menu__item:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.user-menu__item--label {
+    font-size: 12px;
+    color: var(--text-soft);
+    cursor: default;
+}
+
+.user-menu__item--danger {
+    color: #b95454;
+}
+
 .app-header__icon {
     width: 32px;
     height: 32px;
@@ -105,6 +160,14 @@ body {
         box-shadow var(--transition-fast),
         background var(--transition-fast);
     background: rgba(255, 255, 255, 0.7);
+}
+
+.user-avatar-icon {
+    width: 18px;
+    height: 18px;
+    stroke: var(--text-main);
+    stroke-width: 1.6;
+    fill: none;
 }
 
 .app-header__icon--menu {
@@ -164,25 +227,50 @@ body {
 }
 
 .sidebar-link {
-    padding: 7px 10px;
-    border-radius: 12px;
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--line-soft);
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
     cursor: pointer;
     transition:
         background var(--transition-fast),
-        transform var(--transition-fast);
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        border-color var(--transition-fast);
 }
 
 .sidebar-link--active,
 
 .sidebar-link:hover {
-    background: rgba(255, 255, 255, 0.86);
-    transform: translateX(2px);
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-soft);
+    transform: translateX(4px);
 }
 
 .sidebar-link--submenu-toggle {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.sidebar-pill-label {
+    flex: 1;
+    text-align: center; /* "Suche" optisch zentrieren, Chevron bleibt rechts */
+}
+
+.sidebar-chevron {
+    display: inline-flex;
+    font-size: 18px; /* größere Pfeile für das Search-Chevron */
+    line-height: 1;
+    transition: transform var(--transition-fast);
+}
+
+.sidebar-link--open .sidebar-chevron {
+    transform: rotate(90deg);
 }
 
 .sidebar-collections {
@@ -197,6 +285,28 @@ body {
     background: rgba(255, 255, 255, 0.7);
     border: 1px solid var(--line-soft);
     font-size: 13px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    text-align: center; /* Text in den Sidebar-Pills zentrieren */
+    transition:
+        background var(--transition-fast),
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        border-color var(--transition-fast);
+}
+
+.sidebar-collection-pill:hover {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-soft);
+    transform: translateX(4px);
+}
+
+.sidebar-collection-pill--empty {
+    cursor: default;
+    opacity: 0.7;
+    transform: none;
 }
 
 .sidebar-footer {
@@ -223,12 +333,19 @@ body {
     padding: 10px 12px;
     min-width: 150px;
     font-size: 14px;
-    display: none;
     z-index: 10;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    pointer-events: none;
+    transition:
+        opacity var(--transition-fast),
+        transform var(--transition-fast);
 }
 
 .sidebar-submenu.is-open {
-    display: block;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
 }
 
 .sidebar-submenu__item {
@@ -2683,6 +2800,19 @@ body {
         flex-wrap: wrap;
     }
 
+    /* Section-Header-Actions (z. B. Buttons im Hero) auf Mobile besser nutzbar machen */
+    .section-header__actions {
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .section-header__actions a,
+    .section-header__actions button {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
     .rating-row {
         flex-direction: column;
         align-items: flex-start;
@@ -2738,4 +2868,110 @@ body {
     .collections-grid {
         grid-template-columns: 1fr;
     }
+
+    .settings-card {
+        padding: 0.9rem 1rem;
+    }
+
+    .settings-card__icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.3rem;
+    }
+}
+
+/* ======================================
+   Einstellungen – Settings-Seiten
+====================================== */
+
+.settings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.settings-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: var(--radius-lg, 18px);
+    border: 1px solid var(--line-soft);
+    text-decoration: none;
+    color: inherit;
+    transition:
+        background-color 0.15s ease,
+        transform 0.08s ease-out,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease;
+    cursor: pointer;
+}
+
+.settings-card:hover {
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+.settings-card__icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cream);
+    border-radius: 12px;
+    color: var(--text-main);
+}
+
+.settings-card__icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+}
+
+.settings-card__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-card__title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.settings-card__description {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-soft);
+    line-height: 1.4;
+}
+
+.settings-card__arrow {
+    font-size: 1.2rem;
+    color: var(--text-soft);
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.settings-card:hover .settings-card__arrow {
+    transform: translateX(4px);
+    color: var(--accent);
+}
+
+/* Status-Message für Settings */
+.status-message {
+    margin-bottom: 1rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 12px;
+    background-color: #f5fbf3;
+    color: #365a33;
+    font-size: 0.85rem;
+    border: 1px solid rgba(125, 168, 121, 0.35);
 }

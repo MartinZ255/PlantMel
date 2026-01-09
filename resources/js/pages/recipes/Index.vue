@@ -108,16 +108,30 @@ type FilterPayload = {
 };
 
 const onUpdateFilters = (payload: FilterPayload) => {
+    const params: Record<string, any> = {};
+    
+    if (payload.search && payload.search.trim()) {
+        params.search = payload.search.trim();
+    }
+    
+    if (payload.includeIngredients && payload.includeIngredients.length > 0) {
+        params.includeIngredients = payload.includeIngredients;
+    }
+    
+    if (payload.excludeIngredients && payload.excludeIngredients.length > 0) {
+        params.excludeIngredients = payload.excludeIngredients;
+    }
+    
+    if (payload.tags && payload.tags.length > 0) {
+        params.tags = payload.tags;
+    }
+    
     router.get(
         route('recipes.index'),
-        {
-            search: payload.search || undefined,
-            includeIngredients: payload.includeIngredients,
-            excludeIngredients: payload.excludeIngredients,
-            tags: payload.tags,
-        },
+        params,
         {
             preserveState: true,
+            preserveScroll: true,
             replace: true,
         },
     );

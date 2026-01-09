@@ -13,7 +13,7 @@
                 <button
                     class="search-row__filter-button"
                     type="button"
-                    @click="toggleIngredientFilter"
+                    @click.stop="toggleIngredientFilter"
                 >
                     ☰ Filter
                 </button>
@@ -53,15 +53,15 @@
                     <div class="filter-panel__field">
                         <span class="filter-panel__subtitle">häufig genutzte Zutaten:</span>
                         <div class="filter-panel__chips">
-                            <button
-                                v-for="chip in frequentIngredients"
-                                :key="chip"
-                                type="button"
-                                class="filter-panel__chip"
-                                @click="appendIngredient(chip)"
-                            >
-                                {{ chip }}
-                            </button>
+                        <button
+                            v-for="chip in frequentIngredients"
+                            :key="chip"
+                            type="button"
+                            class="filter-panel__chip"
+                            @click.stop="appendIngredient(chip)"
+                        >
+                            {{ chip }}
+                        </button>
                         </div>
                     </div>
 
@@ -69,14 +69,14 @@
                         <button
                             type="button"
                             class="filter-panel__btn filter-panel__btn--ghost"
-                            @click="closeIngredientFilter"
+                            @click.stop="closeIngredientFilter"
                         >
                             Abbrechen
                         </button>
                         <button
                             type="button"
                             class="filter-panel__btn filter-panel__btn--primary"
-                            @click="applyFilters"
+                            @click.stop="applyFilters"
                         >
                             Anwenden
                         </button>

@@ -6,6 +6,7 @@ use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\CollectionController;
 use App\Models\Category;
+use App\Models\Recipe;
 use App\Models\Ingredient;
 use App\Models\RatingDimension;
 use Illuminate\Support\Facades\Route;
@@ -38,7 +39,36 @@ Route::get('/ingredients/{ingredient}', [IngredientController::class, 'show'])
 // Authentifizierte, verifizierte Benutzer (Sammlungen etc.)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/home', function (Request $request) {
-        return Inertia::render('Home');
+        $user = $request->user();
+
+        $totalRecipes = Recipe::count();
+        $totalCollections = \App\Models\Collection::where('user_id', $user->id)->count();
+
+        $latestRecipes = Recipe::with(['categories', 'images'])
+            ->orderByDesc('created_at')
+            ->limit(4)
+            ->get()
+            ->map(function (Recipe $recipe) {
+                $firstImage = $recipe->images->first();
+                $imageUrl = $firstImage?->image_path
+                    ? \Illuminate\Support\Facades\Storage::disk('public')->url($firstImage->image_path)
+                    : null;
+
+                return [
+                    'id' => $recipe->id,
+                    'name' => $recipe->title,
+                    'categories' => $recipe->categories->pluck('name')->all(),
+                    'image' => $imageUrl,
+                ];
+            });
+
+        return Inertia::render('Home', [
+            'stats' => [
+                'totalRecipes' => $totalRecipes,
+                'totalCollections' => $totalCollections,
+            ],
+            'latestRecipes' => $latestRecipes,
+        ]);
     })->name('home');
 
 

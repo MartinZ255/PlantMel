@@ -55,6 +55,17 @@ class HandleInertiaRequests extends Middleware
                         'email' => $request->user()->email,
                     ]
                     : null,
+                'collections' => $request->user()
+                    ? $request->user()
+                        ->collections()
+                        ->orderByDesc('updated_at')
+                        ->get(['id', 'name'])
+                        ->map(fn ($collection) => [
+                            'id'   => $collection->id,
+                            'name' => $collection->name,
+                        ])
+                        ->values()
+                    : [],
             ],
 
             'sidebarOpen' => ! $request->hasCookie('sidebar_state')
