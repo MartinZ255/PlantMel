@@ -1,20 +1,34 @@
 :root {
     /* Flächenfarben */
-    --cream: rgba(246, 229, 253, 1);            /* helle, warme Grundfläche für Karten */
-    --pink: #e9edeb;             /* leicht pastelliges Beige für Hauptfläche */
-    --dark: rgba(40, 38, 33, 0.18); /* sanfter dunkler Ton für Kanten/Schatten */
+    --cream: #FBF4E6;            /* helle, warme Grundfläche für Karten */
+    --sand: #F4ECDD;             /* sanfter Sandton für Hover- und Nebenflächen */
+    --sage: #E7F0DF;             /* helles Salbeigrün für Verläufe/Akzentflächen */
+    --rose: #F8E4E6;             /* pastelliges Rosa als zweite Akzentfläche */
+    --rose-deep: #F0CDD2;        /* kräftigeres Rosa für Ränder/Hover */
+    --peach: #F9E9DC;            /* zartes Pfirsich für Abwechslung */
+    --sidebar-top: #E4EFD8;      /* Sidebar: oben helles Salbei ... */
+    --sidebar-bottom: #CDE2BE;   /* ... unten satter, hebt sich vom Content ab */
+    --pink: var(--rose);         /* Alias: alte Bezeichnung, zeigt auf Rosa */
+    --dark: rgba(60, 52, 38, 0.18); /* sanfter dunkler Ton für Kanten/Schatten */
 
     /* Linien / Schatten */
-    --line-soft: rgba(50, 45, 35, 0.10);
-    --shadow-soft: 0 10px 25px rgba(50, 45, 35, 0.12);
+    --line-soft: rgba(92, 75, 50, 0.12);
+    --shadow-soft: 0 10px 25px rgba(92, 75, 50, 0.10);
+    --shadow-lift: 0 14px 30px rgba(92, 75, 50, 0.16);
 
     /* Textfarben */
-    --text-main: #3A3732;        /* warmes Dunkelgrau */
-    --text-soft: #7C7568;        /* dezentes Sekundärgrau */
+    --text-main: #3C382F;        /* warmes Dunkelgrau */
+    --text-soft: #877D6C;        /* dezentes Sekundärgrau */
 
-    /* Akzentfarben */
-    --accent: #7DA879;           /* Kräutergrün für Buttons/Highlights */
-    --danger-soft: #F2C8C8;      /* mildes rosenrot für Warnungen etc. */
+    /* Akzentfarben – bewusst NICHT --accent genannt, da das
+       Tailwind/Shadcn-Theme in app.css diesen Namen bereits belegt
+       und ihn im Dark-Mode mit Lavendel überschreiben würde */
+    --herb: #7DA879;             /* Kräutergrün für Buttons/Highlights */
+    --herb-strong: #628F5E;      /* dunkleres Grün für Hover/aktive Zustände */
+    --herb-soft: rgba(125, 168, 121, 0.18); /* transparentes Grün für Fokus-Ringe */
+    --danger: #B95454;           /* gedecktes Rot für Fehler/Löschen */
+    --danger-soft: #F2D3CE;      /* mildes Rosenrot für Warnflächen */
+    --star: #E8B453;             /* warmes Gold für Bewertungssterne */
 
 /* Sonstiges */
     --radius-lg:   18px;
@@ -41,7 +55,7 @@ body {
 
 body {
     color: var(--text-main);
-    background: radial-gradient(circle at top, #fdf0ff 0, #ffffff 55%);
+    background: radial-gradient(circle at top, #FBEDE7 0, #FFFDF6 55%);
 }
 
 .underline-text {
@@ -61,7 +75,7 @@ body {
 /* HEADER OBEN */
 
 .app-header {
-    background: linear-gradient(to top right, var(--cream), rgba(211, 199, 213, 0.32));
+    background: linear-gradient(to right, var(--rose), var(--cream) 45%, var(--sage));
     padding: 10px 24px;
     display: flex;
     align-items: center;
@@ -142,7 +156,7 @@ body {
 }
 
 .user-menu__item--danger {
-    color: #b95454;
+    color: var(--danger);
 }
 
 .app-header__icon {
@@ -198,7 +212,8 @@ body {
 /* SIDEBAR LINKS */
 
 .sidebar {
-    background: linear-gradient(to bottom left, var(--cream), rgba(196, 241, 216, 1));
+    background: linear-gradient(to bottom, var(--sidebar-top), var(--sidebar-bottom));
+    border-right: 1px solid rgba(60, 80, 45, 0.12);
     padding: 18px 20px;
     display: flex;
     flex-direction: column;
@@ -370,7 +385,7 @@ body {
 /* CONTENT-AREA RECHTS */
 
 .app-content {
-    background: linear-gradient(to top left, var(--pink), #fdf5e1);
+    background: linear-gradient(to top left, var(--sand), #FDF7EA);
     padding: 24px 28px 28px;
     display: flex;
     flex-direction: column;
@@ -436,6 +451,19 @@ body {
 
 .note-card:nth-child(2n) {
     transform: rotate(1.5deg);
+}
+
+/* sanfte Pastell-Abwechslung für die Notizzettel */
+.note-card:nth-child(4n+2) {
+    background: var(--sage);
+}
+
+.note-card:nth-child(4n+3) {
+    background: var(--rose);
+}
+
+.note-card:nth-child(4n) {
+    background: var(--peach);
 }
 
 .note-card__title {
@@ -622,7 +650,7 @@ body {
 }
 
 .filter-panel__btn--primary {
-    background: var(--accent);
+    background: var(--herb);
     color: white;
 }
 
@@ -671,7 +699,7 @@ body {
     width: 10px;
     height: 10px;
     border-radius: 999px;
-    background: var(--accent);
+    background: var(--herb);
 }
 
 .recipe-list-item__name {
@@ -717,7 +745,7 @@ body {
 
 /* Rest (Bild, Body, etc.) */
 .recipe-card__image {
-    background: #ffe4f0;
+    background: var(--rose);
     border-radius: 10px;
     min-height: 140px;
     display: flex;
@@ -725,6 +753,32 @@ body {
     justify-content: center;
     font-size: 14px;
     margin-bottom: 6px;
+}
+
+.recipe-card__image-img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+    border-radius: 10px;
+}
+
+.recipe-card__image-placeholder {
+    color: var(--text-soft);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+}
+
+/* Karte hebt sich beim Überfahren leicht an */
+.recipe-detail-card {
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.recipe-card__link:hover .recipe-detail-card {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lift);
 }
 
 /* Inhalt unter dem Bild */
@@ -774,10 +828,11 @@ body {
 .recipe-card__stars {
     font-size: 16px;
     letter-spacing: 1px;
+    color: rgba(60, 52, 38, 0.22); /* leere Sterne dezent */
 }
 
 .recipe-card__stars--filled {
-    color: #ffc857;
+    color: var(--star);
 }
 
 /* Fußzeile: Aufrufe links, Dauer rechts */
@@ -821,7 +876,7 @@ body {
 }
 
 .btn--primary {
-    background: var(--accent);
+    background: var(--herb);
     color: #fff;
 }
 
@@ -851,8 +906,8 @@ body {
 /* Button "Zur Sammlung hinzufügen" oben rechts */
 .recipe-button {
     border-radius: var(--radius-pill);
-    border: 1px solid var(--accent);
-    background: var(--accent);
+    border: 1px solid var(--herb);
+    background: var(--herb);
     color: #fff;
 
     padding: 0.4rem 0.9rem;
@@ -872,7 +927,8 @@ body {
 }
 
 .recipe-button:hover {
-    filter: brightness(1.05);
+    background: var(--herb-strong);
+    border-color: var(--herb-strong);
     box-shadow: var(--shadow-soft);
 }
 
@@ -882,7 +938,7 @@ body {
 
 .recipe-button--secondary {
     background: #fff;
-    color: var(--accent);
+    color: var(--herb);
 }
 
 /* Modal-Hintergrund */
@@ -898,7 +954,7 @@ body {
 
 /* Modal-Box */
 .modal {
-    background: rgb(246, 233, 251);;
+    background: var(--cream);
     border-radius: var(--radius-lg);
     padding: 1.4rem 1.6rem;
     box-shadow: var(--shadow-soft);
@@ -941,7 +997,7 @@ body {
 }
 
 .modal__list-item input[type="radio"] {
-    accent-color: var(--accent);
+    accent-color: var(--herb);
 }
 
 .modal__empty {
@@ -964,7 +1020,7 @@ body {
 ================================ */
 
 .search-area {
-    background: var(--cream);
+    background: linear-gradient(to top right, var(--rose), var(--cream) 70%);
     border-radius: var(--radius-lg, 18px);
     box-shadow: var(--shadow-soft);
     padding: 1.25rem 1.5rem;
@@ -1000,8 +1056,8 @@ body {
 }
 
 .search-row__input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(127, 108, 242, 0.15);
+    border-color: var(--herb);
+    box-shadow: 0 0 0 2px var(--herb-soft);
     background-color: #fff;
 }
 
@@ -1114,8 +1170,8 @@ body {
 }
 
 .filter-panel__input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(127, 108, 242, 0.15);
+    border-color: var(--herb);
+    box-shadow: 0 0 0 2px var(--herb-soft);
 }
 
 .filter-panel__chips {
@@ -1178,13 +1234,14 @@ body {
 }
 
 .filter-panel__btn--primary {
-    background: var(--accent);
+    background: var(--herb);
     color: #fff;
-    border-color: var(--accent);
+    border-color: var(--herb);
 }
 
 .filter-panel__btn--primary:hover {
-    filter: brightness(1.05);
+    background: var(--herb-strong);
+    border-color: var(--herb-strong);
 }
 
 .filter-panel__btn:active {
@@ -1207,7 +1264,7 @@ body {
 }
 
 .filter-panel__row:hover {
-    background: rgba(250, 228, 228, 0.6);
+    background: var(--sage);
     border-radius: 999px;
     padding-inline: 0.6rem;
 }
@@ -1237,7 +1294,7 @@ body {
 }
 
 .tag-chip--active {
-    background: var(--accent);
+    background: var(--herb);
     color: #fff;
 }
 
@@ -1248,7 +1305,8 @@ body {
 }
 
 .tag-chip--active:hover {
-    filter: brightness(1.05);
+    background: var(--herb-strong);
+    color: #fff;
 }
 
 .tag-chip:active {
@@ -1321,9 +1379,9 @@ body {
 
 .ingredient-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(20, 16, 40, 0.12);
+    box-shadow: var(--shadow-lift);
     border-color: rgba(0, 0, 0, 0.04);
-    background: #fffdf7;
+    background: #FFFCF4;
 }
 
 .ingredient-card__header {
@@ -1374,7 +1432,7 @@ body {
 }
 
 .ingredient-card__tag:hover {
-    background: rgba(250, 228, 228, 0.8);
+    background: var(--sage);
     transform: translateY(-1px);
 }
 
@@ -1398,8 +1456,8 @@ body {
 /* Allgemeiner Pill-Button (Primär) */
 .primary-pill-button {
     border-radius: var(--radius-pill, 999px);
-    border: 1px solid var(--accent);
-    background: var(--accent);
+    border: 1px solid var(--herb);
+    background: var(--herb);
     color: #fff;
     padding: 0.5rem 1.1rem;
     font-size: 0.85rem;
@@ -1413,7 +1471,8 @@ body {
 }
 
 .primary-pill-button:hover {
-    filter: brightness(1.05);
+    background: var(--herb-strong);
+    border-color: var(--herb-strong);
     box-shadow: var(--shadow-soft);
 }
 
@@ -1470,9 +1529,9 @@ body {
 
 .collection-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(20, 16, 40, 0.12);
+    box-shadow: var(--shadow-lift);
     border-color: rgba(0, 0, 0, 0.04);
-    background: #fffdf7;
+    background: #FFFCF4;
 }
 
 .collection-card__header {
@@ -1555,7 +1614,7 @@ body {
     gap: 1.25rem;
     margin-bottom: 1.25rem;
     padding: 1rem 1.2rem;
-    background: var(--cream);
+    background: linear-gradient(to top right, var(--rose), var(--cream) 60%);
     border-radius: var(--radius-lg, 18px);
     border: 1px solid var(--line-soft);
 }
@@ -1765,6 +1824,7 @@ body {
 
 .rating-stars {
     font-size: 0.95rem;
+    color: var(--star);
 }
 
 .rating-text {
@@ -2044,8 +2104,8 @@ body {
 .form-field__input:focus,
 .form-field__textarea:focus,
 .form-field__select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(125, 168, 121, 0.2);
+    border-color: var(--herb);
+    box-shadow: 0 0 0 2px var(--herb-soft);
     background-color: #fff;
 }
 
@@ -2063,7 +2123,7 @@ body {
 .form-field__error {
     margin: 0;
     font-size: 0.78rem;
-    color: #b95454;
+    color: var(--danger);
 }
 
 /* Inline-Badge "optional" o. ä. */
@@ -2121,8 +2181,8 @@ body {
 }
 
 .chips-input__input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(125, 168, 121, 0.2);
+    border-color: var(--herb);
+    box-shadow: 0 0 0 2px var(--herb-soft);
 }
 
 /* Zutaten-Builder */
@@ -2177,9 +2237,45 @@ body {
 
 .steps-builder__row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     gap: 0.6rem;
     align-items: flex-start;
+    border-radius: 12px;
+    transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.steps-builder__row--dragging {
+    opacity: 0.55;
+    background: var(--sage);
+}
+
+.steps-builder__handle {
+    /* touch-action: none, damit der Browser beim Ziehen nicht scrollt */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-top: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: grab;
+    border-radius: 8px;
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.steps-builder__handle:hover {
+    color: var(--text-main);
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.steps-builder__handle:active {
+    cursor: grabbing;
 }
 
 .steps-builder__badge {
@@ -2298,11 +2394,11 @@ body {
 
 .rating-star-btn:hover {
     transform: translateY(-1px) scale(1.05);
-    color: var(--accent);
+    color: var(--star);
 }
 
 .rating-star-btn--active {
-    color: var(--accent);
+    color: var(--star);
 }
 
 .rating-stars-input__value {
@@ -2342,10 +2438,11 @@ body {
 
 .stars-filled {
     font-weight: 600;
+    color: var(--star);
 }
 
 .stars-empty {
-    opacity: 0.3;
+    color: rgba(60, 52, 38, 0.25);
     margin-left: 0.15rem;
 }
 
@@ -2449,7 +2546,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 2rem 1.5rem;
-    background: radial-gradient(circle , #fdf0ff 0, #ffffff 80%);
+    background: radial-gradient(circle, #FBEDE7 0, #FFFDF6 80%);
     color: var(--text-main);
 }
 
@@ -2536,8 +2633,8 @@ body {
 .auth-form input[type="text"]:focus,
 .auth-form input[type="email"]:focus,
 .auth-form input[type="password"]:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(125, 168, 121, 0.2);
+    border-color: var(--herb);
+    box-shadow: 0 0 0 2px var(--herb-soft);
     background-color: #fff;
 }
 
@@ -2550,7 +2647,7 @@ body {
 .error {
     margin-top: 0.15rem;
     font-size: 0.78rem;
-    color: #b95454;
+    color: var(--danger);
 }
 
 /* Submit-Button – nutzt Akzentfarbe/Pill-Optik */
@@ -2559,8 +2656,8 @@ body {
     margin-top: 0.9rem;
     padding: 0.6rem 1rem;
     border-radius: var(--radius-pill);
-    border: 1px solid var(--accent);
-    background: var(--accent);
+    border: 1px solid var(--herb);
+    background: var(--herb);
     color: #fff;
     font-weight: 500;
     font-size: 0.9rem;
@@ -2578,7 +2675,8 @@ body {
 
 /* Hover/Active/Disabled */
 .auth-form button[type="submit"]:hover {
-    filter: brightness(1.05);
+    background: var(--herb-strong);
+    border-color: var(--herb-strong);
     box-shadow: var(--shadow-soft);
 }
 
@@ -2604,7 +2702,7 @@ body {
 }
 
 .auth-links a {
-    color: var(--accent);
+    color: var(--herb);
     text-decoration: none;
     font-weight: 500;
 }
@@ -2628,6 +2726,15 @@ body {
 @media (max-width: 900px) {
     .header {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* rating-section liegt im .header-Grid; die Desktop-Platzierung
+       (grid-column: 1/3) würde einspaltig eine implizite zweite Spalte
+       erzeugen und das Rezeptbild auf 0px quetschen */
+    .rating-section {
+        grid-column: auto;
+        grid-row: auto;
+        margin-top: 0;
     }
 
     .header-content {
@@ -2660,11 +2767,20 @@ body {
     }
 
     .steps-builder__row {
-        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-columns: auto auto minmax(0, 1fr);
+        grid-template-areas:
+            "handle badge text"
+            ".      .     remove";
     }
 
+    .steps-builder__handle { grid-area: handle; }
+    .steps-builder__badge { grid-area: badge; }
+    .steps-builder__textarea { grid-area: text; }
+
     .steps-builder__remove {
-        margin-left: 2.2rem;
+        grid-area: remove;
+        justify-self: end;
+        margin-left: 0;
     }
 
     .form-row-split {
@@ -2841,10 +2957,13 @@ body {
 @media (max-width: 480px) {
     .ingredients-builder__row {
         flex-wrap: wrap;
+        row-gap: 0.45rem;
     }
+    /* Aktions-Buttons teilen sich eine Zeile statt einzeln gestapelt */
     .ingredients-builder__action,
     .ingredients-builder__remove {
-        width: 100%;
+        flex: 1 1 auto;
+        width: auto;
         justify-content: center;
     }
 
@@ -2962,7 +3081,7 @@ body {
 
 .settings-card:hover .settings-card__arrow {
     transform: translateX(4px);
-    color: var(--accent);
+    color: var(--herb);
 }
 
 /* Status-Message für Settings */
@@ -2974,4 +3093,78 @@ body {
     color: #365a33;
     font-size: 0.85rem;
     border: 1px solid rgba(125, 168, 121, 0.35);
+}
+
+
+/* ======================================
+   Mobile-Feinschliff (primäre Nutzung!)
+====================================== */
+
+@media (max-width: 720px) {
+    /* Titel + Beschreibung untereinander statt gequetscht nebeneinander */
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    /* Rezept-Detail: Aktions-Buttons nicht mehr absolut über dem Titel,
+       sondern als eigene Zeile über dem Inhalt */
+    .recipe-actions {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: stretch;
+        gap: 0.45rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .recipe-actions .recipe-button {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    /* iOS zoomt bei Eingabefeldern unter 16px automatisch hinein */
+    .form-field__input,
+    .form-field__textarea,
+    .form-field__select,
+    .search-row__input,
+    .filter-panel__input,
+    .chips-input__input,
+    .auth-form input[type="text"],
+    .auth-form input[type="email"],
+    .auth-form input[type="password"] {
+        font-size: 16px;
+    }
+
+    /* Daumenfreundliche Buttons */
+    .primary-pill-button,
+    .secondary-pill-button,
+    .recipe-button {
+        min-height: 42px;
+    }
+
+    /* Modals nicht an den Bildschirmrand kleben lassen */
+    .modal-backdrop {
+        padding: 1rem;
+    }
+
+    /* Formular-Buttons unten in voller Breite */
+    .form-actions__right button {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 540px) {
+    /* Bewertungs-Karten (Rezept-Detail) einspaltig */
+    .rating-dimensions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Meta-Karten (Zubereitung/Portionen) bleiben 2-spaltig,
+       aber mit weniger Innenabstand */
+    .meta-card {
+        padding: 0.5rem 0.6rem;
+    }
 }

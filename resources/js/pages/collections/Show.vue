@@ -167,9 +167,22 @@ const deleteCollection = () => {
 
 /* Markierung des Buttons im Edit-Modus */
 .secondary-pill-button--active {
-    border-color: #dc3545;
-    color: #dc3545;
+    border-color: var(--danger);
+    color: var(--danger);
     border-radius: 18px;
+}
+
+@media (max-width: 720px) {
+    /* Hero auf Mobile stapeln: Text oben, Buttons in voller Breite darunter */
+    .collection-hero {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .collection-hero__actions {
+        width: 100%;
+        align-items: stretch;
+    }
 }
 
 

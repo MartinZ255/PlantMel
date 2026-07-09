@@ -310,12 +310,25 @@
                 Die Reihenfolge der Schritte entspricht der Darstellung im Rezept.
             </p>
 
-            <ol class="steps-builder">
+            <ol class="steps-builder" ref="stepsListEl">
                 <li
                     v-for="(step, index) in form.steps"
-                    :key="index"
+                    :key="stepIds[index]"
                     class="steps-builder__row"
+                    :class="{ 'steps-builder__row--dragging': draggedStepIndex === index }"
                 >
+                    <button
+                        v-if="form.steps.length > 1"
+                        type="button"
+                        class="steps-builder__handle"
+                        aria-label="Schritt verschieben"
+                        title="Gedrückt halten und ziehen, um den Schritt zu verschieben"
+                        @pointerdown="startStepDrag(index, $event)"
+                        @contextmenu.prevent
+                    >
+                        <GripVertical :size="16" />
+                    </button>
+
                     <div class="steps-builder__badge">
                         {{ index + 1 }}
                     </div>
@@ -424,6 +437,7 @@
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import axios from 'axios';
+import { GripVertical } from 'lucide-vue-next';
 import { route } from 'ziggy-js';
 import IngredientEditModal from '@/components/widgets/IngredientEditModal.vue';
 import TagEditModal from '@/components/widgets/TagEditModal.vue';
@@ -606,12 +620,84 @@ const selectIngredient = (index: number, ingredientName: string) => {
 };
 
 // Schritte
+// Stabile IDs parallel zu form.steps, damit die DOM-Knoten beim
+// Umsortieren erhalten bleiben (sonst bricht das Drag-and-drop ab)
+let nextStepId = 0;
+const stepIds = ref<number[]>(form.steps.map(() => nextStepId++));
+
+const draggedStepIndex = ref<number | null>(null);
+const stepsListEl = ref<HTMLOListElement | null>(null);
+
 const addStep = () => {
     form.steps.push('');
+    stepIds.value.push(nextStepId++);
 };
 
 const removeStep = (index: number) => {
     form.steps.splice(index, 1);
+    stepIds.value.splice(index, 1);
+};
+
+// Verschieben per Pointer-Events statt HTML5-Drag-and-drop,
+// damit es auch auf Touchscreens (primäre Nutzung!) funktioniert
+const moveStep = (from: number, to: number) => {
+    const [step] = form.steps.splice(from, 1);
+    form.steps.splice(to, 0, step);
+
+    const [id] = stepIds.value.splice(from, 1);
+    stepIds.value.splice(to, 0, id);
+
+    draggedStepIndex.value = to;
+};
+
+const startStepDrag = (index: number, event: PointerEvent) => {
+    // verhindert Scrollen/Textauswahl während des Ziehens
+    event.preventDefault();
+
+    draggedStepIndex.value = index;
+
+    const handle = event.currentTarget as HTMLElement;
+    try {
+        handle.setPointerCapture(event.pointerId);
+    } catch {
+        // ohne Capture funktioniert das Ziehen weiter, solange der
+        // Zeiger über dem Handle bleibt – kein Grund abzubrechen
+    }
+
+    const onMove = (e: PointerEvent) => {
+        const from = draggedStepIndex.value;
+        if (from === null || !stepsListEl.value) return;
+
+        const rows = Array.from(
+            stepsListEl.value.querySelectorAll('.steps-builder__row'),
+        );
+
+        // Ziel anhand der Zeilen-Mittelpunkte bestimmen: Der Schritt rückt
+        // auf, sobald der Finger/Mauszeiger die Mitte einer Nachbarzeile kreuzt
+        let to = from;
+        rows.forEach((row, i) => {
+            if (i === from) return;
+            const rect = row.getBoundingClientRect();
+            const mid = rect.top + rect.height / 2;
+            if (i < from && e.clientY < mid) to = Math.min(to, i);
+            if (i > from && e.clientY > mid) to = Math.max(to, i);
+        });
+
+        if (to !== from) {
+            moveStep(from, to);
+        }
+    };
+
+    const stop = () => {
+        draggedStepIndex.value = null;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', stop);
+        window.removeEventListener('pointercancel', stop);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
 };
 
 // Rating setzen
@@ -651,6 +737,7 @@ const submit = () => {
 const resetForm = () => {
     form.reset();
     form.clearErrors();
+    stepIds.value = form.steps.map(() => nextStepId++);
 };
 
 const findIngredientByName = (name: string): IngredientOption | undefined => {

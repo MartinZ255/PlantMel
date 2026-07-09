@@ -20,7 +20,7 @@
                 </div>
 
                 <div class="recipe-card__body">
-                    <h3 class="recipe-card__title underline-text">
+                    <h3 class="recipe-card__title">
                         {{ recipe.name }}
                     </h3>
 

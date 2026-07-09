@@ -370,8 +370,10 @@ const removeAlternative = async () => {
 }
 
 .modal.alternatives-modal {
-    background: #fff;
-    border-radius: 0.75rem;
+    background: var(--cream);
+    border-radius: var(--radius-lg, 18px);
+    border: 1px solid var(--line-soft);
+    box-shadow: var(--shadow-soft);
     padding: 1.5rem;
     max-width: 860px;
     width: 100%;
@@ -395,7 +397,7 @@ const removeAlternative = async () => {
 
 .modal__warning {
     font-size: 0.85rem;
-    color: #b91c1c;
+    color: var(--danger);
     margin-bottom: 1rem;
 }
 
@@ -430,7 +432,8 @@ const removeAlternative = async () => {
 }
 
 .alternatives-list {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--line-soft);
+    background: #fff;
     border-radius: 0.5rem;
     padding: 0.25rem;
     flex: 1;
@@ -450,17 +453,17 @@ const removeAlternative = async () => {
 }
 
 .alternatives-list__item:hover {
-    background: #f3f4f6;
+    background: var(--sand);
 }
 
 .alternatives-list__item--selected {
-    background: #e5e7eb;
+    background: var(--sage);
     font-weight: 500;
 }
 
 .alternatives-list__empty {
     font-size: 0.85rem;
-    color: #6b7280;
+    color: var(--text-soft);
     padding: 0.35rem 0.5rem;
 }
 
@@ -469,5 +472,31 @@ const removeAlternative = async () => {
     display: flex;
     justify-content: flex-end;
     gap: 2rem;
+}
+
+@media (max-width: 720px) {
+    /* Panels untereinander, Verschiebe-Buttons als horizontale Zeile */
+    .alternatives-layout {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+    }
+
+    .alternatives-panel--middle {
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .alternatives-panel__btn {
+        transform: rotate(90deg);
+    }
+
+    .modal.alternatives-modal {
+        max-height: 92vh;
+        padding: 1rem;
+    }
+
+    .modal__actions {
+        gap: 0.75rem;
+    }
 }
 </style>
