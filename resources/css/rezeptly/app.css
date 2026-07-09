@@ -2249,7 +2249,8 @@ body {
     background: var(--sage);
 }
 
-.steps-builder__handle {
+.steps-builder__handle,
+.ingredients-builder__handle {
     /* touch-action: none, damit der Browser beim Ziehen nicht scrollt */
     touch-action: none;
     -webkit-user-select: none;
@@ -2266,16 +2267,29 @@ body {
     color: var(--text-soft);
     cursor: grab;
     border-radius: 8px;
+    flex-shrink: 0;
     transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.steps-builder__handle:hover {
+.steps-builder__handle:hover,
+.ingredients-builder__handle:hover {
     color: var(--text-main);
     background: rgba(0, 0, 0, 0.04);
 }
 
-.steps-builder__handle:active {
+.steps-builder__handle:active,
+.ingredients-builder__handle:active {
     cursor: grabbing;
+}
+
+.ingredients-builder__row {
+    border-radius: 12px;
+    transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.ingredients-builder__row--dragging {
+    opacity: 0.55;
+    background: var(--sage);
 }
 
 .steps-builder__badge {

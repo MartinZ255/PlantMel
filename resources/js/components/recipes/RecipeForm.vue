@@ -185,12 +185,25 @@
                 Jede Zeile entspricht einer Zutat. Menge links, Bezeichnung rechts.
             </p>
 
-            <div class="ingredients-builder">
+            <div class="ingredients-builder" ref="ingredientsListEl">
                 <div
                     v-for="(ingredient, index) in form.ingredients"
-                    :key="index"
+                    :key="ingredientIds[index]"
                     class="ingredients-builder__row"
+                    :class="{ 'ingredients-builder__row--dragging': draggedIngredientIndex === index }"
                 >
+                    <button
+                        v-if="form.ingredients.length > 1"
+                        type="button"
+                        class="ingredients-builder__handle"
+                        aria-label="Zutat verschieben"
+                        title="Gedrückt halten und ziehen, um die Zutat zu verschieben"
+                        @pointerdown="startIngredientDrag(index, $event)"
+                        @contextmenu.prevent
+                    >
+                        <GripVertical :size="16" />
+                    </button>
+
                     <input
                         v-model="ingredient.amount"
                         type="text"
@@ -583,10 +596,12 @@ const addIngredient = () => {
         amount: '',
         name: '',
     });
+    ingredientIds.value.push(nextRowId++);
 };
 
 const removeIngredient = (index: number) => {
     form.ingredients.splice(index, 1);
+    ingredientIds.value.splice(index, 1);
 };
 
 // Dropdown öffnen
@@ -619,18 +634,21 @@ const selectIngredient = (index: number, ingredientName: string) => {
     closeIngredientDropdown();
 };
 
-// Schritte
-// Stabile IDs parallel zu form.steps, damit die DOM-Knoten beim
+// Sortierbare Listen (Schritte + Zutaten)
+// Stabile IDs parallel zu den Arrays, damit die DOM-Knoten beim
 // Umsortieren erhalten bleiben (sonst bricht das Drag-and-drop ab)
-let nextStepId = 0;
-const stepIds = ref<number[]>(form.steps.map(() => nextStepId++));
+let nextRowId = 0;
+const stepIds = ref<number[]>(form.steps.map(() => nextRowId++));
+const ingredientIds = ref<number[]>(form.ingredients.map(() => nextRowId++));
 
 const draggedStepIndex = ref<number | null>(null);
+const draggedIngredientIndex = ref<number | null>(null);
 const stepsListEl = ref<HTMLOListElement | null>(null);
+const ingredientsListEl = ref<HTMLDivElement | null>(null);
 
 const addStep = () => {
     form.steps.push('');
-    stepIds.value.push(nextStepId++);
+    stepIds.value.push(nextRowId++);
 };
 
 const removeStep = (index: number) => {
@@ -639,66 +657,95 @@ const removeStep = (index: number) => {
 };
 
 // Verschieben per Pointer-Events statt HTML5-Drag-and-drop,
-// damit es auch auf Touchscreens (primäre Nutzung!) funktioniert
-const moveStep = (from: number, to: number) => {
-    const [step] = form.steps.splice(from, 1);
-    form.steps.splice(to, 0, step);
+// damit es auch auf Touchscreens (primäre Nutzung!) funktioniert.
+// Liefert einen pointerdown-Handler für den Drag-Griff einer Zeile.
+const createRowDragHandler = (options: {
+    listEl: () => HTMLElement | null;
+    rowSelector: string;
+    dragged: { value: number | null };
+    move: (from: number, to: number) => void;
+    onStart?: () => void;
+}) => {
+    return (index: number, event: PointerEvent) => {
+        // verhindert Scrollen/Textauswahl während des Ziehens
+        event.preventDefault();
 
-    const [id] = stepIds.value.splice(from, 1);
-    stepIds.value.splice(to, 0, id);
+        options.onStart?.();
+        options.dragged.value = index;
 
-    draggedStepIndex.value = to;
-};
-
-const startStepDrag = (index: number, event: PointerEvent) => {
-    // verhindert Scrollen/Textauswahl während des Ziehens
-    event.preventDefault();
-
-    draggedStepIndex.value = index;
-
-    const handle = event.currentTarget as HTMLElement;
-    try {
-        handle.setPointerCapture(event.pointerId);
-    } catch {
-        // ohne Capture funktioniert das Ziehen weiter, solange der
-        // Zeiger über dem Handle bleibt – kein Grund abzubrechen
-    }
-
-    const onMove = (e: PointerEvent) => {
-        const from = draggedStepIndex.value;
-        if (from === null || !stepsListEl.value) return;
-
-        const rows = Array.from(
-            stepsListEl.value.querySelectorAll('.steps-builder__row'),
-        );
-
-        // Ziel anhand der Zeilen-Mittelpunkte bestimmen: Der Schritt rückt
-        // auf, sobald der Finger/Mauszeiger die Mitte einer Nachbarzeile kreuzt
-        let to = from;
-        rows.forEach((row, i) => {
-            if (i === from) return;
-            const rect = row.getBoundingClientRect();
-            const mid = rect.top + rect.height / 2;
-            if (i < from && e.clientY < mid) to = Math.min(to, i);
-            if (i > from && e.clientY > mid) to = Math.max(to, i);
-        });
-
-        if (to !== from) {
-            moveStep(from, to);
+        const handle = event.currentTarget as HTMLElement;
+        try {
+            handle.setPointerCapture(event.pointerId);
+        } catch {
+            // ohne Capture funktioniert das Ziehen weiter, solange der
+            // Zeiger über dem Handle bleibt – kein Grund abzubrechen
         }
-    };
 
-    const stop = () => {
-        draggedStepIndex.value = null;
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', stop);
-        window.removeEventListener('pointercancel', stop);
-    };
+        const onMove = (e: PointerEvent) => {
+            const from = options.dragged.value;
+            const list = options.listEl();
+            if (from === null || !list) return;
 
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', stop);
-    window.addEventListener('pointercancel', stop);
+            const rows = Array.from(list.querySelectorAll(options.rowSelector));
+
+            // Ziel anhand der Zeilen-Mittelpunkte bestimmen: Die Zeile rückt
+            // auf, sobald der Finger/Mauszeiger die Mitte einer Nachbarzeile kreuzt
+            let to = from;
+            rows.forEach((row, i) => {
+                if (i === from) return;
+                const rect = row.getBoundingClientRect();
+                const mid = rect.top + rect.height / 2;
+                if (i < from && e.clientY < mid) to = Math.min(to, i);
+                if (i > from && e.clientY > mid) to = Math.max(to, i);
+            });
+
+            if (to !== from) {
+                options.move(from, to);
+                options.dragged.value = to;
+            }
+        };
+
+        const stop = () => {
+            options.dragged.value = null;
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', stop);
+            window.removeEventListener('pointercancel', stop);
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', stop);
+        window.addEventListener('pointercancel', stop);
+    };
 };
+
+const startStepDrag = createRowDragHandler({
+    listEl: () => stepsListEl.value,
+    rowSelector: '.steps-builder__row',
+    dragged: draggedStepIndex,
+    move: (from, to) => {
+        const [step] = form.steps.splice(from, 1);
+        form.steps.splice(to, 0, step);
+
+        const [id] = stepIds.value.splice(from, 1);
+        stepIds.value.splice(to, 0, id);
+    },
+});
+
+const startIngredientDrag = createRowDragHandler({
+    listEl: () => ingredientsListEl.value,
+    rowSelector: '.ingredients-builder__row',
+    dragged: draggedIngredientIndex,
+    move: (from, to) => {
+        const [row] = form.ingredients.splice(from, 1);
+        form.ingredients.splice(to, 0, row);
+
+        const [id] = ingredientIds.value.splice(from, 1);
+        ingredientIds.value.splice(to, 0, id);
+    },
+    // offenes Autocomplete-Dropdown schließen, sonst zeigt es
+    // nach dem Umsortieren auf die falsche Zeile
+    onStart: () => closeIngredientDropdown(),
+});
 
 // Rating setzen
 const setRating = (dimensionId: number, value: number) => {
@@ -737,7 +784,8 @@ const submit = () => {
 const resetForm = () => {
     form.reset();
     form.clearErrors();
-    stepIds.value = form.steps.map(() => nextStepId++);
+    stepIds.value = form.steps.map(() => nextRowId++);
+    ingredientIds.value = form.ingredients.map(() => nextRowId++);
 };
 
 const findIngredientByName = (name: string): IngredientOption | undefined => {
