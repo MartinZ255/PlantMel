@@ -3168,3 +3168,60 @@ body {
         padding: 0.5rem 0.6rem;
     }
 }
+
+
+/* ======================================
+   TikTok-Import (Rezept erstellen)
+====================================== */
+
+.tiktok-import {
+    background: linear-gradient(to top right, var(--rose), var(--cream) 65%);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.tiktok-import__label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.tiktok-import__row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.tiktok-import__input {
+    flex: 1;
+    min-width: 0;
+}
+
+.tiktok-import__button {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.tiktok-import__status {
+    margin: 0;
+    font-size: 0.83rem;
+    color: var(--text-soft);
+}
+
+.tiktok-import__status--success {
+    color: var(--herb-strong);
+    font-weight: 500;
+}
+
+@media (max-width: 540px) {
+    .tiktok-import__row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

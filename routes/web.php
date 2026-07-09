@@ -103,7 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'is_host'])->group(function () {
 
     // Rezepte anlegen / bearbeiten / löschen
-    Route::get('/rezepte/erstellen', function () {
+    Route::get('/rezepte/erstellen', function (Request $request) {
         $ratingDimensions = RatingDimension::orderBy('sort_order')
             ->get(['id', 'name', 'description']);
         $categories = Category::orderBy('sort_order')
@@ -111,12 +111,40 @@ Route::middleware(['auth', 'is_host'])->group(function () {
         $ingredients = Ingredient::orderBy('name')
             ->get(['id', 'name']);
 
+        // Ergebnis eines TikTok-Imports als Formular-Vorbelegung laden
+        $importedRecipe = null;
+        if ($request->filled('import')) {
+            $import = \App\Models\RecipeImport::where('id', $request->integer('import'))
+                ->where('user_id', $request->user()->id)
+                ->where('status', 'done')
+                ->first();
+            $importedRecipe = $import?->result;
+
+            // Importierte Tags auf vorhandene Kategorien mappen (Groß-/
+            // Kleinschreibung), damit die Chips im Formular aktiv sind
+            if ($importedRecipe && ! empty($importedRecipe['tags'])) {
+                $byLower = $categories->keyBy(fn ($cat) => mb_strtolower($cat->name));
+                $importedRecipe['tags'] = collect($importedRecipe['tags'])
+                    ->map(fn ($tag) => $byLower[mb_strtolower($tag)]->name ?? $tag)
+                    ->values()
+                    ->all();
+            }
+        }
+
         return Inertia::render('recipes/Create', [
             'ratingDimensions' => $ratingDimensions,
             'categories'       => $categories,
             'ingredients'      => $ingredients,
+            'importedRecipe'   => $importedRecipe,
         ]);
     })->name('recipes.create');
+
+    // TikTok-Rezeptimport
+    Route::post('/rezept-import', [\App\Http\Controllers\RecipeImportController::class, 'store'])
+        ->name('recipeImports.store');
+
+    Route::get('/rezept-import/{recipeImport}', [\App\Http\Controllers\RecipeImportController::class, 'show'])
+        ->name('recipeImports.show');
 
     Route::post('/recipes', [RecipeController::class, 'store'])
         ->name('recipes.store');
