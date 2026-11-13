@@ -127,6 +127,9 @@ class RouteRoleMatrixTest extends TestCase
     public const FRAMEWORK_ROUTES = [
         'GET up',
         'storage.local',
+        // Seit Laravel 12.7x: signierte Upload-URL der lokalen Disk (serve => true).
+        // Ohne gueltige Signatur 403 - siehe tests/Feature/Security/StorageUploadRouteTest.php.
+        'storage.local.upload',
     ];
 
     // ------------------------------------------------------------------
