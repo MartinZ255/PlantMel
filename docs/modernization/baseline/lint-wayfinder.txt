@@ -1,0 +1,13 @@
+# Messprotokoll Slice 0 - Pruefmodus, keine Dateien geaendert
+# Datum: 2026-11-13
+# Stand: Commit 16add69 (Branch chore/slice-0-ci-workflows)
+# Umgebung: Windows 11, PHP 8.4.0 (Herd), Node v22.19.0, npm 10.9.3; keine .env vorhanden
+# Befehl: php artisan wayfinder:generate --with-form --no-ansi
+# Exit-Code: 0
+# Befund: erfolgreich ohne .env und ohne APP_KEY
+# ---
+
+ [Wayfinder] Generated actions in <repo>\resources\js\actions
+
+ [Wayfinder] Generated routes in <repo>\resources\js\routes
+

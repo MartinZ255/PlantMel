@@ -1,0 +1,50 @@
+# Messprotokoll Slice 0 - Pruefmodus, keine Dateien geaendert
+# Datum: 2026-11-13
+# Stand: Commit 16add69 (Branch chore/slice-0-ci-workflows)
+# Umgebung: Windows 11, PHP 8.4.0 (Herd), Node v22.19.0, npm 10.9.3; keine .env vorhanden
+# Befehl: npm run format:check  (prettier --check resources/)
+# Exit-Code: 1
+# Befund: 36 Dateien nicht Prettier-konform (identisch mit/ohne generierte Wayfinder-Dateien)
+# ---
+
+> format:check
+> prettier --check resources/
+
+Checking formatting...
+[warn] resources/css/app.css
+[warn] resources/css/rezeptly/app.css
+[warn] resources/js/app.ts
+[warn] resources/js/components/layout/AppLayout.vue
+[warn] resources/js/components/recipes/CollectionCard.vue
+[warn] resources/js/components/recipes/IngredientSearchArea.vue
+[warn] resources/js/components/recipes/RecipeDetailCard.vue
+[warn] resources/js/components/recipes/RecipeForm.vue
+[warn] resources/js/components/recipes/RecipeSearchArea.vue
+[warn] resources/js/components/widgets/AddToCollectionModal.vue
+[warn] resources/js/components/widgets/IngredientAlternativesModal.vue
+[warn] resources/js/components/widgets/IngredientEditModal.vue
+[warn] resources/js/components/widgets/SidebarSearchSubmenu.vue
+[warn] resources/js/components/widgets/TagEditModal.vue
+[warn] resources/js/pages/auth/ConfirmPassword.vue
+[warn] resources/js/pages/auth/ForgotPassword.vue
+[warn] resources/js/pages/auth/Login.vue
+[warn] resources/js/pages/auth/Register.vue
+[warn] resources/js/pages/auth/ResetPassword.vue
+[warn] resources/js/pages/auth/TwoFactorChallenge.vue
+[warn] resources/js/pages/auth/VerifyEmail.vue
+[warn] resources/js/pages/collections/Create.vue
+[warn] resources/js/pages/collections/Index.vue
+[warn] resources/js/pages/collections/Show.vue
+[warn] resources/js/pages/Home.vue
+[warn] resources/js/pages/IngredientSearch.vue
+[warn] resources/js/pages/Landing.vue
+[warn] resources/js/pages/MyIngredients.vue
+[warn] resources/js/pages/recipes/Create.vue
+[warn] resources/js/pages/recipes/Edit.vue
+[warn] resources/js/pages/recipes/Index.vue
+[warn] resources/js/pages/recipes/Show.vue
+[warn] resources/js/pages/settings/Index.vue
+[warn] resources/js/pages/settings/Password.vue
+[warn] resources/js/pages/settings/Profile.vue
+[warn] resources/js/types/globals.d.ts
+[warn] Code style issues found in 36 files. Run Prettier with --write to fix.
