@@ -1,0 +1,50 @@
+# Messprotokoll Slice 0 - Pruefmodus, keine Dateien geaendert
+# Datum: 2026-11-13
+# Stand: Commit 16add69 (Branch chore/slice-0-ci-workflows)
+# Umgebung: Windows 11, PHP 8.4.0 (Herd), Node v22.19.0, npm 10.9.3; keine .env vorhanden
+# Befehl: npm run build  (vite build)
+# Exit-Code: 0
+# Befund: erfolgreich ohne .env und ohne APP_KEY
+# ---
+
+> build
+> vite build
+
+vite v7.1.9 building for production...
+[plugin @laravel/vite-plugin-wayfinder] Types generated for actions, routes, form variants
+transforming...
+✓ 2378 modules transformed.
+rendering chunks...
+computing gzip size...
+public/build/manifest.json                                                              9.54 kB │ gzip:  1.18 kB
+public/build/assets/Show-Q6XQldzi.css                                                   0.56 kB │ gzip:  0.28 kB
+public/build/assets/RecipeForm-CoEVej46.css                                             2.16 kB │ gzip:  0.71 kB
+public/build/assets/app-Df9NpzwV.css                                                   65.32 kB │ gzip: 12.24 kB
+public/build/assets/_plugin-vue_export-helper-DlAUqK2U.js                               0.09 kB │ gzip:  0.10 kB
+public/build/assets/Edit-DcYxQnn-.js                                                    1.06 kB │ gzip:  0.57 kB
+public/build/assets/IngredientSearch-xJ97XPaE.js                                        1.24 kB │ gzip:  0.67 kB
+public/build/assets/MyIngredients-DbVxngMK.js                                           1.41 kB │ gzip:  0.74 kB
+public/build/assets/VerifyEmail-CaAZioTB.js                                             1.50 kB │ gzip:  0.89 kB
+public/build/assets/RecipeDetailCard.vue_vue_type_script_setup_true_lang-DOK5wB7V.js    1.65 kB │ gzip:  0.78 kB
+public/build/assets/Landing-DYERXT19.js                                                 1.69 kB │ gzip:  0.91 kB
+public/build/assets/Index-BV79lLTP.js                                                   1.79 kB │ gzip:  0.77 kB
+public/build/assets/Index-DXoOwn-q.js                                                   1.82 kB │ gzip:  0.82 kB
+public/build/assets/ConfirmPassword-DX-9uC09.js                                         1.94 kB │ gzip:  1.07 kB
+public/build/assets/Register-BYCymQ-C.js                                                2.02 kB │ gzip:  0.83 kB
+public/build/assets/Login-DYMM1RNw.js                                                   2.05 kB │ gzip:  0.93 kB
+public/build/assets/Show-BBl_COay.js                                                    2.11 kB │ gzip:  1.03 kB
+public/build/assets/ForgotPassword-ZaQrnTQS.js                                          2.32 kB │ gzip:  1.25 kB
+public/build/assets/Create-ClUPbBEu.js                                                  2.78 kB │ gzip:  1.22 kB
+public/build/assets/Password-Ca_JmK4-.js                                                2.78 kB │ gzip:  1.04 kB
+public/build/assets/TwoFactorChallenge-dHuxqad3.js                                      2.95 kB │ gzip:  1.23 kB
+public/build/assets/Create-DLOdojMu.js                                                  3.01 kB │ gzip:  1.50 kB
+public/build/assets/Home-CwTn1sA5.js                                                    3.11 kB │ gzip:  1.37 kB
+public/build/assets/ResetPassword-WsOWw54v.js                                           3.15 kB │ gzip:  1.23 kB
+public/build/assets/AppLayout.vue_vue_type_script_setup_true_lang-CzKq3S0o.js           3.96 kB │ gzip:  1.59 kB
+public/build/assets/Profile-BUraX_HK.js                                                 3.99 kB │ gzip:  1.58 kB
+public/build/assets/IngredientCard.vue_vue_type_script_setup_true_lang-BF5LBT8q.js      4.29 kB │ gzip:  1.66 kB
+public/build/assets/Index-8b9uN_S-.js                                                   5.23 kB │ gzip:  2.03 kB
+public/build/assets/Show-DH5_r9Hf.js                                                    7.08 kB │ gzip:  2.69 kB
+public/build/assets/RecipeForm.vue_vue_type_script_setup_true_lang-B-IBC-23.js         26.50 kB │ gzip:  7.66 kB
+public/build/assets/app-eGj9L5m4.js                                                   238.42 kB │ gzip: 84.73 kB
+✓ built in 10.29s

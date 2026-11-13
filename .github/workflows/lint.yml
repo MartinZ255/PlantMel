@@ -1,45 +1,95 @@
 name: linter
 
+# Prüfmodus: Dieser Workflow verändert keine Dateien (kein --fix, kein --write).
 on:
   push:
     branches:
-      - develop
-      - main
+      - master
   pull_request:
-    branches:
-      - develop
-      - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          tools: composer:v2
+          coverage: none
 
-      - name: Install Dependencies
-        run: |
-          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm install
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
 
-      - name: Run Pint
-        run: vendor/bin/pint
+      - name: Validate composer.json
+        run: composer validate --strict
 
-      - name: Format Frontend
-        run: npm run format
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
 
-      - name: Lint Frontend
-        run: npm run lint
+      - name: Install Node Dependencies
+        run: npm ci
 
-      # - name: Commit Changes
-      #   uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: fix code style
-      #     commit_options: '--no-verify'
+      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 27 Style-Issues
+      # in 28 Dateien (docs/modernization/baseline/lint-pint.txt). Die Ausnahme wird
+      # entfernt, sobald der Altbestand bereinigt ist.
+      - name: Pint (check)
+        continue-on-error: true
+        run: vendor/bin/pint --test
+
+      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 36 nicht
+      # Prettier-konforme Dateien (docs/modernization/baseline/lint-prettier.txt).
+      # Die Ausnahme wird entfernt, sobald der Altbestand bereinigt ist.
+      - name: Prettier (check)
+        continue-on-error: true
+        run: npm run format:check
+
+      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 4 ESLint-Fehler
+      # (docs/modernization/baseline/lint-eslint.txt). Die Ausnahme wird entfernt,
+      # sobald der Altbestand bereinigt ist. Bewusst nicht `npm run lint` (enthält --fix).
+      - name: ESLint (check)
+        continue-on-error: true
+        run: npx eslint .
+
+      # Erzeugt die gitignorierten Wayfinder-Dateien (resources/js/actions, routes,
+      # wayfinder), die der Typecheck benötigt. Läuft nach Prettier/ESLint, damit
+      # generierter Code nicht mitgeprüft wird. Benötigt keine .env (gemessen 2026-11-13).
+      - name: Generate Wayfinder Types
+        run: php artisan wayfinder:generate --with-form
+
+      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 6 Typfehler in
+      # 5 Dateien (docs/modernization/baseline/lint-vue-tsc.txt). Die Ausnahme wird
+      # entfernt, sobald der Altbestand bereinigt ist.
+      - name: Typecheck (vue-tsc)
+        continue-on-error: true
+        run: npx vue-tsc --noEmit
+
+      # Ausnahme (2026-11-13): Gemessen 55 Advisories in 15 Paketen, davon 1 critical
+      # (docs/modernization/baseline/lint-composer-audit.txt). Die Ausnahme wird
+      # entfernt, sobald die Abhängigkeiten aktualisiert sind.
+      - name: Composer Audit
+        continue-on-error: true
+        run: composer audit
+
+      # Ausnahme (2026-11-13): Gemessen 24 Schwachstellen, davon 1 critical und 19 high
+      # (docs/modernization/baseline/lint-npm-audit.txt). Die Ausnahme wird entfernt,
+      # sobald die Abhängigkeiten aktualisiert sind.
+      - name: npm Audit (production)
+        continue-on-error: true
+        run: npm audit --omit=dev

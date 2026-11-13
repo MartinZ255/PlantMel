@@ -3,16 +3,21 @@ name: tests
 on:
   push:
     branches:
-      - develop
-      - main
+      - master
   pull_request:
-    branches:
-      - develop
-      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -21,9 +26,9 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.4
+          php-version: '8.4'
           tools: composer:v2
-          coverage: xdebug
+          coverage: none
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -31,11 +36,56 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
+
       - name: Install Node Dependencies
         run: npm ci
 
-      - name: Install Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      # Build-Gate: ein kaputter Frontend-Build lässt den Job scheitern.
+      - name: Build Assets
+        run: npm run build
+
+      # Nur die Default-Suiten; die Suite KnownDefects läuft im eigenen Job.
+      - name: Tests
+        run: php artisan test --testsuite=Unit,Feature
+
+  # Dieser Job hält die reproduzierbaren bekannten Defekte (tests/KnownDefects,
+  # absichtlich rot) sichtbar und blockiert bewusst nicht. Ein Test, der hier grün
+  # wird, zeigt einen behobenen Defekt an und gehört dann in die Default-Suiten.
+  known-defects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Install Node Dependencies
+        run: npm ci
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -46,5 +96,5 @@ jobs:
       - name: Build Assets
         run: npm run build
 
-      - name: Tests
-        run: ./vendor/bin/phpunit
+      - name: Known Defects
+        run: php artisan test --testsuite=KnownDefects
