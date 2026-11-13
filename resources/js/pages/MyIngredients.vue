@@ -1,29 +1,36 @@
 <template>
     <AppLayout page-title="Meine Zutaten">
-        <!-- Such- / Filterbereich -->
+        <!-- Such- / Filterbereich nur, wenn es gespeicherte Zutaten gibt -->
         <IngredientSearchArea
-            :tags="ingredientTags"
-            :tag-stats="ingredientTagStats"
+            v-if="allIngredients.length"
+            :ingredients="allIngredients"
             @update:results="handleResultsUpdate"
-            @update:filters="handleFiltersUpdate"
         />
 
-        <!-- Ergebnisliste / Karten -->
         <section class="content-section">
             <div class="section-header">
                 <div>
-                    <div class="section-header__title">Zutaten</div>
+                    <h1 class="section-header__title">Meine Zutaten</h1>
                     <div class="section-header__subtitle">
-                        Alle Zutaten, die du in deinen Rezepten verwendest.
+                        Hier speicherst du die Zutaten, die du zu Hause hast.
                     </div>
                 </div>
 
-                <div class="section-header__meta">
+                <div v-if="allIngredients.length" class="section-header__meta">
                     {{ ingredientCards.length }} Zutaten gefunden
                 </div>
             </div>
 
-            <div class="recipes-grid">
+            <!-- Ehrlicher Leerzustand: Speichern ist noch nicht gebaut (F-03, Entscheidung E3) -->
+            <p
+                v-if="!allIngredients.length"
+                class="search-meta my-ingredients__empty"
+            >
+                Du hast noch keine Zutaten gespeichert. Diese Funktion wird
+                gerade ausgebaut.
+            </p>
+
+            <div v-else class="recipes-grid">
                 <IngredientCard
                     v-for="ingredient in ingredientCards"
                     :key="ingredient.id"
@@ -35,79 +42,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import AppLayout from '@/components/layout/AppLayout.vue';
-import IngredientSearchArea from '@/components/recipes/IngredientSearchArea.vue';
 import IngredientCard from '@/components/recipes/IngredientCard.vue';
-
-interface TagStat {
-    key: string;
-    label: string;
-    count: number;
-}
+import IngredientSearchArea from '@/components/recipes/IngredientSearchArea.vue';
+import { computed, ref } from 'vue';
 
 interface Ingredient {
     id: number;
     name: string;
-    category: string;
-    tags: string[];
+    category?: string[] | null;
 }
 
-/**
- * Tags, die in der IngredientSearchArea angezeigt werden
- * – später gerne aus der DB / API laden.
- */
-const ingredientTags: string[] = [
-    'alle',
-    'gemüse',
-    'obst',
-    'gewürz',
-    'käse',
-    'nüsse',
-    'vegan',
-    'glutenfrei',
-];
+// Die Route liefert `ingredients` (derzeit leer); fehlt die Prop, gilt ebenfalls [].
+const props = defineProps<{
+    ingredients?: Ingredient[];
+}>();
 
-/**
- * Statistiken für das Tag-Panel
- * – derzeit nur Dummywerte, später serverseitig befüllen.
- */
-const ingredientTagStats: TagStat[] = [
-    { key: 'gemüse',      label: 'Gemüse',      count: 14 },
-    { key: 'obst',        label: 'Obst',        count: 7 },
-    { key: 'gewürz',      label: 'Gewürze',     count: 9 },
-    { key: 'käse',        label: 'Käse',        count: 4 },
-    { key: 'nüsse',       label: 'Nüsse',       count: 5 },
-    { key: 'vegan',       label: 'Vegan',       count: 21 },
-    { key: 'glutenfrei',  label: 'Glutenfrei',  count: 18 },
-];
+const allIngredients = computed<Ingredient[]>(() => props.ingredients ?? []);
 
-/**
- * Ergebnisliste, die aus IngredientSearchArea kommt.
- * IngredientSearchArea filtert aktuell auf Basis eigener Dummydaten
- * und emittiert die gefilterte Liste via @update:results.
- */
-const ingredientCards = ref<Ingredient[]>([]);
+const ingredientCards = ref<Ingredient[]>([...allIngredients.value]);
 
-/**
- * Wird aufgerufen, wenn IngredientSearchArea neue gefilterte
- * Ergebnisse emittiert.
- */
 const handleResultsUpdate = (results: Ingredient[]) => {
     ingredientCards.value = results;
-};
-
-/**
- * Optional: wenn du später serverseitig filtern willst, kannst du
- * dieses Event nutzen, um einen API-/Inertia-Call auszulösen.
- */
-const handleFiltersUpdate = (payload: {
-    searchTerm: string;
-    includeIngredients: string;
-    excludeIngredients: string;
-    activeTag: string;
-}) => {
-    // TODO: später durch echten Request ersetzen
-    console.log('Aktive Zutaten-Filter:', payload);
 };
 </script>

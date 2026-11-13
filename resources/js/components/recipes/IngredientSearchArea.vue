@@ -25,11 +25,14 @@
                 >
                     <div class="filter-panel__title">Nach Zutaten filtern</div>
                     <div class="filter-panel__subtitle">
-                        Gib Begriffe an, die im Namen oder in den Kategorien vorkommen sollen.
+                        Gib Begriffe an, die im Namen oder in den Kategorien
+                        vorkommen sollen.
                     </div>
 
                     <div class="filter-panel__field">
-                        <label for="includeIngredients">enthaltene Begriffe</label>
+                        <label for="includeIngredients"
+                            >enthaltene Begriffe</label
+                        >
                         <input
                             id="includeIngredients"
                             class="filter-panel__input"
@@ -53,7 +56,9 @@
                     </div>
 
                     <div class="filter-panel__field">
-                        <span class="filter-panel__subtitle">häufig genutzte Zutaten:</span>
+                        <span class="filter-panel__subtitle"
+                            >häufig genutzte Zutaten:</span
+                        >
                         <div class="filter-panel__chips">
                             <button
                                 v-for="chip in frequentIngredients"
@@ -86,8 +91,8 @@
                 </div>
             </div>
 
-            <!-- Tag-Chips; "..." öffnet Kategorien-Panel -->
-            <div class="tag-chips">
+            <!-- Tag-Chips; "..." öffnet Kategorien-Panel. Nur mit echten Kategorien rendern (F-02). -->
+            <div v-if="visibleTags.length" class="tag-chips">
                 <button
                     v-for="tag in visibleTags"
                     :key="tag.key"
@@ -111,6 +116,7 @@
 
             <!-- Kategorien-Panel (z.B. gemüse, obst, vegan, glutenfrei, ...) -->
             <div
+                v-if="extraTagStats.length"
                 class="filter-panel filter-panel--tags"
                 :class="{ 'is-open': showTagPanel }"
             >
@@ -144,32 +150,39 @@ interface TagStat {
 
 /**
  * Ingredient-Struktur:
- * - category: string[]  (Liste von Kategorienamen, z.B. ['gemüse', 'vegan'])
+ * - category: string[] (optional; das Backend liefert derzeit nur id und name, F-02)
  */
 interface Ingredient {
     id: number;
     name: string;
-    category: string[];
+    category?: string[] | null;
 }
 
 interface Props {
-    tags: string[];        // ['alle', 'gemüse', 'obst', 'gewürz', 'vegan', ...]
-    tagStats: TagStat[];   // Stats für Panel (vegan, glutenfrei, ...)
-    ingredients: Ingredient[]; // komplette Liste aus dem Backend
+    tags?: string[]; // ['alle', 'gemüse', ...] – ohne echte Kategorien leer
+    tagStats?: TagStat[]; // Stats für das Kategorien-Panel – ohne echte Daten leer
+    ingredients?: Ingredient[]; // komplette Liste aus dem Backend
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+    tags: () => [],
+    tagStats: () => [],
+    ingredients: () => [],
+});
 
 const emit = defineEmits<{
     // komplette Ergebnisliste nach außen geben (für Karten-Grid etc.)
     (e: 'update:results', ingredients: Ingredient[]): void;
     // optional: Filterwerte nach außen reichen (wenn du später serverseitig filtern willst)
-    (e: 'update:filters', payload: {
-        searchTerm: string;
-        includeIngredients: string;
-        excludeIngredients: string;
-        activeTag: string;
-    }): void;
+    (
+        e: 'update:filters',
+        payload: {
+            searchTerm: string;
+            includeIngredients: string;
+            excludeIngredients: string;
+            activeTag: string;
+        },
+    ): void;
 }>();
 
 // Such-/Filterzustände
@@ -187,14 +200,16 @@ const frequentIngredients = ['Tomaten', 'Knoblauch', 'Zwiebeln', 'Paprika'];
 
 // Tags für die Chip-Leiste
 const visibleTags = computed(() =>
-    props.tags
-        .filter((t) => t !== '...')
-        .map((t) => ({ key: t, label: t }))
+    props.tags.filter((t) => t !== '...').map((t) => ({ key: t, label: t })),
 );
 
 const extraTagStats = computed(() => props.tagStats);
 
 // Hilfsfunktionen zur Normalisierung
+// fehlende Kategorien als leere Liste behandeln (F-02)
+const categoriesOf = (ingredient: Ingredient): string[] =>
+    Array.isArray(ingredient.category) ? ingredient.category : [];
+
 const toTokens = (value: string): string[] =>
     value
         .split(',')
@@ -206,12 +221,9 @@ const matchesSearch = (ingredient: Ingredient): boolean => {
     if (!term) return true;
 
     const name = ingredient.name.toLowerCase();
-    const categories = ingredient.category.map((c) => c.toLowerCase());
+    const categories = categoriesOf(ingredient).map((c) => c.toLowerCase());
 
-    return (
-        name.includes(term) ||
-        categories.some((c) => c.includes(term))
-    );
+    return name.includes(term) || categories.some((c) => c.includes(term));
 };
 
 const matchesInclude = (ingredient: Ingredient): boolean => {
@@ -219,7 +231,7 @@ const matchesInclude = (ingredient: Ingredient): boolean => {
     if (!tokens.length) return true;
 
     const haystack =
-        `${ingredient.name} ${ingredient.category.join(' ')}`.toLowerCase();
+        `${ingredient.name} ${categoriesOf(ingredient).join(' ')}`.toLowerCase();
 
     return tokens.every((token) => haystack.includes(token));
 };
@@ -229,7 +241,7 @@ const matchesExclude = (ingredient: Ingredient): boolean => {
     if (!tokens.length) return true;
 
     const haystack =
-        `${ingredient.name} ${ingredient.category.join(' ')}`.toLowerCase();
+        `${ingredient.name} ${categoriesOf(ingredient).join(' ')}`.toLowerCase();
 
     return !tokens.some((token) => haystack.includes(token));
 };
@@ -241,7 +253,7 @@ const matchesTag = (ingredient: Ingredient): boolean => {
     const t = tag.toLowerCase();
 
     // Treffer, wenn die aktive Tag-Kategorie in den Kategorien der Zutat vorkommt
-    return ingredient.category
+    return categoriesOf(ingredient)
         .map((c) => c.toLowerCase())
         .includes(t);
 };
@@ -253,8 +265,8 @@ const filteredIngredients = computed(() =>
             matchesSearch(ing) &&
             matchesInclude(ing) &&
             matchesExclude(ing) &&
-            matchesTag(ing)
-    )
+            matchesTag(ing),
+    ),
 );
 
 // Panel-Toggles

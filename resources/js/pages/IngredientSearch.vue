@@ -1,9 +1,8 @@
 <template>
     <AppLayout page-title="Zutatenübersicht">
         <!-- Suche / Filter -->
+        <!-- Keine Kategorie-Chips/-Zaehler: das Backend liefert keine Kategorien (F-02) -->
         <IngredientSearchArea
-            :tags="ingredientTags"
-            :tag-stats="ingredientTagStats"
             :ingredients="allIngredients"
             @update:results="handleResultsUpdate"
         />
@@ -29,24 +28,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import AppLayout from '@/components/layout/AppLayout.vue';
-import IngredientSearchArea from '@/components/recipes/IngredientSearchArea.vue';
 import IngredientCard from '@/components/recipes/IngredientCard.vue';
+import IngredientSearchArea from '@/components/recipes/IngredientSearchArea.vue';
+import { computed, ref } from 'vue';
 
-// Typen für Tag-Statistiken
-interface TagStat {
-    key: string;
-    label: string;
-    count: number;
-}
-
-// Ingredient-Struktur:
-// - category: string[] (mehrere Kategorienamen)
+// Ingredient-Struktur: das Backend liefert id und name; category ist optional
 interface Ingredient {
     id: number;
     name: string;
-    category: string[];
+    category?: string[] | null;
 }
 
 // Props von Inertia (aus dem Controller)
@@ -58,24 +49,6 @@ const props = defineProps<{
 
 // Alle Zutaten aus den Props, mit Fallback auf leeres Array
 const allIngredients = computed<Ingredient[]>(() => props.ingredients ?? []);
-
-// Filter-Tags (UI), unabhängig von der DB-Struktur
-const ingredientTags = [
-    'alle',
-    'gemüse',
-    'obst',
-    'gewürz',
-    'vegan',
-    'glutenfrei',
-];
-
-const ingredientTagStats: TagStat[] = [
-    { key: 'gemüse',      label: 'Gemüse',      count: 12 },
-    { key: 'obst',        label: 'Obst',        count: 8 },
-    { key: 'gewürz',      label: 'Gewürze',     count: 5 },
-    { key: 'vegan',       label: 'Vegan',       count: 20 },
-    { key: 'glutenfrei',  label: 'Glutenfrei',  count: 15 },
-];
 
 // Ergebnisliste – initial alle Zutaten aus der DB (oder [] wenn noch nichts kommt)
 const ingredientCards = ref<Ingredient[]>([...allIngredients.value]);

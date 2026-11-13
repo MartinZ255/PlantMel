@@ -1,7 +1,7 @@
 <!-- resources/js/pages/auth/ResetPassword.vue -->
 <template>
     <div
-        class="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top_left,_#FBEAE6_0,_#FFFDF6_50%,_#EFF5E8_100%)] text-[#3C382F]"
+        class="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_#FBEAE6_0,_#FFFDF6_50%,_#EFF5E8_100%)] px-4 text-[#3C382F]"
     >
         <Head title="Neues Passwort – favRezepte" />
 
@@ -15,11 +15,10 @@
                 </p>
             </div>
 
-            <div class="rounded-2xl bg-white/90 backdrop-blur shadow-xl border border-[#EBE3D2] px-6 py-7 space-y-6">
-                <form
-                    class="space-y-4"
-                    @submit.prevent="submit"
-                >
+            <div
+                class="space-y-6 rounded-2xl border border-[#EBE3D2] bg-white/90 px-6 py-7 shadow-xl backdrop-blur"
+            >
+                <form class="space-y-4" @submit.prevent="submit">
                     <div class="space-y-1.5">
                         <label
                             class="text-xs font-medium text-[#4A463C]"
@@ -33,7 +32,7 @@
                             type="email"
                             required
                             autocomplete="email"
-                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:outline-none focus:ring-2 focus:ring-[#A8C7A4] focus:border-[#A8C7A4]"
+                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none"
                         />
                         <p
                             v-if="errors.email"
@@ -56,7 +55,7 @@
                             type="password"
                             required
                             autocomplete="new-password"
-                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:outline-none focus:ring-2 focus:ring-[#A8C7A4] focus:border-[#A8C7A4]"
+                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none"
                         />
                         <p
                             v-if="errors.password"
@@ -79,13 +78,13 @@
                             type="password"
                             required
                             autocomplete="new-password"
-                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:outline-none focus:ring-2 focus:ring-[#A8C7A4] focus:border-[#A8C7A4]"
+                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none"
                         />
                     </div>
 
                     <button
                         type="submit"
-                        class="w-full inline-flex items-center justify-center rounded-full bg-[#7DA879] hover:bg-[#628F5E] text-white px-5 py-2.5 text-sm font-semibold shadow-md hover:brightness-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        class="inline-flex w-full items-center justify-center rounded-full bg-[#7DA879] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#628F5E] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
                         :disabled="form.processing"
                     >
                         Passwort speichern
@@ -115,6 +114,7 @@ const form = useForm({
 });
 
 function submit() {
-    form.post(route('password.store'));
+    // Fortify benennt POST /reset-password als "password.update" (F-01)
+    form.post(route('password.update'));
 }
 </script>
