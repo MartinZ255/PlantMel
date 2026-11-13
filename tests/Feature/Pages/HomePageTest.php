@@ -56,8 +56,8 @@ class HomePageTest extends TestCase
                     $this->assertEqualsCanonicalizing(['Vegan', 'Schnell'], $first['categories']);
                     // Home nutzt explizit die Disk "public"
                     $this->assertSame(Storage::disk('public')->url('recipes/neu.jpg'), $first['image']);
-                    // Tatsächlicher Wert in der Testumgebung (APP_URL nicht gesetzt)
-                    $this->assertSame('/storage/recipes/neu.jpg', $first['image']);
+                    // Disk "public" hängt APP_URL davor (in phpunit.xml fest auf http://localhost)
+                    $this->assertSame('http://localhost/storage/recipes/neu.jpg', $first['image']);
 
                     return true;
                 })

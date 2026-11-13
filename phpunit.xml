@@ -30,6 +30,9 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Feste Werte, damit die Tests unabhaengig von einer lokalen .env bzw. der CI-.env laufen. -->
+        <env name="APP_DEBUG" value="false"/>
+        <env name="APP_URL" value="http://localhost"/>
         <!--
             Fester Schlüssel NUR für die Testsuite. Er ist kein Geheimnis, wird
             nirgends sonst verwendet und darf niemals in einer echten Umgebung

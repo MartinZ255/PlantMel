@@ -27,6 +27,9 @@ class HostMiddlewareResponseTest extends TestCase
 
         $response = $this->withHeaders([
             'X-Inertia' => 'true',
+            // Passende Asset-Version mitsenden: Sonst antwortet Inertia mit 409
+            // (Versionskonflikt), sobald ein gebautes Manifest existiert.
+            'X-Inertia-Version' => (string) app(\App\Http\Middleware\HandleInertiaRequests::class)->version(request()),
             'X-Requested-With' => 'XMLHttpRequest',
         ])->get(route('recipes.edit', $recipe));
 
