@@ -46,6 +46,16 @@ class UserFactory extends Factory
     }
 
     /**
+     * Indicate that the user is a host (may manage recipes, categories, ingredients).
+     */
+    public function host(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_host' => true,
+        ]);
+    }
+
+    /**
      * Indicate that the model does not have two-factor authentication configured.
      */
     public function withoutTwoFactor(): static

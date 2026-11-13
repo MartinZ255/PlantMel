@@ -3,6 +3,7 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
+         defaultTestSuite="Unit,Feature"
 >
     <testsuites>
         <testsuite name="Unit">
@@ -10,6 +11,16 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+        </testsuite>
+        <!--
+            Bekannte Defekte: Tests prüfen das KORREKTE Sollverhalten und sind
+            deshalb absichtlich rot. Sie laufen NICHT im Default mit (siehe
+            defaultTestSuite oben), sondern nur gezielt mit der Option
+            testsuite=KnownDefects (XML-Kommentare erlauben keinen Doppelstrich).
+            Siehe tests/KnownDefects/README.md.
+        -->
+        <testsuite name="KnownDefects">
+            <directory>tests/KnownDefects</directory>
         </testsuite>
     </testsuites>
     <source>
@@ -19,6 +30,13 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!--
+            Fester Schlüssel NUR für die Testsuite. Er ist kein Geheimnis, wird
+            nirgends sonst verwendet und darf niemals in einer echten Umgebung
+            (lokal, Staging, Produktion) als APP_KEY eingesetzt werden.
+            Er sorgt dafür, dass Tests ohne .env lauffähig sind.
+        -->
+        <env name="APP_KEY" value="base64:V4WclyiMrJRsxxhOeRQnA6QXoi1bgIS5IkiWui5QAvw="/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
