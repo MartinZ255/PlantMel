@@ -17,9 +17,11 @@ use App\Models\RecipeImage;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeRating;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Response;
 use Closure;
+use Throwable;
 
 class RecipeController extends Controller
 {
@@ -62,40 +64,9 @@ class RecipeController extends Controller
             })
             ->values();
 
-        // Steps & Notes aus instructions ableiten
-        $rawLines = $recipe->instructions
-            ? preg_split('/\r\n|\r|\n/', $recipe->instructions)
-            : [];
-
-        $steps = [];
-        $notes = [];
-        $inNotes = false;
-
-        foreach ($rawLines as $line) {
-            $line = trim($line);
-            if ($line === '') {
-                continue;
-            }
-
-            // Beginn des Notizen-Blocks erkennen
-            if (preg_match('/^Notizen:?$/i', $line)) {
-                $inNotes = true;
-                continue;
-            }
-
-            // Nummerierung "1. Waschen" -> "Waschen"
-            if (preg_match('/^\d+\.\s*(.+)$/', $line, $matches)) {
-                $text = $matches[1];
-            } else {
-                $text = $line;
-            }
-
-            if ($inNotes) {
-                $notes[] = $text;
-            } else {
-                $steps[] = $text;
-            }
-        }
+        // Steps & Notes aus instructions ableiten (gemeinsamer Parser, ADR-001).
+        // Mehrzeilige Schritte kommen als EIN String mit "\n" zurück.
+        [$steps, $notes] = $this->parseInstructions($recipe->instructions);
 
         $servings = $recipe->servings;
 
@@ -148,7 +119,7 @@ class RecipeController extends Controller
                 'ratingCount'      => $ratingCount,        // Anzahl aller Bewertungen
                 'ratingDimensions' => $ratingDimensions,   // pro Dimension: id, name, avg, count
 
-                'source'      => null,
+                // F-15: Feld „Quelle“ entfällt (Entscheidung des Auftraggebers).
 
                 'ingredients' => $ingredients,
                 'steps'       => $steps,
@@ -334,12 +305,17 @@ class RecipeController extends Controller
         };
     }
 
+    /**
+     * Hinweis: Keine Route zeigt auf diese Methode – `recipes.create` ist eine
+     * Closure in routes/web.php. Sie wird nur konsistent gehalten (F-12).
+     */
     public function create()
     {
-        $ratingDimensions = RatingDimension::orderBy('sort_order')
+        // F-12/E5: nach Name statt nach der nicht vorhandenen Spalte sort_order
+        $ratingDimensions = RatingDimension::orderBy('name')
             ->get(['id', 'name', 'description']);
 
-        $categories = Category::orderBy('sort_order')
+        $categories = Category::orderBy('name')
             ->get(['id', 'name']);
 
         $ingredients = Ingredient::orderBy('name')
@@ -359,7 +335,7 @@ class RecipeController extends Controller
             'description'          => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
             'duration_minutes'     => ['nullable', 'integer', 'min:0'],
             'servings'             => ['nullable', 'integer', 'min:1'],
-            'source'               => ['nullable', 'string'],   // dto.
+            // F-15: kein Feld „source“ mehr; ein mitgesendetes wird ignoriert.
 
             // Tags aus dem Frontend (werden auf Categories gemappt)
             'tags'                 => ['array'],
@@ -397,107 +373,199 @@ class RecipeController extends Controller
         $validated['notes']       = $validated['notes']       ?? null;
 
         $recipe = null;
+        $storedImagePath = null;
 
-        DB::transaction(function () use (&$recipe, $request, $validated) {
-            // 1) Recipe selbst anlegen
-            $recipe           = new Recipe();
-            $recipe->title    = $validated['name'];
-            $recipe->description = $validated['description'] ?? null;
-            $recipe->duration_minutes = $validated['duration_minutes'] ?? null;
-            $recipe->servings        = $validated['servings'] ?? null;
+        try {
+            DB::transaction(function () use (&$recipe, &$storedImagePath, $request, $validated) {
+                // 1) Recipe selbst anlegen
+                $recipe           = new Recipe();
+                $recipe->title    = $validated['name'];
+                $recipe->description = $validated['description'] ?? null;
+                $recipe->duration_minutes = $validated['duration_minutes'] ?? null;
+                $recipe->servings        = $validated['servings'] ?? null;
 
-            // instructions aus steps (+ optional notes) zusammenbauen
-            $stepsText = $this->buildInstructionsText($validated['steps'], $validated['notes']);
-            $recipe->instructions = $stepsText;
+                // instructions aus steps (+ optional notes) zusammenbauen
+                $stepsText = $this->buildInstructionsText($validated['steps'], $validated['notes']);
+                $recipe->instructions = $stepsText;
 
 
-            $recipe->save();
+                $recipe->save();
 
-            // 2) Kategorien per Tag-Namen verknüpfen (tags -> categories)
-            if (!empty($validated['tags'])) {
-                $categoryIds = Category::whereIn('name', $validated['tags'])->pluck('id');
-                if ($categoryIds->isNotEmpty()) {
-                    $recipe->categories()->sync($categoryIds);
-                }
-            }
-
-            // 3) Zutaten speichern (RecipeIngredient + Ingredient)
-            foreach ($validated['ingredients'] as $ingredientRow) {
-                $name = trim($ingredientRow['name'] ?? '');
-                if ($name === '') {
-                    continue;
+                // 2) Kategorien per Tag-Namen verknüpfen (tags -> categories)
+                if (!empty($validated['tags'])) {
+                    $categoryIds = Category::whereIn('name', $validated['tags'])->pluck('id');
+                    if ($categoryIds->isNotEmpty()) {
+                        $recipe->categories()->sync($categoryIds);
+                    }
                 }
 
-                // Ingredient anhand des Namens finden/erstellen
-                $ingredient = Ingredient::firstOrCreate(['name' => $name]);
+                // 3) + 4) Zutaten und Alternativzutaten speichern (gemeinsam mit update(), F-13)
+                $this->syncIngredientsAndAlternatives($recipe, $validated['ingredients']);
 
-                // Menge vorerst als Freitext in note ablegen (z. B. "200 g")
-                $amountText = $ingredientRow['amount'] ?? null;
+                // 5) Ratings speichern
+                foreach ($validated['ratings'] as $dimensionId => $value) {
+                    if ($value === null) {
+                        continue;
+                    }
 
-                RecipeIngredient::create([
-                    'recipe_id' => $recipe->id,
-                    'ingredient_id' => $ingredient->id,
-                    'quantity' => null,
-                    'unit' => null,
-                    'note' => $amountText,
-                ]);
-
-                // 4) Alternativzutaten speichern
-                $alternativeIds = $ingredientRow['alternativeIngredientIds'] ?? [];
-
-                foreach ($alternativeIds as $altId) {
-                    IngredientAlternative::create([
-                        'recipe_id' => $recipe->id,
-                        'ingredient_id' => $ingredient->id,
-                        'alternative_ingredient_id' => $altId,
-                        'note' => null,
+                    RecipeRating::create([
+                        'recipe_id'    => $recipe->id,
+                        'dimension_id' => (int) $dimensionId,
+                        'value'        => (int) $value,
                     ]);
                 }
-            }
 
-            // 5) Ratings speichern
-            foreach ($validated['ratings'] as $dimensionId => $value) {
-                if ($value === null) {
-                    continue;
+                // 6) Bild speichern (RecipeImage)
+                if ($request->hasFile('image')) {
+                    $storedImagePath = $request->file('image')->store('recipes', 'public');
+
+                    RecipeImage::create([
+                        'recipe_id'  => $recipe->id,
+                        'image_path' => $storedImagePath, // im Frontend per Storage::url() auflösen
+                    ]);
                 }
+            });
+        } catch (Throwable $e) {
+            // F-19: Rollback -> keine verwaiste Bilddatei zurücklassen
+            $this->deletePublicImageFiles(array_filter([$storedImagePath]));
 
-                RecipeRating::create([
-                    'recipe_id'    => $recipe->id,
-                    'dimension_id' => (int) $dimensionId,
-                    'value'        => (int) $value,
-                ]);
-            }
-
-            // 6) Bild speichern (RecipeImage)
-            if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('recipes', 'public');
-
-                RecipeImage::create([
-                    'recipe_id'  => $recipe->id,
-                    'image_path' => $path, // im Frontend per Storage::url() auflösen
-                ]);
-            }
-        });
+            throw $e;
+        }
 
         return redirect()
             ->route('recipes.show', $recipe)
             ->with('success', 'Rezept wurde erfolgreich erstellt.');
     }
 
+    /**
+     * Speichert die Zutaten eines Rezepts samt Alternativzutaten exakt nach
+     * Payload (F-13). Wird von store() und update() innerhalb der jeweiligen
+     * Transaktion aufgerufen: Vorhandene Zeilen werden ersetzt, Alternativen
+     * von Zutaten, die nicht mehr im Rezept stehen, verschwinden.
+     *
+     * Ein fehlender Schlüssel `alternativeIngredientIds` bedeutet „keine
+     * Alternativen“ (FormData überträgt leere Arrays nicht). Doppelte IDs und
+     * die Zutat als ihre eigene Alternative werden still verworfen.
+     *
+     * @param  array<int, array{name?: string, amount?: string|null, alternativeIngredientIds?: array<int, int|string>}>  $rows
+     */
+    private function syncIngredientsAndAlternatives(Recipe $recipe, array $rows): void
+    {
+        $recipe->ingredientAlternatives()->delete();
+        $recipe->recipeIngredients()->delete();
 
-    protected function buildInstructionsText(array $steps, ?string $notes): string
+        /** @var array<int, array<int, true>> $savedAlternatives ingredient_id => [alternative_id => true] */
+        $savedAlternatives = [];
+
+        foreach ($rows as $ingredientRow) {
+            $name = trim($ingredientRow['name'] ?? '');
+            if ($name === '') {
+                continue;
+            }
+
+            // Ingredient anhand des Namens finden/erstellen
+            $ingredient = Ingredient::firstOrCreate(['name' => $name]);
+
+            // Menge vorerst als Freitext in note ablegen (z. B. "200 g")
+            RecipeIngredient::create([
+                'recipe_id' => $recipe->id,
+                'ingredient_id' => $ingredient->id,
+                'quantity' => null,
+                'unit' => null,
+                'note' => $ingredientRow['amount'] ?? null,
+            ]);
+
+            foreach ($ingredientRow['alternativeIngredientIds'] ?? [] as $alternativeId) {
+                $alternativeId = (int) $alternativeId;
+
+                if ($alternativeId === $ingredient->id || isset($savedAlternatives[$ingredient->id][$alternativeId])) {
+                    continue;
+                }
+
+                IngredientAlternative::create([
+                    'recipe_id' => $recipe->id,
+                    'ingredient_id' => $ingredient->id,
+                    'alternative_ingredient_id' => $alternativeId,
+                    'note' => null,
+                ]);
+
+                $savedAlternatives[$ingredient->id][$alternativeId] = true;
+            }
+        }
+    }
+
+    /**
+     * Entfernt Bilddateien vom public-Disk. Wird erst NACH dem Commit (bzw.
+     * nach einem Rollback für neu hochgeladene Dateien) aufgerufen (F-19).
+     * Pfade, die noch von einem anderen Datensatz referenziert werden, bleiben
+     * erhalten. Fehler werden geloggt und lassen den Request nicht scheitern.
+     *
+     * @param  array<int, string>  $paths
+     */
+    private function deletePublicImageFiles(array $paths): void
+    {
+        foreach (array_unique(array_filter($paths)) as $path) {
+            try {
+                if (RecipeImage::where('image_path', $path)->exists()) {
+                    continue;
+                }
+
+                if (! Storage::disk('public')->delete($path)) {
+                    Log::warning('Rezeptbild konnte nicht gelöscht werden.', ['path' => $path]);
+                }
+            } catch (Throwable $e) {
+                Log::warning('Rezeptbild konnte nicht gelöscht werden.', [
+                    'path' => $path,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Einrückung, mit der jede weitere Zeile eines mehrzeiligen Schritts
+     * gespeichert wird (ADR-001). Vier Leerzeichen: Der bisherige Schreiber
+     * hat jede Zeile getrimmt, Altbestand beginnt deshalb nie mit Leerzeichen.
+     */
+    private const STEP_CONTINUATION_INDENT = '    ';
+
+    /**
+     * Abschnittskopf der Notizen – gilt nur uneingerückt am Zeilenanfang.
+     */
+    private const NOTES_HEADER = 'Notizen:';
+
+    /**
+     * Schreibt Schritte und Notizen in das Textformat von `recipes.instructions`
+     * (ADR-001):
+     *
+     *   1. Erste Zeile von Schritt 1
+     *       Fortsetzungszeile von Schritt 1   (STEP_CONTINUATION_INDENT + Text)
+     *   2. Schritt 2
+     *   Notizen:
+     *   Notizzeile (getrimmt, Leerzeilen entfallen)
+     *
+     * Gegenstück: parseInstructions().
+     *
+     * @param  array<int, string>  $steps
+     */
+    private function buildInstructionsText(array $steps, ?string $notes): string
     {
         $lines = [];
 
-        // Nummerierte Schritte
-        foreach ($steps as $index => $step) {
-            $number = $index + 1;
-            $lines[] = $number . '. ' . trim($step);
+        // Nummerierte Schritte; weitere Zeilen eines Schritts eingerückt
+        foreach (array_values($steps) as $index => $step) {
+            $stepLines = preg_split('/\r\n|\r|\n/', trim((string) $step));
+
+            $lines[] = ($index + 1).'. '.rtrim((string) array_shift($stepLines));
+
+            foreach ($stepLines as $continuation) {
+                $lines[] = self::STEP_CONTINUATION_INDENT.rtrim($continuation);
+            }
         }
 
         // Optional: Notizen anhängen
         if ($notes !== null && trim($notes) !== '') {
-            $lines[] = 'Notizen:';
+            $lines[] = self::NOTES_HEADER;
 
             foreach (preg_split('/\r\n|\r|\n/', $notes) as $noteLine) {
                 $noteLine = trim($noteLine);
@@ -540,10 +608,10 @@ class RecipeController extends Controller
             ->values()
             ->all();
 
-
-
-        // steps + notes aus instructions ziehen (du kannst deine Logik aus show() wiederverwenden)
-        [$steps, $notes] = $this->parseInstructionsForForm($recipe->instructions);
+        // steps + notes aus instructions ziehen (gemeinsamer Parser mit show(), ADR-001)
+        [$steps, $noteLines] = $this->parseInstructions($recipe->instructions);
+        // Formular-Vertrag: Notizen als EIN Text (Zeilen mit "\n") oder null
+        $notes = $noteLines !== [] ? implode("\n", $noteLines) : null;
 
         // Ratings als Map dimension_id => value
         $ratings = $recipe->ratings
@@ -551,10 +619,11 @@ class RecipeController extends Controller
             ->map(fn ($group) => (int) $group->avg('value'))
             ->all();
 
-        $ratingDimensions = RatingDimension::orderBy('sort_order')
+        // F-12/E5: nach Name statt nach der nicht vorhandenen Spalte sort_order
+        $ratingDimensions = RatingDimension::orderBy('name')
             ->get(['id', 'name', 'description']);
 
-        $categories = Category::orderBy('sort_order')
+        $categories = Category::orderBy('name')
             ->get(['id', 'name']);
 
         $allIngredients = Ingredient::orderBy('name')
@@ -570,7 +639,7 @@ class RecipeController extends Controller
                 'description'      => $recipe->description,
                 'duration_minutes' => $recipe->duration_minutes,
                 'servings'         => $recipe->servings,
-                'source'           => null,
+                // F-15: Feld „Quelle“ entfällt
                 'tags'             => $tags,
                 'ingredients'      => $ingredients,
                 'steps'            => $steps,
@@ -581,44 +650,64 @@ class RecipeController extends Controller
         ]);
     }
 
-    protected function parseInstructionsForForm(?string $instructions): array
+    /**
+     * Liest `recipes.instructions` in Schritte und Notizzeilen (ADR-001).
+     * Einziger Leser für show() und edit(); Gegenstück zu buildInstructionsText().
+     *
+     * - Zeile mit STEP_CONTINUATION_INDENT: Fortsetzung des vorherigen Schritts
+     *   (Einrückung wird entfernt, Rest bleibt inkl. führender Leerzeichen).
+     * - Uneingerückte Zeile „Notizen:“ / „Notizen“ (Groß-/Kleinschreibung egal):
+     *   Beginn der Notizen; alle weiteren Zeilen sind Notizzeilen.
+     * - Sonst (auch Altbestand): getrimmt, Leerzeilen entfallen, führende
+     *   Nummer „1. “ wird entfernt, jede Zeile ist ein eigener Schritt.
+     * - Notizzeilen: getrimmt, Leerzeilen entfallen, Nummern bleiben erhalten.
+     *
+     * @return array{0: list<string>, 1: list<string>} [Schritte, Notizzeilen]
+     */
+    private function parseInstructions(?string $instructions): array
     {
-        if (!$instructions) {
-            return [[], null];
+        if ($instructions === null || $instructions === '') {
+            return [[], []];
         }
 
-        $rawLines = preg_split('/\r\n|\r|\n/', $instructions);
         $steps = [];
         $notes = [];
         $inNotes = false;
+        $indentLength = strlen(self::STEP_CONTINUATION_INDENT);
 
-        foreach ($rawLines as $line) {
-            $line = trim($line);
+        foreach (preg_split('/\r\n|\r|\n/', $instructions) as $rawLine) {
+            if ($inNotes) {
+                $line = trim($rawLine);
+                if ($line !== '') {
+                    $notes[] = $line;
+                }
+
+                continue;
+            }
+
+            if ($steps !== [] && str_starts_with($rawLine, self::STEP_CONTINUATION_INDENT)) {
+                $steps[array_key_last($steps)] .= "\n".rtrim(substr($rawLine, $indentLength));
+
+                continue;
+            }
+
+            $line = trim($rawLine);
             if ($line === '') {
                 continue;
             }
 
-            if (preg_match('/^Notizen:?$/i', $line)) {
+            // Abschnittskopf nur uneingerückt am Zeilenanfang
+            if (preg_match('/^'.rtrim(self::NOTES_HEADER, ':').':?\s*$/i', $rawLine)) {
                 $inNotes = true;
+
                 continue;
             }
 
-            if (preg_match('/^\d+\.\s*(.+)$/', $line, $m)) {
-                $text = $m[1];
-            } else {
-                $text = $line;
-            }
-
-            if ($inNotes) {
-                $notes[] = $text;
-            } else {
-                $steps[] = $text;
-            }
+            // Nummerierung "1. Waschen" -> "Waschen"
+            $steps[] = preg_match('/^\d+\.\s*(.+)$/', $line, $matches) ? $matches[1] : $line;
         }
 
-        $notesText = count($notes) ? implode("\n", $notes) : null;
-
-        return [$steps, $notesText];
+        return [$steps, $notes];
     }
 
     public function update(Request $request, Recipe $recipe)
@@ -629,7 +718,7 @@ class RecipeController extends Controller
             'description'          => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
             'duration_minutes'     => ['nullable', 'integer', 'min:0'],
             'servings'             => ['nullable', 'integer', 'min:1'],
-            'source'               => ['nullable', 'string'],
+            // F-15: kein Feld „source“ mehr; ein mitgesendetes wird ignoriert.
 
             // Tags aus dem Frontend (werden auf Categories gemappt)
             'tags'                 => ['array'],
@@ -666,86 +755,75 @@ class RecipeController extends Controller
         $validated['ratings']     = $validated['ratings']     ?? [];
         $validated['notes']       = $validated['notes']       ?? null;
 
-        DB::transaction(function () use (&$recipe, $request, $validated) {
-            // 1) Grunddaten aktualisieren
-            $recipe->title            = $validated['name'];
-            $recipe->description      = $validated['description'] ?? null;
-            $recipe->duration_minutes = $validated['duration_minutes'] ?? null;
-            $recipe->servings         = $validated['servings'] ?? null;
+        // F-19: Dateien erst nach dem Commit löschen bzw. bei Rollback die neue entfernen
+        $newImagePath = null;
+        $replacedImagePaths = [];
 
-            // instructions aus steps (+ optional notes) zusammenbauen
-            $stepsText = $this->buildInstructionsText($validated['steps'], $validated['notes']);
-            $recipe->instructions = $stepsText;
+        try {
+            DB::transaction(function () use (&$recipe, &$newImagePath, &$replacedImagePaths, $request, $validated) {
+                // 1) Grunddaten aktualisieren
+                $recipe->title            = $validated['name'];
+                $recipe->description      = $validated['description'] ?? null;
+                $recipe->duration_minutes = $validated['duration_minutes'] ?? null;
+                $recipe->servings         = $validated['servings'] ?? null;
 
-            $recipe->save();
+                // instructions aus steps (+ optional notes) zusammenbauen
+                $stepsText = $this->buildInstructionsText($validated['steps'], $validated['notes']);
+                $recipe->instructions = $stepsText;
 
-            // 2) Kategorien per Tag-Namen verknüpfen (tags -> categories)
-            if (!empty($validated['tags'])) {
-                $categoryIds = Category::whereIn('name', $validated['tags'])->pluck('id');
-                $recipe->categories()->sync($categoryIds);
-            } else {
-                // keine Tags übergeben -> Kategorien lösen
-                $recipe->categories()->detach();
-            }
+                $recipe->save();
 
-            // 3) Zutaten aktualisieren:
-            // alte RecipeIngredients löschen und neu anlegen
-            $recipe->recipeIngredients()->delete();
-
-            foreach ($validated['ingredients'] as $ingredientRow) {
-                $name = trim($ingredientRow['name'] ?? '');
-                if ($name === '') {
-                    continue;
+                // 2) Kategorien per Tag-Namen verknüpfen (tags -> categories)
+                if (!empty($validated['tags'])) {
+                    $categoryIds = Category::whereIn('name', $validated['tags'])->pluck('id');
+                    $recipe->categories()->sync($categoryIds);
+                } else {
+                    // keine Tags übergeben -> Kategorien lösen
+                    $recipe->categories()->detach();
                 }
 
-                $ingredient = Ingredient::firstOrCreate(['name' => $name]);
+                // 3) Zutaten und Alternativen exakt nach Payload ersetzen (F-13)
+                $this->syncIngredientsAndAlternatives($recipe, $validated['ingredients']);
 
-                $amountText = $ingredientRow['amount'] ?? null;
+                // 4) Ratings aktualisieren:
+                // alte Ratings löschen und neu anlegen
+                $recipe->ratings()->delete();
 
-                RecipeIngredient::create([
-                    'recipe_id'     => $recipe->id,
-                    'ingredient_id' => $ingredient->id,
-                    'quantity'      => null,
-                    'unit'          => null,
-                    'note'          => $amountText,
-                ]);
-            }
-
-            // 4) Ratings aktualisieren:
-            // alte Ratings löschen und neu anlegen
-            $recipe->ratings()->delete();
-
-            foreach ($validated['ratings'] as $dimensionId => $value) {
-                if ($value === null) {
-                    continue;
-                }
-
-                RecipeRating::create([
-                    'recipe_id'    => $recipe->id,
-                    'dimension_id' => (int) $dimensionId,
-                    'value'        => (int) $value,
-                ]);
-            }
-
-            // 5) Bild aktualisieren (falls neues hochgeladen wurde)
-            if ($request->hasFile('image')) {
-                // alte Bilder löschen (Datei + DB)
-                foreach ($recipe->images as $image) {
-                    if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
-                        Storage::disk('public')->delete($image->image_path);
+                foreach ($validated['ratings'] as $dimensionId => $value) {
+                    if ($value === null) {
+                        continue;
                     }
-                    $image->delete();
+
+                    RecipeRating::create([
+                        'recipe_id'    => $recipe->id,
+                        'dimension_id' => (int) $dimensionId,
+                        'value'        => (int) $value,
+                    ]);
                 }
 
-                // neues Bild speichern
-                $path = $request->file('image')->store('recipes', 'public');
+                // 5) Bild aktualisieren (falls neues hochgeladen wurde):
+                // alte Datensätze löschen, Dateien erst nach dem Commit
+                if ($request->hasFile('image')) {
+                    $oldImages = $recipe->images()->get();
+                    $replacedImagePaths = $oldImages->pluck('image_path')->filter()->all();
+                    $oldImages->each->delete();
 
-                RecipeImage::create([
-                    'recipe_id'  => $recipe->id,
-                    'image_path' => $path,
-                ]);
-            }
-        });
+                    $newImagePath = $request->file('image')->store('recipes', 'public');
+
+                    RecipeImage::create([
+                        'recipe_id'  => $recipe->id,
+                        'image_path' => $newImagePath,
+                    ]);
+                }
+            });
+        } catch (Throwable $e) {
+            // Rollback: alte Datei bleibt, neu hochgeladene wird entfernt
+            $this->deletePublicImageFiles(array_filter([$newImagePath]));
+
+            throw $e;
+        }
+
+        $this->deletePublicImageFiles($replacedImagePaths);
 
         return redirect()
             ->route('recipes.show', $recipe)
@@ -754,13 +832,20 @@ class RecipeController extends Controller
 
     public function delete(Request $request, Recipe $recipe): RedirectResponse
     {
-        // Beziehungen zu Sammlungen lösen (Pivot-Tabelle collection_recipes)
-        if (method_exists($recipe, 'collections')) {
-            $recipe->collections()->detach();
-        }
+        // F-19: Bildpfade merken, Dateien erst nach erfolgreichem Löschen in der DB entfernen
+        $imagePaths = $recipe->images()->pluck('image_path')->filter()->all();
 
-        // Rezept löschen
-        $recipe->delete();
+        DB::transaction(function () use ($recipe) {
+            // Beziehungen zu Sammlungen lösen (Pivot-Tabelle collection_recipes)
+            if (method_exists($recipe, 'collections')) {
+                $recipe->collections()->detach();
+            }
+
+            // Rezept löschen (recipe_images u. a. per Kaskade)
+            $recipe->delete();
+        });
+
+        $this->deletePublicImageFiles($imagePaths);
 
         // Zur Übersicht zurück
         return redirect()

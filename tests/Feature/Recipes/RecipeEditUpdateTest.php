@@ -69,7 +69,7 @@ class RecipeEditUpdateTest extends TestCase
         $this->assertSame('Schnell und einfach.', $form['description']);
         $this->assertSame(25, $form['duration_minutes']);
         $this->assertSame(2, $form['servings']);
-        $this->assertNull($form['source']); // F-15
+        $this->assertArrayNotHasKey('source', $form); // F-15: Feld entfällt
         $this->assertEqualsCanonicalizing(['Vegan', 'Schnell'], $form['tags']);
         $this->assertSame(['C', 'A', 'B'], $form['steps']);
         $this->assertSame("Notiz eins\nNotiz zwei", $form['notes']);

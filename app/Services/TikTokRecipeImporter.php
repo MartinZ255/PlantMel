@@ -403,7 +403,6 @@ PROMPT;
             'servings' => is_numeric($recipe['servings'] ?? null)
                 ? (int) $recipe['servings']
                 : null,
-            'source' => 'TikTok: '.$url,
             'tags' => $tags,
             'ingredients' => $ingredients !== [] ? $ingredients : [['amount' => '', 'name' => '']],
             'steps' => $steps !== [] ? $steps : [''],

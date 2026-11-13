@@ -53,7 +53,7 @@ class CategoryEndpointsTest extends TestCase
 
         $this->putJson(route('categories.update', $category), ['name' => 'Neu'])
             ->assertOk()
-            ->assertExactJson(['id' => $category->id, 'name' => 'Neu']);
+            ->assertExactJson(['id' => $category->id, 'name' => 'Neu', 'recipes_count' => 0]);
 
         $this->assertSame('Neu', $category->fresh()->name);
     }
@@ -75,10 +75,11 @@ class CategoryEndpointsTest extends TestCase
     }
 
     /**
-     * Ist-Zustand F-07: Löschen löst die Kategorie ohne Rückfrage von allen
-     * Rezepten; die Rezepte selbst bleiben bestehen.
+     * F-07 / ADR-002: Mit Bestätigung löst das Löschen die Kategorie von allen
+     * Rezepten; die Rezepte selbst bleiben bestehen. Ohne Bestätigung: 409,
+     * siehe CatalogDeleteConfirmationTest.
      */
-    public function test_destroy_detaches_category_from_recipes_f07(): void
+    public function test_confirmed_destroy_detaches_category_from_recipes_f07(): void
     {
         $this->actingAsHost();
         $category = Category::factory()->create();
@@ -89,7 +90,7 @@ class CategoryEndpointsTest extends TestCase
 
         $this->assertDatabaseCount('recipe_categories', 4);
 
-        $this->deleteJson(route('categories.destroy', $category))
+        $this->deleteJson(route('categories.destroy', $category), ['confirmed' => true])
             ->assertOk()
             ->assertExactJson(['status' => 'deleted']);
 

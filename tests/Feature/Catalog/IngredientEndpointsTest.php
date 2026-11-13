@@ -3,6 +3,7 @@
 namespace Tests\Feature\Catalog;
 
 use App\Models\Ingredient;
+use App\Models\IngredientAlternative;
 use App\Models\RecipeIngredient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -66,11 +67,11 @@ class IngredientEndpointsTest extends TestCase
         $this->putJson(route('ingredients.update', $ingredient), ['name' => 'Alt'])
             ->assertOk()
             // description fehlt im Request -> wird per validated() nicht gesetzt
-            ->assertExactJson(['id' => $ingredient->id, 'name' => 'Alt', 'description' => 'd']);
+            ->assertExactJson(['id' => $ingredient->id, 'name' => 'Alt', 'description' => 'd', 'recipes_count' => 0]);
 
         $this->putJson(route('ingredients.update', $ingredient), ['name' => 'Neu', 'description' => null])
             ->assertOk()
-            ->assertExactJson(['id' => $ingredient->id, 'name' => 'Neu', 'description' => null]);
+            ->assertExactJson(['id' => $ingredient->id, 'name' => 'Neu', 'description' => null, 'recipes_count' => 0]);
 
         $this->putJson(route('ingredients.update', $ingredient), ['name' => 'Belegt'])
             ->assertUnprocessable()->assertJsonValidationErrors('name');
@@ -78,12 +79,12 @@ class IngredientEndpointsTest extends TestCase
         $this->assertSame('Neu', $ingredient->fresh()->name);
     }
 
-    public function test_destroy_unused_ingredient(): void
+    public function test_confirmed_destroy_of_unused_ingredient(): void
     {
         $this->actingAsHost();
         $ingredient = Ingredient::factory()->create();
 
-        $this->deleteJson(route('ingredients.destroy', $ingredient))
+        $this->deleteJson(route('ingredients.destroy', $ingredient), ['confirmed' => true])
             ->assertOk()
             ->assertExactJson(['status' => 'deleted']);
 
@@ -91,18 +92,19 @@ class IngredientEndpointsTest extends TestCase
     }
 
     /**
-     * Ist-Zustand: Ist die Zutat nur Basiszutat einer Alternative (nicht in
-     * recipe_ingredients), wird sie gelöscht und die Alternativen verschwinden
-     * per cascadeOnDelete still mit (F-65). Als Alternative genutzt -> 422,
+     * F-65 / ADR-002: Ist die Zutat nur Basiszutat einer Alternative (nicht in
+     * recipe_ingredients), verschwinden die Alternativen per cascadeOnDelete
+     * mit – aber erst nach Bestätigung (ohne: 409, siehe
+     * CatalogDeleteConfirmationTest). Als Alternative genutzt -> 422,
      * siehe IngredientUsedAsAlternativeDeleteTest (F-18).
      */
-    public function test_destroy_base_ingredient_of_alternative_cascades_silently(): void
+    public function test_confirmed_destroy_of_base_ingredient_cascades_its_alternatives(): void
     {
         $this->actingAsHost();
-        $alternative = \App\Models\IngredientAlternative::factory()->create();
+        $alternative = IngredientAlternative::factory()->create();
         $base = $alternative->ingredient;
 
-        $this->deleteJson(route('ingredients.destroy', $base))
+        $this->deleteJson(route('ingredients.destroy', $base), ['confirmed' => true])
             ->assertOk()
             ->assertExactJson(['status' => 'deleted']);
 

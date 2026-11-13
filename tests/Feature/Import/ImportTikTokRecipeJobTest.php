@@ -83,7 +83,8 @@ class ImportTikTokRecipeJobTest extends TestCase
             'description' => 'Knuspriger Snack.',
             'duration_minutes' => 25,
             'servings' => null,
-            'source' => 'TikTok: '.self::URL,
+            // F-15: kein Schlüssel `source` mehr im normalisierten Ergebnis
+            // (die Spalte recipe_imports.source = caption/video bleibt)
             'tags' => ['Vegan', 'Snack'],
             'ingredients' => [
                 ['amount' => '200 g', 'name' => 'Kichererbsen'],

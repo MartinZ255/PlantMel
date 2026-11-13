@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\KnownDefects\Recipes;
+namespace Tests\Feature\Recipes;
 
 use App\Models\Recipe;
 use App\Models\RecipeImage;
@@ -11,15 +11,13 @@ use Tests\Feature\Recipes\Concerns\InteractsWithRecipes;
 use Tests\TestCase;
 
 /**
- * Bekannter Defekt F-19: Rezept löschen entfernt die Bilddateien nicht
- * (RecipeController::delete, app/Http/Controllers/RecipeController.php:717-731);
- * die DB-Zeile verschwindet per Kaskade, die Datei bleibt öffentlich abrufbar.
+ * Regressionstest zu F-19 (behoben in Slice 2): Rezept löschen entfernte die
+ * Bilddateien nicht; die DB-Zeile verschwand per Kaskade, die Datei blieb
+ * öffentlich abrufbar.
  *
  * Sollverhalten: Nach dem Löschen ist jede Bilddatei des Rezepts vom public-Disk entfernt;
- * Dateien anderer Rezepte bleiben.
- * Gegenpart (Ist-Verhalten): Tests\Feature\Recipes\RecipeCurrentDefectBehaviourTest (…_f19).
+ * Dateien anderer Rezepte bleiben. Weitere Fälle: RecipeImageFilesTest.
  */
-#[Group('known-defect')]
 #[Group('F-19')]
 class RecipeDeleteImageTest extends TestCase
 {

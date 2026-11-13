@@ -12,6 +12,7 @@ use App\Models\Recipe;
 use App\Models\RecipeImage;
 use App\Models\RecipeRating;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Recipes\Concerns\InteractsWithRecipes;
 use Tests\TestCase;
 
@@ -25,6 +26,7 @@ class RecipeDeleteTest extends TestCase
 
     public function test_delete_removes_recipe_and_dependent_rows_and_redirects_to_index(): void
     {
+        Storage::fake('public'); // delete() entfernt seit F-19 auch Bilddateien
         $host = $this->actingAsHost();
         $category = Category::factory()->create();
         $dimension = RatingDimension::factory()->create();
