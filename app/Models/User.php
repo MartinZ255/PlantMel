@@ -15,13 +15,15 @@ class User extends Authenticatable
     /**
      * The attributes that are mass assignable.
      *
+     * `is_host` ist bewusst NICHT enthalten (F-46): Host-Rechte werden nur
+     * gezielt per `php artisan user:make-host` (forceFill) vergeben.
+     *
      * @var list<string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'is_host',
     ];
 
     /**

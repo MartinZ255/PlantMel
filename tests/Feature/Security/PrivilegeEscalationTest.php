@@ -7,10 +7,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Rechteausweitung ueber is_host (Bezug F-46): Obwohl is_host in User::$fillable
- * steht, setzen Registrierung (CreateNewUser.php:33-38) und Profil-Update
- * (ProfileController.php:30-41 mit ProfileUpdateRequest) das Feld nicht aus
- * Nutzereingaben. Diese Tests sichern das ab.
+ * Rechteausweitung ueber is_host (Bezug F-46): Registrierung (CreateNewUser)
+ * und Profil-Update (ProfileController mit ProfileUpdateRequest) setzen das
+ * Feld nicht aus Nutzereingaben. Seit Slice 1b ist is_host zusaetzlich nicht
+ * mehr mass-assignable (siehe HostFlagMassAssignmentTest). Diese Tests sichern
+ * das Ende-zu-Ende ab.
  */
 class PrivilegeEscalationTest extends TestCase
 {

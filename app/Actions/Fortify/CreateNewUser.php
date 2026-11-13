@@ -30,11 +30,11 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
+        // is_host wird nicht gesetzt: Spalten-Default ist false (F-46).
         return User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
-            'is_host' => false,
         ]);
     }
 }

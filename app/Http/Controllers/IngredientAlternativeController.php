@@ -7,6 +7,7 @@ use App\Models\IngredientAlternative;
 use App\Models\Ingredient;
 use App\Models\Recipe;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class IngredientAlternativeController extends Controller
 {
@@ -34,7 +35,17 @@ class IngredientAlternativeController extends Controller
     public function store(Request $request, Recipe $recipe, Ingredient $ingredient)
     {
         $data = $request->validate([
-            'alternative_ingredient_id' => ['required', 'integer', 'exists:ingredients,id'],
+            'alternative_ingredient_id' => [
+                'required',
+                'integer',
+                'exists:ingredients,id',
+                // F-22: Doppelte Alternative -> 422 statt Unique-Index-Fehler (500)
+                Rule::unique('ingredient_alternatives', 'alternative_ingredient_id')
+                    ->where('recipe_id', $recipe->id)
+                    ->where('ingredient_id', $ingredient->id),
+            ],
+        ], [
+            'alternative_ingredient_id.unique' => 'Diese Alternative ist für die Zutat in diesem Rezept bereits hinterlegt.',
         ]);
 
         $alt = IngredientAlternative::create([

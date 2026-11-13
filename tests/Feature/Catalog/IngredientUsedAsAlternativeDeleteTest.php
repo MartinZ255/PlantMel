@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\KnownDefects\Backend;
+namespace Tests\Feature\Catalog;
 
 use App\Models\IngredientAlternative;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -8,14 +8,14 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Bekannter Defekt F-18: IngredientController::destroy prüft nur
- * recipeIngredients(); eine Zutat, die ausschließlich als Alternative
+ * Regressionstest zu F-18 (behoben in Slice 1b): IngredientController::destroy
+ * prüfte nur recipeIngredients(); eine Zutat, die ausschließlich als Alternative
  * (ingredient_alternatives.alternative_ingredient_id, ohne onDelete) genutzt
- * wird, führt beim Löschen zu einer FK-Verletzung (500).
+ * wird, führte beim Löschen zu einer FK-Verletzung (500).
  *
- * Sollverhalten: 422 mit Meldung, die Zutat und die Alternative bleiben bestehen.
+ * Sollverhalten: 422 im gleichen JSON-Format wie „in Rezept verwendet“
+ * (`{message}`), Zutat und Alternative bleiben bestehen.
  */
-#[Group('known-defect')]
 #[Group('F-18')]
 class IngredientUsedAsAlternativeDeleteTest extends TestCase
 {
@@ -31,7 +31,9 @@ class IngredientUsedAsAlternativeDeleteTest extends TestCase
 
         $this->deleteJson(route('ingredients.destroy', $ingredient))
             ->assertUnprocessable()
-            ->assertJsonStructure(['message']);
+            ->assertExactJson([
+                'message' => 'Die Zutat ist in mindestens einem Rezept als Alternative hinterlegt und kann nicht gelöscht werden.',
+            ]);
 
         $this->assertModelExists($ingredient);
         $this->assertModelExists($alternative);

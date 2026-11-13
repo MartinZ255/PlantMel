@@ -22,7 +22,8 @@ use Tests\TestCase;
 /**
  * Charakterisierung: Rollen-Matrix ueber alle App-Routen (Ist-Zustand).
  *
- * Quelle der Listen: routes/web.php, routes/settings.php, routes/api.php.
+ * Quelle der Listen: routes/web.php, routes/settings.php, routes/api.php
+ * (seit Slice 1b leer).
  * Jede registrierte App-Route muss in GENAU EINER Liste stehen
  * (test_every_app_route_is_covered_by_exactly_one_matrix_list), damit eine neue,
  * ungetestete Route sofort auffaellt.
@@ -94,38 +95,27 @@ class RouteRoleMatrixTest extends TestCase
     ];
 
     /**
-     * routes/web.php:17-36, ohne Middleware ausser 'web'.
-     * Wert: [HTTP-Methode, gemessener Status fuer einen Gast] oder null, wenn die
-     * Route hier bewusst nicht aufgerufen wird.
+     * routes/web.php (oeffentlicher Teil), ohne Middleware ausser 'web'.
+     * Wert: [HTTP-Methode, gemessener Status fuer einen Gast].
      *
-     * @var array<string, array{0: string, 1: int}|null>
+     * @var array<string, array{0: string, 1: int}>
      */
     public const PUBLIC_ROUTES = [
         'landing' => ['GET', 200],
         'recipes.index' => ['GET', 200],
         'recipes.show' => ['GET', 200],
         'IngredientSearch' => ['GET', 200],
-        // Ausnahme: IngredientController@show existiert nicht -> 500 (F-16).
-        // Bereits in tests/KnownDefects/RouteIntegrityTest.php abgedeckt, hier
-        // nur fuer die Vollstaendigkeit gelistet und nicht aufgerufen.
-        'ingredients.show' => null,
     ];
 
     /**
-     * routes/api.php (Prefix "api", Gruppe 'api' ohne Session). Unbenannte
-     * Routen, Schluessel = "METHODE uri".
+     * routes/api.php: seit Slice 1b leer (F-16, E6). Kommt dort eine Route
+     * hinzu, muss sie hier (Schluessel "METHODE uri" bzw. Name) mit Rollen-
+     * Erwartung eingetragen werden; ApiRoutesRemovedTest schlaegt dann
+     * ebenfalls an und ist bewusst anzupassen.
      *
      * @var list<string>
      */
-    public const API_ROUTES = [
-        // Ausnahme: CategoryController@index existiert nicht -> 500 (F-16),
-        // abgedeckt in tests/KnownDefects/RouteIntegrityTest.php.
-        'GET api/categories',
-        'GET api/rating-dimensions',
-        'POST api/recipes',
-        'PUT api/recipes/{recipe}',
-        'DELETE api/recipes/{recipe}',
-    ];
+    public const API_ROUTES = [];
 
     /**
      * Framework-interne Routen, die nicht aus den App-Routendateien stammen.
@@ -192,12 +182,8 @@ class RouteRoleMatrixTest extends TestCase
     {
         $cases = [];
 
-        foreach (self::PUBLIC_ROUTES as $name => $expectation) {
-            if ($expectation === null) {
-                continue; // siehe Kommentar an PUBLIC_ROUTES
-            }
-
-            $cases[$name] = [$name, $expectation[0], $expectation[1]];
+        foreach (self::PUBLIC_ROUTES as $name => [$method, $guestStatus]) {
+            $cases[$name] = [$name, $method, $guestStatus];
         }
 
         return $cases;
@@ -374,6 +360,11 @@ class RouteRoleMatrixTest extends TestCase
         }
 
         $listed = array_merge(...array_values($lists));
+
+        // Sicherung: Mindestens die bekannten Kernrouten muessen erfasst sein,
+        // sonst wuerde der Test bei einer leeren Routentabelle trivial gruen.
+        $this->assertContains('recipes.index', $registered);
+        $this->assertContains('recipes.create', $registered);
         $stale = array_values(array_diff($listed, $registered));
 
         $this->assertSame([], $uncovered, 'Route ohne Eintrag in der Rollen-Matrix: '.implode(', ', $uncovered));
