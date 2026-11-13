@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class IngredientAlternative extends Model
 {
+    /** @use HasFactory<\Database\Factories\IngredientAlternativeFactory> */
+    use HasFactory;
+
     protected $table = 'ingredient_alternatives';
 
     protected $fillable = [
