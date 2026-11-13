@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureUserIsHost;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+
+        // F-47: global, damit auch 404/Fehlerseiten und API-Antworten die Header tragen.
+        $middleware->append(SecurityHeaders::class);
 
         $middleware->web(append: [
             HandleAppearance::class,
