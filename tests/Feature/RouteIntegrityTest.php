@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\KnownDefects;
+namespace Tests\Feature;
 
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
@@ -8,14 +8,13 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Bekannter Defekt F-16: Routen zeigen auf Controller-Methoden, die nicht existieren
- * (IngredientController@show, CategoryController@index, RecipeController@destroy).
+ * Regressionstest zu F-16 (behoben in Slice 1b): Früher zeigten Routen auf
+ * nicht vorhandene Controller-Methoden (IngredientController@show,
+ * CategoryController@index, RecipeController@destroy) und lieferten 500.
  *
- * Sollverhalten: Jede registrierte Route mit Controller-Aktion zeigt auf eine
- * existierende, aufrufbare Methode. Dieser Test ist rot, bis F-16 behoben ist
- * (Slice 3); danach gehört er in die reguläre Feature-Suite.
+ * Hält künftig jede registrierte Route sauber: Jede Route mit
+ * Controller-Aktion muss auf eine existierende Methode zeigen.
  */
-#[Group('known-defect')]
 #[Group('F-16')]
 class RouteIntegrityTest extends TestCase
 {
@@ -61,6 +60,13 @@ class RouteIntegrityTest extends TestCase
                 implode("\n  - ", $broken),
             ),
         );
+    }
+
+    public function test_removed_dead_routes_are_no_longer_registered(): void
+    {
+        $this->assertFalse(Route::has('ingredients.show'));
+
+        $this->get('/ingredients/1')->assertStatus(405); // nur noch PUT/DELETE (Host)
     }
 
     private function describe(RoutingRoute $route, string $action, string $reason): string

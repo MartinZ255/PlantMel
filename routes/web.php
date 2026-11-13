@@ -28,12 +28,9 @@ Route::get('/rezepte', [RecipeController::class, 'index'])
 Route::get('/rezept/{recipe}', [RecipeController::class, 'show'])
     ->name('recipes.show');
 
-// Öffentliche Zutaten-Suche / Zutaten-Detail
+// Öffentliche Zutaten-Suche
 Route::get('/zutatensuche', [IngredientController::class, 'index'])
     ->name('IngredientSearch');
-
-Route::get('/ingredients/{ingredient}', [IngredientController::class, 'show'])
-    ->name('ingredients.show');
 
 
 // Authentifizierte, verifizierte Benutzer (Sammlungen etc.)
@@ -73,7 +70,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     Route::get('/meineZutaten', function () {
-        return Inertia::render('MyIngredients');
+        // F-03: Die Seite braucht die Prop `ingredients`. Gespeicherte
+        // "eigene Zutaten" gibt es noch nicht (Feature folgt), daher leer.
+        return Inertia::render('MyIngredients', [
+            'ingredients' => [],
+        ]);
     })->name('myIngredients');
 
 

@@ -70,6 +70,14 @@ class IngredientController extends Controller
             ], 422);
         }
 
+        // F-18: Als Alternative genutzte Zutaten ebenfalls schützen
+        // (ingredient_alternatives.alternative_ingredient_id hat kein onDelete).
+        if ($ingredient->alternativeFor()->exists()) {
+            return response()->json([
+                'message' => 'Die Zutat ist in mindestens einem Rezept als Alternative hinterlegt und kann nicht gelöscht werden.',
+            ], 422);
+        }
+
         $ingredient->delete();
 
         return response()->json([

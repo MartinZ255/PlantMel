@@ -19,6 +19,7 @@ use App\Models\RecipeRating;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Response;
+use Closure;
 
 class RecipeController extends Controller
 {
@@ -164,28 +165,21 @@ class RecipeController extends Controller
 
     public function index(Request $request): Response
     {
+        // F-22: Query-Parameter werden normalisiert statt validiert. Ungültige
+        // Formen (z. B. ?search[]=a oder verschachtelte Arrays) werden still
+        // ignoriert – die öffentliche Liste antwortet weiter mit 200, statt
+        // mit einem TypeError (500) oder einem Redirect abzubrechen.
         $search = $request->query('search');
+        $search = is_string($search) ? $search : null;
 
         // --- Include Ingredients (Array erzwingen, trimmen, leere entfernen) ---
-        $includeIngredients = $request->query('includeIngredients', []);
-        if (!is_array($includeIngredients)) {
-            $includeIngredients = [$includeIngredients];
-        }
-        $includeIngredients = array_values(array_filter(array_map('trim', $includeIngredients)));
+        $includeIngredients = $this->normalizeStringList($request->query('includeIngredients', []));
 
         // --- Exclude Ingredients ---
-        $excludeIngredients = $request->query('excludeIngredients', []);
-        if (!is_array($excludeIngredients)) {
-            $excludeIngredients = [$excludeIngredients];
-        }
-        $excludeIngredients = array_values(array_filter(array_map('trim', $excludeIngredients)));
+        $excludeIngredients = $this->normalizeStringList($request->query('excludeIngredients', []));
 
         // --- Tags (mehrere) ---
-        $tags = $request->query('tags', []);
-        if (!is_array($tags)) {
-            $tags = [$tags];
-        }
-        $tags = array_values(array_filter(array_map('trim', $tags)));
+        $tags = $this->normalizeStringList($request->query('tags', []));
 
         $query = Recipe::query()
             ->with(['categories', 'ratings', 'images', 'recipeIngredients.ingredient']);
@@ -298,6 +292,48 @@ class RecipeController extends Controller
         ]);
     }
 
+    /**
+     * Macht aus einem Query-Wert eine flache Liste getrimmter, nicht leerer
+     * Strings. Nicht-String-Elemente (z. B. verschachtelte Arrays) werden
+     * verworfen (F-22).
+     *
+     * @return list<string>
+     */
+    private function normalizeStringList(mixed $value): array
+    {
+        if (! is_array($value)) {
+            $value = [$value];
+        }
+
+        $strings = array_filter($value, 'is_string');
+
+        return array_values(array_filter(array_map('trim', $strings)));
+    }
+
+    /**
+     * Regel für `ratings`: Jeder Schlüssel muss eine existierende
+     * rating_dimensions.id sein (F-22, sonst Fremdschlüssel-Fehler/500).
+     */
+    private function ratingDimensionKeysRule(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_array($value) || $value === []) {
+                return;
+            }
+
+            $keys = array_keys($value);
+            $ids = array_filter($keys, fn ($key) => is_int($key) || ctype_digit((string) $key));
+
+            $known = count($ids) === count($keys)
+                ? RatingDimension::whereIn('id', array_map('intval', $ids))->count()
+                : -1;
+
+            if ($known !== count(array_unique(array_map('intval', $ids)))) {
+                $fail('Die Bewertung enthält eine unbekannte Bewertungsdimension.');
+            }
+        };
+    }
+
     public function create()
     {
         $ratingDimensions = RatingDimension::orderBy('sort_order')
@@ -320,32 +356,33 @@ class RecipeController extends Controller
     {
         $validated = $request->validate([
             'name'                 => ['required', 'string', 'max:255'],
-            'description'          => ['nullable', 'string'],
+            'description'          => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
             'duration_minutes'     => ['nullable', 'integer', 'min:0'],
             'servings'             => ['nullable', 'integer', 'min:1'],
             'source'               => ['nullable', 'string'],   // dto.
 
             // Tags aus dem Frontend (werden auf Categories gemappt)
             'tags'                 => ['array'],
-            'tags.*'               => ['string'],
+            'tags.*'               => ['string', 'max:255'],
 
             // Zutaten aus dem Formular
             'ingredients'                          => ['required', 'array'],
-            'ingredients.*.amount'                 => ['nullable', 'string'],
-            'ingredients.*.name'                   => ['required', 'string'],
+            // max:255 = recipe_ingredients.note bzw. ingredients.name (F-22)
+            'ingredients.*.amount'                 => ['nullable', 'string', 'max:255'],
+            'ingredients.*.name'                   => ['required', 'string', 'max:255'],
             'ingredients.*.alternativeIngredientIds'   => ['array'],
             'ingredients.*.alternativeIngredientIds.*' => ['integer', 'exists:ingredients,id'],
 
 
             // Zubereitungsschritte
             'steps'                => ['required', 'array'],
-            'steps.*'              => ['required', 'string'],
+            'steps.*'              => ['required', 'string', 'max:65535'],
 
             // Notizen (hängen wir unten an instructions an)
-            'notes'                => ['nullable', 'string'],
+            'notes'                => ['nullable', 'string', 'max:65535'],
 
             // Ratings: { [dimensionId]: value }
-            'ratings'              => ['array'],
+            'ratings'              => ['array', $this->ratingDimensionKeysRule()],
             'ratings.*'            => ['nullable', 'integer', 'min:1', 'max:5'],
 
             // Bild-Upload (optional)
@@ -589,32 +626,33 @@ class RecipeController extends Controller
 
         $validated = $request->validate([
             'name'                 => ['required', 'string', 'max:255'],
-            'description'          => ['nullable', 'string'],
+            'description'          => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
             'duration_minutes'     => ['nullable', 'integer', 'min:0'],
             'servings'             => ['nullable', 'integer', 'min:1'],
             'source'               => ['nullable', 'string'],
 
             // Tags aus dem Frontend (werden auf Categories gemappt)
             'tags'                 => ['array'],
-            'tags.*'               => ['string'],
+            'tags.*'               => ['string', 'max:255'],
 
             // Zutaten aus dem Formular
             'ingredients'                          => ['required', 'array'],
-            'ingredients.*.amount'                 => ['nullable', 'string'],
-            'ingredients.*.name'                   => ['required', 'string'],
+            // max:255 = recipe_ingredients.note bzw. ingredients.name (F-22)
+            'ingredients.*.amount'                 => ['nullable', 'string', 'max:255'],
+            'ingredients.*.name'                   => ['required', 'string', 'max:255'],
             'ingredients.*.alternativeIngredientIds'   => ['array'],
             'ingredients.*.alternativeIngredientIds.*' => ['integer', 'exists:ingredients,id'],
 
 
             // Zubereitungsschritte
             'steps'                => ['required', 'array'],
-            'steps.*'              => ['required', 'string'],
+            'steps.*'              => ['required', 'string', 'max:65535'],
 
             // Notizen (hängen wir unten an instructions an)
-            'notes'                => ['nullable', 'string'],
+            'notes'                => ['nullable', 'string', 'max:65535'],
 
             // Ratings: { [dimensionId]: value }
-            'ratings'              => ['array'],
+            'ratings'              => ['array', $this->ratingDimensionKeysRule()],
             'ratings.*'            => ['nullable', 'integer', 'min:1', 'max:5'],
 
             // Bild-Upload (optional, darf bei Update leer bleiben)

@@ -11,7 +11,8 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
+            // max:100 entspricht der Spalte categories.name (F-22)
+            'name' => ['required', 'string', 'max:100', 'unique:categories,name'],
         ]);
 
         $category = Category::create([
@@ -31,7 +32,7 @@ class CategoryController extends Controller
             'name' => [
                 'required',
                 'string',
-                'max:255',
+                'max:100', // Spalte categories.name (F-22)
                 'unique:categories,name,' . $category->id,
             ],
         ]);

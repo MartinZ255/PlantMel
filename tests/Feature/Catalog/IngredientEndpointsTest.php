@@ -93,7 +93,8 @@ class IngredientEndpointsTest extends TestCase
     /**
      * Ist-Zustand: Ist die Zutat nur Basiszutat einer Alternative (nicht in
      * recipe_ingredients), wird sie gelöscht und die Alternativen verschwinden
-     * per cascadeOnDelete still mit. (Als Alternative genutzt -> 500, F-18.)
+     * per cascadeOnDelete still mit (F-65). Als Alternative genutzt -> 422,
+     * siehe IngredientUsedAsAlternativeDeleteTest (F-18).
      */
     public function test_destroy_base_ingredient_of_alternative_cascades_silently(): void
     {

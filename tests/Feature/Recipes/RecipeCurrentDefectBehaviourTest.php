@@ -8,13 +8,11 @@ use App\Models\IngredientAlternative;
 use App\Models\RatingDimension;
 use App\Models\Recipe;
 use App\Models\RecipeImage;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Recipes\Concerns\InteractsWithRecipes;
 use Tests\TestCase;
-use TypeError;
 
 /**
  * Grüne Charakterisierungstests für Ist-Verhalten, das zu bekannten Befunden aus
@@ -225,36 +223,9 @@ class RecipeCurrentDefectBehaviourTest extends TestCase
         }
     }
 
-    /**
-     * F-22: ?search[]=a führt zu einem TypeError in trim() (HTTP 500).
-     */
-    public function test_array_search_parameter_currently_throws_type_error_f22(): void
-    {
-        $this->withoutExceptionHandling();
-        $this->expectException(TypeError::class);
-
-        $this->get('/rezepte?search[]=a');
-    }
-
-    /**
-     * F-22: Rating-Schlüssel werden nicht gegen rating_dimensions geprüft;
-     * eine unbekannte Dimension endet in einer Fremdschlüssel-Verletzung (HTTP 500).
-     */
-    public function test_unknown_rating_dimension_currently_throws_query_exception_f22(): void
-    {
-        $this->actingAsHost();
-        $this->withoutExceptionHandling();
-
-        try {
-            $this->post(route('recipes.store'), $this->recipePayload(['ratings' => [999999 => 3]]));
-            $this->fail('QueryException erwartet');
-        } catch (QueryException $e) {
-            $this->assertStringContainsStringIgnoringCase('FOREIGN KEY', $e->getMessage());
-        }
-
-        // Transaktion wurde zurückgerollt.
-        $this->assertDatabaseCount('recipes', 0);
-    }
+    // F-22 (behoben in Slice 1b): Die früheren Ist-Tests zu `?search[]=a` und
+    // unbekannten Bewertungsdimensionen stehen jetzt als Regressionstests in
+    // Tests\Feature\Recipes\RecipeInputValidationTest.
 
     /**
      * F-23: Die Liste liefert alle Rezepte ohne Pagination.

@@ -1,17 +1,18 @@
 <?php
 
-use App\Http\Controllers\IngredientController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\RatingDimensionController;
-use App\Http\Controllers\RecipeController;
-
-Route::get('/categories', [CategoryController::class, 'index']);
-
-Route::get('/rating-dimensions', [RatingDimensionController::class, 'index']);
-
-Route::middleware(['auth', 'is_host'])->group(function () {
-    Route::post('/recipes', [RecipeController::class, 'store']);
-    Route::put('/recipes/{recipe}', [RecipeController::class, 'update']);
-    Route::delete('/recipes/{recipe}', [RecipeController::class, 'destroy']);
-});
+/*
+|--------------------------------------------------------------------------
+| API-Routen
+|--------------------------------------------------------------------------
+|
+| Bewusst leer (F-16, Entscheidung E6, Slice 1b): Die frueheren Routen
+| (/api/categories, /api/rating-dimensions, /api/recipes...) wurden vom
+| Frontend nicht genutzt, zeigten teils auf fehlende Controller-Methoden
+| (500) und waren ohne Session-Middleware fuer niemanden bedienbar.
+|
+| Die Datei bleibt registriert (bootstrap/app.php), damit kuenftige
+| API-Routen hier ergaenzt werden koennen. Neue Routen brauchen einen
+| passenden Guard und einen Eintrag in
+| tests/Feature/Authorization/RouteRoleMatrixTest.php.
+|
+*/

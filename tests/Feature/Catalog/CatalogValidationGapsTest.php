@@ -1,8 +1,9 @@
 <?php
 
-namespace Tests\KnownDefects\Backend;
+namespace Tests\Feature\Catalog;
 
 use App\Models\Category;
+use App\Models\Ingredient;
 use App\Models\IngredientAlternative;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -10,17 +11,18 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Bekannter Defekt F-22 (Validierungslücken in Stammdaten-Endpunkten):
- * - IngredientAlternativeController::store prüft die Eindeutigkeit
+ * Regressionstest zu F-22 (Validierungslücken in Stammdaten-Endpunkten,
+ * behoben in Slice 1b):
+ * - IngredientAlternativeController::store prüfte die Eindeutigkeit
  *   (recipe_id, ingredient_id, alternative_ingredient_id) nicht; der
- *   Unique-Index wirft eine QueryException (500).
- * - CategoryController::store/update validieren `max:255`, die Spalte
- *   categories.name hat aber nur 100 Zeichen. Unter SQLite wird die Länge nicht
- *   erzwungen (Name wird gespeichert), unter MySQL strict wäre es ein 500.
+ *   Unique-Index warf eine QueryException (500). Jetzt 422 mit deutscher
+ *   Meldung. Bewusst kein idempotentes 200: IngredientAlternativesModal.vue
+ *   hängt jede Erfolgsantwort an die Liste an (Duplikat in der Anzeige).
+ * - CategoryController::store/update validierten `max:255`, die Spalte
+ *   categories.name hat aber nur 100 Zeichen. Jetzt `max:100`.
  *
  * Sollverhalten: 422 mit Validierungsfehler, keine Datenänderung.
  */
-#[Group('known-defect')]
 #[Group('F-22')]
 class CatalogValidationGapsTest extends TestCase
 {
@@ -36,9 +38,26 @@ class CatalogValidationGapsTest extends TestCase
             ['alternative_ingredient_id' => $existing->alternative_ingredient_id],
         )
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('alternative_ingredient_id');
+            ->assertJsonValidationErrors([
+                'alternative_ingredient_id' => 'Diese Alternative ist für die Zutat in diesem Rezept bereits hinterlegt.',
+            ]);
 
         $this->assertDatabaseCount('ingredient_alternatives', 1);
+    }
+
+    public function test_same_alternative_for_other_recipe_or_ingredient_is_still_allowed(): void
+    {
+        $this->actingAsHost();
+        $existing = IngredientAlternative::factory()->create();
+        $otherBase = Ingredient::factory()->create();
+
+        // Gleiche Alternative, andere Basiszutat im selben Rezept
+        $this->postJson(
+            route('ingredientAlternatives.store', [$existing->recipe_id, $otherBase->id]),
+            ['alternative_ingredient_id' => $existing->alternative_ingredient_id],
+        )->assertCreated();
+
+        $this->assertDatabaseCount('ingredient_alternatives', 2);
     }
 
     /**
@@ -62,6 +81,14 @@ class CatalogValidationGapsTest extends TestCase
             ->assertJsonValidationErrors('name');
 
         $this->assertDatabaseCount('categories', 0);
+    }
+
+    public function test_category_store_accepts_name_at_column_limit(): void
+    {
+        $this->actingAsHost();
+
+        $this->postJson(route('categories.store'), ['name' => str_repeat('a', 100)])
+            ->assertCreated();
     }
 
     public function test_category_update_rejects_name_longer_than_column(): void
