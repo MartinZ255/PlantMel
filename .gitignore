@@ -29,3 +29,9 @@ yarn-error.log
 
 # Claude Code Agenten-Worktrees
 /.claude/worktrees
+# Playwright (E2E-Browser-Baseline)
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+/playwright/.auth

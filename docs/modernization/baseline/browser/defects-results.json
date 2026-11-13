@@ -1,0 +1,510 @@
+[
+  {
+    "kind": "defects",
+    "name": "F-01",
+    "posts": [],
+    "pageErrors": [],
+    "consoleErrors": [
+      "Error: Ziggy error: route 'password.store' is not in the route list.\n    at new r (http://127.0.0.1:8123/reset-password/e2e-dummy-token?email=user%40example.test:42:19788)\n    at http://127.0.0.1:8123/reset-password/e2e-dummy-token?email=user%40example.test:42:26386\n    at m (http://127.0.0.1:8123/build/assets/ResetPassword-Ci-EY6gC.js:1:770)\n    at http://127.0.0.1:8123/build/assets/app-d9EcDb76.js:92:7299\n    at Pn (http://127.0.0.1:8123/build/assets/app-d9EcDb76.js:87:38)\n    at It (http://12"
+    ]
+  },
+  {
+    "kind": "defects",
+    "name": "F-02",
+    "before": 39,
+    "after": 39,
+    "names": [
+      "Agavendicksaft",
+      "Ahornsirup",
+      "Basmatireis",
+      "Braune Linsen",
+      "Brokkoli",
+      "Cashewkerne",
+      "Champignons",
+      "Chiasamen",
+      "Dosentomaten (stückig)",
+      "Gemüsebrühe (Pulver oder Paste)"
+    ],
+    "pageErrors": [],
+    "consoleErrors": [
+      "TypeError: Cannot read properties of undefined (reading 'map')\n    at N (http://127.0.0.1:8123/build/assets/IngredientCard.vue_vue_type_script_setup_true_lang-DCWsBPx0.js:1:911)\n    at http://127.0.0.1:8123/build/assets/IngredientCard.vue_vue_type_script_setup_true_lang-DCWsBPx0.js:1:1420\n    at u (http://127.0.0.1:8123/build/assets/app-d9EcDb76.js:83:7656)\n    at Array.filter (<anonymous>)\n    at Nt (http://127.0.0.1:8123/build/assets/app-d9EcDb76.js:83:7746)\n    at Proxy.filter (http://127.0.0"
+    ]
+  },
+  {
+    "kind": "defects",
+    "name": "F-03a",
+    "pageErrors": [],
+    "consoleErrors": [
+      "TypeError: Cannot read properties of undefined (reading 'filter')\n    at Uw.fn (http://127.0.0.1:8123/build/assets/IngredientCard.vue_vue_type_script_setup_true_lang-DCWsBPx0.js:1:1410)\n    at _f (http://127.0.0.1:8123/build/assets/app-d9EcDb76.js:83:3247)\n    at get value (http://127.0.0.1:8123/build/assets/app-d9EcDb76.js:83:13875)\n    at Proxy.<anonymous> (http://127.0.0.1:8123/build/assets/IngredientCard.vue_vue_type_script_setup_true_lang-DCWsBPx0.js:1:3957)\n    at Vs (http://127.0.0.1:8123"
+    ]
+  },
+  {
+    "kind": "defects",
+    "name": "F-03b",
+    "landed": "/home"
+  },
+  {
+    "kind": "defects",
+    "name": "F-04-1440",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "menuOpen": false,
+    "dropdownStyle": {
+      "opacity": "0",
+      "visibility": "visible",
+      "pointerEvents": "auto",
+      "zIndex": "1200"
+    },
+    "logoutBox": {
+      "x": 1218.97998046875,
+      "y": 120.16000366210938,
+      "width": 194.0400390625,
+      "height": 34.78999328613281
+    },
+    "hit": {
+      "hitsTarget": true,
+      "hit": "button.user-menu__item.user-menu__item--danger",
+      "x": 1316,
+      "y": 138
+    },
+    "logoutPosts": 1,
+    "urlAfterClick": "/",
+    "stillLoggedIn": false
+  },
+  {
+    "kind": "defects",
+    "name": "F-04-390",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "menuOpen": false,
+    "dropdownStyle": {
+      "opacity": "0",
+      "visibility": "visible",
+      "pointerEvents": "auto",
+      "zIndex": "1200"
+    },
+    "logoutBox": {
+      "x": 178.97999572753906,
+      "y": 128.16000366210938,
+      "width": 194.04002380371094,
+      "height": 34.78999328613281
+    },
+    "hit": {
+      "hitsTarget": true,
+      "hit": "button.user-menu__item.user-menu__item--danger",
+      "x": 276,
+      "y": 146
+    },
+    "logoutPosts": 1,
+    "urlAfterClick": "/",
+    "stillLoggedIn": false
+  },
+  {
+    "kind": "defects",
+    "name": "F-05",
+    "results": [
+      {
+        "name": "Rezeptsuche",
+        "visible": true,
+        "box": {
+          "x": 13,
+          "y": 79,
+          "width": 364,
+          "height": 33
+        },
+        "samples": [
+          {
+            "x": 49,
+            "y": 96,
+            "hit": "a.sidebar-collection-pill",
+            "hitsTarget": false
+          },
+          {
+            "x": 195,
+            "y": 96,
+            "hit": "a.user-menu__item",
+            "hitsTarget": false
+          },
+          {
+            "x": 341,
+            "y": 96,
+            "hit": "a.user-menu__item",
+            "hitsTarget": false
+          }
+        ]
+      },
+      {
+        "name": "Zutatensuche",
+        "visible": true,
+        "box": {
+          "x": 13,
+          "y": 112,
+          "width": 364,
+          "height": 33
+        },
+        "samples": [
+          {
+            "x": 49,
+            "y": 129,
+            "hit": "nav.sidebar-nav",
+            "hitsTarget": false
+          },
+          {
+            "x": 195,
+            "y": 129,
+            "hit": "a.user-menu__item",
+            "hitsTarget": false
+          },
+          {
+            "x": 341,
+            "y": 129,
+            "hit": "a.user-menu__item",
+            "hitsTarget": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "defects",
+    "name": "F-06",
+    "postStatus": 302,
+    "serverErrors": [
+      {
+        "ingredients.0.name": "The ingredients.0.name field is required.",
+        "steps.0": "The steps.0 field is required."
+      }
+    ],
+    "visibleErrors": [],
+    "scopedVisible": 0,
+    "url": "http://127.0.0.1:8123/rezepte/erstellen"
+  },
+  {
+    "kind": "defects",
+    "name": "F-07",
+    "deleteRequests": [
+      "http://127.0.0.1:8123/categories/8"
+    ],
+    "nativeDialogs": 0,
+    "confirmTextsInDom": 0
+  },
+  {
+    "kind": "defects",
+    "name": "F-17",
+    "landed": "/sammlungen",
+    "listed": 2,
+    "successVisible": false
+  },
+  {
+    "kind": "defects",
+    "name": "F-20a",
+    "status": 500,
+    "pageErrors": [],
+    "title": "Laravel"
+  },
+  {
+    "kind": "defects",
+    "name": "F-20b",
+    "firstStatus": 200,
+    "redirectedTo": "/user/confirm-password",
+    "confirmStatus": 302,
+    "status": 500,
+    "finalPath": "/settings/two-factor",
+    "pageErrors": [
+      "Page not found: ./pages/settings/TwoFactor.vue"
+    ]
+  },
+  {
+    "kind": "defects",
+    "name": "F-21a",
+    "landed": "/login"
+  },
+  {
+    "kind": "defects",
+    "name": "F-21b",
+    "landedOn": "/"
+  },
+  {
+    "kind": "defects",
+    "name": "F-29",
+    "backdropCount": 1,
+    "backdropDisplay": "none",
+    "sidebarBox": {
+      "x": 0,
+      "y": 50,
+      "width": 320,
+      "height": 794
+    },
+    "clickPoint": {
+      "x": 375,
+      "y": 500
+    },
+    "hitBefore": "section.content-section",
+    "closedAfterClick": false,
+    "url": "http://127.0.0.1:8123/rezepte"
+  },
+  {
+    "kind": "defects",
+    "name": "F-30-320",
+    "hit": {
+      "hitsTarget": true,
+      "hit": "h2.modal__title",
+      "x": 160,
+      "y": 56
+    },
+    "titleBox": {
+      "x": 33,
+      "y": 42.59375,
+      "width": 254,
+      "height": 27
+    },
+    "headerBox": {
+      "x": 0,
+      "y": -1546,
+      "width": 320,
+      "height": 60
+    },
+    "modalBox": {
+      "x": 16,
+      "y": 25.59375,
+      "width": 288,
+      "height": 588.796875
+    }
+  },
+  {
+    "kind": "defects",
+    "name": "F-30-390",
+    "hit": {
+      "hitsTarget": true,
+      "hit": "h2.modal__title",
+      "x": 195,
+      "y": 64
+    },
+    "titleBox": {
+      "x": 33,
+      "y": 50.765625,
+      "width": 324,
+      "height": 27
+    },
+    "headerBox": {
+      "x": 0,
+      "y": -1356,
+      "width": 390,
+      "height": 60
+    },
+    "modalBox": {
+      "x": 16,
+      "y": 33.765625,
+      "width": 358,
+      "height": 776.46875
+    }
+  },
+  {
+    "kind": "defects",
+    "name": "F-30-scrolled-320",
+    "hit": {
+      "hitsTarget": false,
+      "hit": "div.user-menu__dropdown",
+      "x": 160,
+      "y": 56
+    },
+    "titleBox": {
+      "x": 33,
+      "y": 42.59375,
+      "width": 254,
+      "height": 27
+    },
+    "headerBox": {
+      "x": 0,
+      "y": 0,
+      "width": 320,
+      "height": 60
+    }
+  },
+  {
+    "kind": "defects",
+    "name": "F-30-scrolled-390",
+    "hit": {
+      "hitsTarget": false,
+      "hit": "div.user-menu__item.user-menu__item--label",
+      "x": 195,
+      "y": 64
+    },
+    "titleBox": {
+      "x": 33,
+      "y": 50.765625,
+      "width": 324,
+      "height": 27
+    },
+    "headerBox": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 60
+    }
+  },
+  {
+    "kind": "defects",
+    "name": "F-31",
+    "rows": [
+      {
+        "id": 1,
+        "actions": {
+          "x": 797.59375,
+          "y": 169,
+          "width": 185.40625,
+          "height": 113.09375
+        },
+        "title": {
+          "x": 610.59375,
+          "y": 177.796875,
+          "width": 360.40625,
+          "height": 33.59375
+        },
+        "overlapsTitle": true,
+        "overlapsDescription": true
+      },
+      {
+        "id": 2,
+        "actions": {
+          "x": 797.59375,
+          "y": 169,
+          "width": 185.40625,
+          "height": 113.09375
+        },
+        "title": {
+          "x": 610.59375,
+          "y": 177.796875,
+          "width": 360.40625,
+          "height": 100.78125
+        },
+        "overlapsTitle": true,
+        "overlapsDescription": false
+      },
+      {
+        "id": 3,
+        "actions": {
+          "x": 363.1875,
+          "y": 169,
+          "width": 185.40625,
+          "height": 113.09375
+        },
+        "title": {
+          "x": 313,
+          "y": 177.796875,
+          "width": 223.59375,
+          "height": 67.1875
+        },
+        "overlapsTitle": true,
+        "overlapsDescription": true
+      }
+    ]
+  },
+  {
+    "kind": "defects",
+    "name": "F-32",
+    "layout": {
+      "title": "Laravel",
+      "lang": "en",
+      "h1Count": 1,
+      "h1Texts": [
+        "Kürbis-Kichererbsen-Erdnusscurrygewürzmischung mit Röstzwiebel-Topping"
+      ],
+      "innerWidth": 320,
+      "docScrollWidth": 320,
+      "bodyScrollWidth": 320,
+      "horizontalOverflow": false,
+      "overflowingElementCount": 0,
+      "overflowingElements": [],
+      "clippedH1": true
+    },
+    "h1": {
+      "right": 280,
+      "width": 240,
+      "scrollWidth": 367,
+      "clientWidth": 240,
+      "overflowWrap": "normal",
+      "wordBreak": "normal",
+      "hyphens": "manual"
+    }
+  },
+  {
+    "kind": "defects",
+    "name": "F-38",
+    "handleFocusable": true,
+    "orderAfterKeys": [
+      "Schritt A",
+      "Schritt B"
+    ]
+  },
+  {
+    "kind": "defects",
+    "name": "F-42a",
+    "lang": "en"
+  },
+  {
+    "kind": "defects",
+    "name": "F-42b",
+    "rows": [
+      {
+        "path": "/",
+        "title": "Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/rezepte",
+        "title": "Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/rezept/1",
+        "title": "Laravel",
+        "h1": 1
+      },
+      {
+        "path": "/zutatensuche",
+        "title": "Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/home",
+        "title": "Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/sammlungen",
+        "title": "Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/sammlungen/erstellen",
+        "title": "Neue Sammlung anlegen - Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/sammlung/1",
+        "title": "Laravel",
+        "h1": 1
+      },
+      {
+        "path": "/settings",
+        "title": "Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/settings/profile",
+        "title": "Profil bearbeiten - Laravel",
+        "h1": 0
+      },
+      {
+        "path": "/settings/password",
+        "title": "Passwort ändern - Laravel",
+        "h1": 0
+      }
+    ]
+  }
+]
