@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import AppLayout from '@/components/layout/AppLayout.vue';
 import AddToCollectionModal from '@/components/widgets/AddToCollectionModal.vue';
-import { route } from 'ziggy-js';
-import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { route } from 'ziggy-js';
 
 type RatingDimension = {
     id: number | null;
     name: string;
-    avg: number;   // 1.0–5.0
+    avg: number; // 1.0–5.0
     count: number; // Anzahl Bewertungen für diese Dimension
 };
 
@@ -31,8 +31,13 @@ const props = defineProps<{
         rating: number | null;
         ratingCount: number;
         ratingDimensions: RatingDimension[];
-        source: string | null;
-        ingredients: { amount: string | null; name: string | null; alternatives?: string[]; }[];
+        // F-15: kein Feld „Quelle“ mehr
+        ingredients: {
+            amount: string | null;
+            name: string | null;
+            alternatives?: string[];
+        }[];
+        // ADR-001: mehrzeilige Schritte als EIN String mit "\n"
         steps: string[];
         notes: string[];
         createdAt: string | null;
@@ -49,9 +54,7 @@ const hasAnyRatings = computed(
     () => recipe.rating != null && recipe.ratingCount > 0,
 );
 
-const ratingDimensions = computed(
-    () => recipe.ratingDimensions ?? [],
-);
+const ratingDimensions = computed(() => recipe.ratingDimensions ?? []);
 
 const collections = computed(() => props.collections);
 
@@ -81,16 +84,17 @@ const getStars = (value: number | null) => {
 };
 
 const deleteRecipe = () => {
-    if (!confirm('Möchtest du dieses Rezept wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    if (
+        !confirm(
+            'Möchtest du dieses Rezept wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+        )
+    ) {
         return;
     }
 
-    router.delete(
-        route('recipes.delete', recipe.id),
-        {
-            preserveScroll: true,
-        },
-    );
+    router.delete(route('recipes.delete', recipe.id), {
+        preserveScroll: true,
+    });
 };
 </script>
 
@@ -100,10 +104,7 @@ const deleteRecipe = () => {
             <div class="layout">
                 <!-- Link zurück / Breadcrumb -->
                 <div class="breadcrumb">
-                    <a
-                        :href="route('recipes.index')"
-                        class="breadcrumb-link"
-                    >
+                    <a :href="route('recipes.index')" class="breadcrumb-link">
                         ← Zur Übersicht
                     </a>
                 </div>
@@ -111,7 +112,11 @@ const deleteRecipe = () => {
                 <!-- Header: Bild + Metadaten -->
                 <header class="header">
                     <div class="image-wrapper" v-if="recipe.image">
-                        <img :src="recipe.image" :alt="recipe.name" class="image" />
+                        <img
+                            :src="recipe.image"
+                            :alt="recipe.name"
+                            class="image"
+                        />
                     </div>
 
                     <!-- Header-Content mit Button oben rechts -->
@@ -156,15 +161,21 @@ const deleteRecipe = () => {
                             <div class="meta-card">
                                 <span class="meta-label">Zubereitung</span>
                                 <span class="meta-value">
-                                    {{ recipe.duration_minutes !== null
-                                    ? recipe.duration_minutes + ' Min.'
-                                    : '–' }}
+                                    {{
+                                        recipe.duration_minutes !== null
+                                            ? recipe.duration_minutes + ' Min.'
+                                            : '–'
+                                    }}
                                 </span>
                             </div>
                             <div class="meta-card">
                                 <span class="meta-label">Portionen</span>
                                 <span class="meta-value">
-                                    {{ recipe.servings !== null ? recipe.servings : '–' }}
+                                    {{
+                                        recipe.servings !== null
+                                            ? recipe.servings
+                                            : '–'
+                                    }}
                                 </span>
                             </div>
                         </div>
@@ -179,7 +190,10 @@ const deleteRecipe = () => {
                             </div>
                         </div>
 
-                        <div class="tags tags-secondary" v-if="recipe.tags?.length">
+                        <div
+                            class="tags tags-secondary"
+                            v-if="recipe.tags?.length"
+                        >
                             <div
                                 class="pill pill-outline"
                                 v-for="tag in recipe.tags"
@@ -187,10 +201,6 @@ const deleteRecipe = () => {
                             >
                                 #{{ tag }}
                             </div>
-                        </div>
-
-                        <div class="source-row" v-if="recipe.source">
-                            Quelle: <span class="source">{{ recipe.source }}</span>
                         </div>
                     </div>
 
@@ -218,10 +228,20 @@ const deleteRecipe = () => {
 
                                 <div class="rating-dimension-stars">
                                     <span class="stars-filled">
-                                        {{ '★ '.repeat(getStars(dim.avg).filled).trim() }}
+                                        {{
+                                            '★ '
+                                                .repeat(
+                                                    getStars(dim.avg).filled,
+                                                )
+                                                .trim()
+                                        }}
                                     </span>
                                     <span class="stars-empty">
-                                        {{ '★ '.repeat(getStars(dim.avg).empty).trim() }}
+                                        {{
+                                            '★ '
+                                                .repeat(getStars(dim.avg).empty)
+                                                .trim()
+                                        }}
                                     </span>
                                 </div>
                             </div>
@@ -236,14 +256,20 @@ const deleteRecipe = () => {
                                     <span class="stars-filled">
                                         {{
                                             '★ '
-                                                .repeat(getStars(recipe.rating).filled)
+                                                .repeat(
+                                                    getStars(recipe.rating)
+                                                        .filled,
+                                                )
                                                 .trim()
                                         }}
                                     </span>
                                     <span class="stars-empty">
                                         {{
                                             '★ '
-                                                .repeat(getStars(recipe.rating).empty)
+                                                .repeat(
+                                                    getStars(recipe.rating)
+                                                        .empty,
+                                                )
                                                 .trim()
                                         }}
                                     </span>
@@ -267,7 +293,9 @@ const deleteRecipe = () => {
                         <div class="ingredients">
                             <div
                                 class="ingredient-row"
-                                v-for="(ingredient, index) in recipe.ingredients"
+                                v-for="(
+                                    ingredient, index
+                                ) in recipe.ingredients"
                                 :key="ingredient.name ?? index"
                             >
                                 <span class="ingredient-amount">
@@ -279,15 +307,19 @@ const deleteRecipe = () => {
                                         {{ ingredient.name }}
                                     </span>
                                     <span
-                                        v-if="ingredient.alternatives && ingredient.alternatives.length"
+                                        v-if="
+                                            ingredient.alternatives &&
+                                            ingredient.alternatives.length
+                                        "
                                         class="ingredient-alternatives"
                                     >
                                         oder:
-                                        {{ ingredient.alternatives.join(' / ') }}
+                                        {{
+                                            ingredient.alternatives.join(' / ')
+                                        }}
                                     </span>
                                 </span>
                             </div>
-
                         </div>
                     </section>
 
@@ -301,7 +333,8 @@ const deleteRecipe = () => {
                                 class="step-item"
                             >
                                 <div class="step-badge">{{ index + 1 }}</div>
-                                <p class="step-text">
+                                <!-- F-14: Zeilenumbrüche innerhalb eines Schritts sichtbar -->
+                                <p class="step-text step-text--multiline">
                                     {{ step }}
                                 </p>
                             </li>

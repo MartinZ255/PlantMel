@@ -17,10 +17,11 @@ import { writeRaw } from './support/raw';
  * markiert: Der Lauf bleibt gruen, solange der Defekt besteht; wird er behoben, schlaegt der
  * Test als "unexpectedly passed" fehl und die Markierung muss entfernt werden.
  * Beobachtete Messwerte werden zusaetzlich als Rohdaten abgelegt (kind = "defects").
- * Behobene Befunde wandern nach tests/e2e/regression.spec.ts (seit Slice 1a: F-01 bis F-04).
+ * Behobene Befunde wandern nach tests/e2e/regression.spec.ts (seit Slice 1a: F-01 bis F-04,
+ * seit Slice 2: F-07).
  *
  * Datenveraenderungen: nur F-17 legt eine Sammlung fuer user2 an (nicht in der Baseline genutzt).
- * F-07 faengt den DELETE-Request ab, es wird nichts geloescht. F-04 nutzt eine eigene Anmeldung.
+ * F-04 nutzt eine eigene Anmeldung.
  */
 
 const MOBILE_390 = {
@@ -446,46 +447,6 @@ test.describe('Host', () => {
             scopedVisible,
             'sichtbare Fehlermeldung bei Zutaten/Schritten',
         ).toBeGreaterThan(0);
-    });
-
-    test('F-07 Tag loeschen verlangt eine Bestaetigung (DELETE wird abgefangen)', async ({
-        page,
-    }) => {
-        test.fail(true, 'F-07: TagEditModal sendet DELETE ohne Rueckfrage');
-        const deletes: string[] = [];
-        await page.route('**/categories/**', async (route) => {
-            if (route.request().method() === 'DELETE') {
-                deletes.push(route.request().url());
-                await route.fulfill({
-                    status: 200,
-                    contentType: 'application/json',
-                    body: '{}',
-                }); // nichts wird geloescht
-            } else {
-                await route.continue();
-            }
-        });
-        let dialogs = 0;
-        page.on('dialog', async (d) => {
-            dialogs++;
-            await d.dismiss();
-        });
-        await page.goto('/rezepte/erstellen');
-        await settle(page);
-        await page
-            .locator('.tag-chip', { hasText: DATA.throwawayCategory })
-            .dblclick();
-        const modal = page.locator('.modal', { hasText: 'Tag bearbeiten' });
-        await expect(modal).toBeVisible();
-        await modal.getByRole('button', { name: 'Löschen' }).click();
-        await page.waitForTimeout(800);
-        const confirmUi = await page.getByText(/wirklich|bestätig/i).count();
-        writeRaw('defects', 'F-07', {
-            deleteRequests: deletes,
-            nativeDialogs: dialogs,
-            confirmTextsInDom: confirmUi,
-        });
-        expect(deletes, 'kein DELETE ohne Bestaetigung').toEqual([]);
     });
 
     test('F-38 Drag-Griff der Schritte ist per Tastatur bedienbar', async ({

@@ -12,18 +12,25 @@ export const DATA = {
     },
     recipes: {
         withImage: { id: 1, title: 'Cremige Linsen-Bolognese' },
-        longTitle: { id: 2, title: 'Kürbis-Kichererbsen-Erdnusscurrygewürzmischung mit Röstzwiebel-Topping' },
+        longTitle: {
+            id: 2,
+            title: 'Kürbis-Kichererbsen-Erdnusscurrygewürzmischung mit Röstzwiebel-Topping',
+        },
         withoutImage: { id: 3, title: 'Overnight Oats mit Beeren' },
     },
     collections: {
         filled: { id: 1, name: 'Wochenplan' },
         empty: { id: 2, name: 'Leere Sammlung' },
     },
+    // Einem Rezept zugeordnet (Rezept 6), wird vom F-07-Regressionstest geloescht (Slice 2).
     throwawayCategory: 'E2E-Wegwerf-Tag',
+    // Abgeschlossener Import des Hosts mit altem Feld `source` im Ergebnis (F-15, Slice 2).
+    importWithSource: { id: 1, name: 'E2E Import-Vorbelegung' },
 } as const;
 
 export const AUTH_DIR = path.join(ROOT, 'playwright', '.auth');
-export const authFile = (role: 'user' | 'host' | 'user2') => path.join(AUTH_DIR, `${role}.json`);
+export const authFile = (role: 'user' | 'host' | 'user2') =>
+    path.join(AUTH_DIR, `${role}.json`);
 
 /** Feste Zeit fuer den Browser (Date.now/new Date); Timer laufen normal weiter. */
 export const FIXED_TIME = new Date('2026-01-15T10:00:00Z');
@@ -57,7 +64,9 @@ export const test = base.extend<Fixtures>({
             const origin = new URL(BASE_URL).origin;
 
             await page.route(
-                (url) => url.origin !== origin && (url.protocol === 'http:' || url.protocol === 'https:'),
+                (url) =>
+                    url.origin !== origin &&
+                    (url.protocol === 'http:' || url.protocol === 'https:'),
                 async (route) => {
                     diag.blockedExternal.push(route.request().url());
                     await route.abort('blockedbyclient');
@@ -78,14 +87,21 @@ export const test = base.extend<Fixtures>({
                 if (msg.text().includes('ERR_BLOCKED_BY_CLIENT')) return;
                 diag.consoleErrors.push(msg.text().slice(0, 500));
             });
-            page.on('pageerror', (err) => diag.pageErrors.push(String(err.message ?? err).slice(0, 500)));
+            page.on('pageerror', (err) =>
+                diag.pageErrors.push(String(err.message ?? err).slice(0, 500)),
+            );
             page.on('requestfailed', (req) => {
                 const reason = req.failure()?.errorText ?? 'unknown';
                 if (reason.includes('ERR_BLOCKED_BY_CLIENT')) return; // bewusst blockiert, separat erfasst
-                diag.failedRequests.push(`${req.method()} ${req.url()} (${reason})`);
+                diag.failedRequests.push(
+                    `${req.method()} ${req.url()} (${reason})`,
+                );
             });
             page.on('response', (res) => {
-                if (res.status() >= 400) diag.httpErrors.push(`${res.status()} ${res.request().method()} ${res.url()}`);
+                if (res.status() >= 400)
+                    diag.httpErrors.push(
+                        `${res.status()} ${res.request().method()} ${res.url()}`,
+                    );
             });
 
             await use(diag);
@@ -108,8 +124,12 @@ export async function settle(page: Page): Promise<void> {
                 .map(
                     (img) =>
                         new Promise((resolve) => {
-                            img.addEventListener('load', resolve, { once: true });
-                            img.addEventListener('error', resolve, { once: true });
+                            img.addEventListener('load', resolve, {
+                                once: true,
+                            });
+                            img.addEventListener('error', resolve, {
+                                once: true,
+                            });
                         }),
                 ),
         );
@@ -151,7 +171,8 @@ export async function measureLayout(page: Page): Promise<LayoutMetrics> {
         let count = 0;
         for (const el of Array.from(document.body.querySelectorAll('*'))) {
             const style = getComputedStyle(el);
-            if (style.display === 'none' || style.visibility === 'hidden') continue;
+            if (style.display === 'none' || style.visibility === 'hidden')
+                continue;
             const r = el.getBoundingClientRect();
             if (r.width === 0 || r.height === 0) continue;
             if (r.left >= vw) continue; // komplett ausserhalb (z. B. Off-Canvas) zaehlt nicht als Ueberstand
@@ -161,7 +182,10 @@ export async function measureLayout(page: Page): Promise<LayoutMetrics> {
                 const pr = parent?.getBoundingClientRect();
                 count++;
                 if (!pr || pr.right <= vw + 1) {
-                    if (over.length < 10) over.push(`${describe(el)} (right=${Math.round(r.right)})`);
+                    if (over.length < 10)
+                        over.push(
+                            `${describe(el)} (right=${Math.round(r.right)})`,
+                        );
                 }
             }
         }
@@ -178,7 +202,10 @@ export async function measureLayout(page: Page): Promise<LayoutMetrics> {
             horizontalOverflow: document.documentElement.scrollWidth > vw,
             overflowingElementCount: count,
             overflowingElements: over,
-            clippedH1: firstH1 ? firstH1.scrollWidth > firstH1.clientWidth + 1 || firstH1.getBoundingClientRect().right > vw + 1 : false,
+            clippedH1: firstH1
+                ? firstH1.scrollWidth > firstH1.clientWidth + 1 ||
+                  firstH1.getBoundingClientRect().right > vw + 1
+                : false,
         };
     });
 }

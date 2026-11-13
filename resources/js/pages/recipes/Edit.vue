@@ -17,15 +17,14 @@
                 :submit-route="route('recipes.update', recipe.id)"
                 submit-method="post"
             />
-
         </section>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { route } from 'ziggy-js';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import RecipeForm from '@/components/recipes/RecipeForm.vue';
+import { route } from 'ziggy-js';
 
 interface RatingDimension {
     id: number;
@@ -46,15 +45,17 @@ interface IngredientOption {
 interface IngredientRow {
     amount: string;
     name: string;
+    // F-13: vom Server gelieferte Alternativen der Zeile
+    alternativeIngredientIds: number[];
 }
 
+// F-15: kein Feld „Quelle“ mehr; ADR-001: mehrzeilige Schritte als EIN String
 interface RecipeFormInput {
     id: number;
     name: string;
     description: string | null;
     duration_minutes: number | null;
     servings: number | null;
-    source: string | null;
     tags: string[];
     ingredients: IngredientRow[];
     steps: string[];
@@ -62,14 +63,11 @@ interface RecipeFormInput {
     ratings: Record<number, number | null>;
 }
 
-const props = defineProps<{
+defineProps<{
     ratingDimensions: RatingDimension[];
     categories: Category[];
     ingredients: IngredientOption[];
     recipe: RecipeFormInput;
     isHost: boolean;
 }>();
-
 </script>
-
-

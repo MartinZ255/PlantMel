@@ -185,6 +185,28 @@ Basis-Commit `67a82d5`. Behoben: F-01, F-02, F-03, F-04 (sowie der F-04-Anteil v
 
 **Laeufe Slice 1a:** siehe Bericht des Slices; Kennzahlen: 151 Tests (4 Setup, 115 Baseline, 14 Regression, 18 Defekt-Tests, davon 16 `test.fail` und 2 normal gruene F-30-Normalfaelle). Fuer parallele Arbeitskopien den Port per `E2E_PORT=<port>` setzen.
 
+## 7b. Nachtrag Slice 2 – Datenverlust beim Bearbeiten (2026-11-13)
+
+Basis-Commit `3e8e34c` (Backend-Teil von Slice 2). Behoben im Frontend: F-07, F-65 (Bestätigung beim Löschen mit Servermeldung, Fehler sichtbar), F-13 (Alternativen nur noch als Entwurf, gespeichert mit dem Rezept), F-14 (mehrzeilige Schritte), F-15 (Feld „Quelle“ entfernt), F-39 (Entfernen aus Sammlungen mit Rückfrage an der Karte); Teil von F-74 (Fehler beim Umbenennen/Löschen in den beiden Bearbeiten-Modals).
+
+**Regressionstests (+14, Block „Slice 2“ am Ende von `regression.spec.ts`):** F-07 Löschen mit 409 → Abbrechen → Zurücksetzen beim erneuten Öffnen → „Endgültig löschen“ mit `confirmed=1` (Kategorie danach weg) · F-07 Netzwerkfehler und 500 sichtbar · F-07/F-74 Umbenennen auf vergebenen Namen sichtbar · F-07 bei 390 px (nur 409 + Abbrechen) · F-65/F-18 verwendete Zutat → 422 sichtbar, Umbenennen-Fehler sichtbar · F-65 Wegwerf-Zutat anlegen → Bestätigung → gelöscht · F-13 Alternative hinzufügen/entfernen ohne Request an `…/alternatives` · F-13 „Abbrechen“ verwirft · F-13 neue Zeile, Drag & Drop, Umbenennen, nie geöffnetes Modal (gesendete Felder je Zeile geprüft) · F-14 mehrzeiliger Schritt: Anlegen, Bearbeiten, unverändert gesendet, `white-space: pre-line` · F-15 kein Feld „Quelle“, Import-Vorbelegung mit altem `source` · F-39 Kartenklick löscht nicht, Rückfrage, Abbrechen, Tastatur (Enter/Shift+Tab/Enter) · F-39 Fehler (500) an der Karte · F-39 bei 390 px.
+Der bisherige Defekt-Test F-07 (`test.fail`) wurde aus `known-defects.spec.ts` entfernt.
+
+**Testdaten (Seeder):**
+- `E2E-Wegwerf-Tag` ist jetzt Rezept 6 („Schnelle Tomatenpasta“) zugeordnet, damit die Bestätigung eine Anzahl nennt. Rezept 6 wurde gewählt, weil es in keiner Detail- oder Sammlungs-Baseline vorkommt und seine Variante („ohne Bewertungen“) erhalten bleibt; Rezept 8 bleibt „ohne Kategorien“.
+- Neuer abgeschlossener Import des Hosts (ID 1) im Altformat mit `source` im Ergebnis; nur über `/rezepte/erstellen?import=1` erreichbar.
+- Mutierende Tests nutzen eigene Wegwerf-Daten (Rezepte per `POST /recipes` nur mit bestehenden Zutaten, am Ende gelöscht; Wegwerf-Zutat wird angelegt und gelöscht; Sammlungen von `user2`, am Ende gelöscht). Einzige bleibende Änderung im Lauf: F-07 löscht `E2E-Wegwerf-Tag`. Die Baseline-Projekte stehen in der Konfiguration vor `regression` und laufen mit `workers: 1` zuerst (im Lauf-Log beobachtet); die Datenbank wird vor jedem Lauf neu angelegt.
+
+**Screenshot-Baselines aktualisiert (20 von 110):**
+- `host-rezept-erstellen-*` und `host-rezept-bearbeiten-*` (je 5): Feld „Quelle“ entfällt (Formular 78–80 px niedriger bei 320–768 px). **Zusätzlich** sind die Bewertungsdimensionen jetzt nach Name sortiert (Aufwand, Gesamt, Geschmack, Schwierigkeit) – das stammt aus dem Backend-Teil (E5/F-12, `3e8e34c`), nicht aus dem Frontend; die Baselines waren dort nicht nachgezogen worden.
+- `guest-rezepte-*` und `user-home-*` (je 5): Karte „Schnelle Tomatenpasta“ zeigt zusätzlich den Tag „E2E-Wegwerf-Tag“ (Seeder). Diese Abweichung lag unter der Toleranz (Vergleich blieb grün), die Bilder wurden trotzdem erneuert, damit sie den Seeder-Stand zeigen.
+- Nicht übernommen: 16 weitere Aufnahmen (320/390 px), die beim Neuschreiben nur durch Text-Antialiasing im Schriftzug „PLANTMEL“ (Subpixel statt Graustufen, 495 Pixel, y = 24–36) abwichen. Das ist Rendering-Rauschen, Playwright wertet es nicht als Abweichung; die alten Bilder bleiben.
+- Detailseiten der Rezepte 1–3 unverändert: kein Seeder-Rezept hat mehrzeilige Schritte; `white-space: pre-line` ändert ohne Umbrüche nichts. Sammlungsseite unverändert (Änderungen nur im Entfernen-Modus).
+
+**Gefundener und behobener Fehler während der Umsetzung:** Ein erster Entwurf entfernte Rezepte aus Sammlungen per axios-`DELETE`. Der Browser folgte dem 302 von `removeRecipe` mit derselben Methode (`DELETE /sammlung/{id}` → 405), die Liste wurde nicht aktualisiert. Jetzt: Inertia-`router.delete` (Laravel antwortet mit 303), Fehler über die abbrechbaren Inertia-Events `invalid`/`exception`.
+
+**Läufe Slice 2:** zwei vollständige Läufe `E2E_PORT=8151 npx playwright test` nach dem letzten Build: je 164 bestanden (Exit 0, ca. 5,0 min); 164 Tests (4 Setup, 115 Baseline, 28 Regression, 17 Defekt-Tests, davon 15 `test.fail` und 2 normal grüne F-30-Normalfälle).
+
 ## 8. Offene Risiken
 
 - Im Hauptverzeichnis mit `.env` nicht ausgeführt; die Umgebungsvariablen-Priorität ist dort begründet, aber nicht gemessen.

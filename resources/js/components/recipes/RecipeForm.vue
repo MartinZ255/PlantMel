@@ -20,7 +20,9 @@
                 </div>
 
                 <div class="form-field">
-                    <label class="form-field__label" for="description">Kurzbeschreibung</label>
+                    <label class="form-field__label" for="description"
+                        >Kurzbeschreibung</label
+                    >
                     <textarea
                         id="description"
                         v-model="form.description"
@@ -35,7 +37,9 @@
 
                 <div class="form-row-split">
                     <div class="form-field">
-                        <label class="form-field__label" for="cook_time">Zubereitungsdauer (Min.)</label>
+                        <label class="form-field__label" for="cook_time"
+                            >Zubereitungsdauer (Min.)</label
+                        >
                         <input
                             id="cook_time"
                             v-model="form.duration_minutes"
@@ -47,7 +51,9 @@
                     </div>
 
                     <div class="form-field">
-                        <label class="form-field__label" for="servings">Portionen</label>
+                        <label class="form-field__label" for="servings"
+                            >Portionen</label
+                        >
                         <input
                             id="servings"
                             v-model="form.servings"
@@ -62,9 +68,7 @@
                 <!-- Sternebewertung pro Dimension -->
                 <div class="recipe-form__ratings">
                     <div class="form-field">
-                        <div class="recipe-form__section-title">
-                            Bewertung
-                        </div>
+                        <div class="recipe-form__section-title">Bewertung</div>
                     </div>
 
                     <div class="rating-grid">
@@ -93,7 +97,8 @@
                                     class="rating-star-btn"
                                     :class="{
                                         'rating-star-btn--active':
-                                            (form.ratings[dimension.id] ?? 0) >= star,
+                                            (form.ratings[dimension.id] ?? 0) >=
+                                            star,
                                     }"
                                     @click="setRating(dimension.id, star)"
                                 >
@@ -128,22 +133,12 @@
                         @change="onImageChange"
                     />
                     <p class="form-field__hint">
-                        Optional – wird z. B. für die Vorschaukarte oder Detailseite verwendet.
+                        Optional – wird z. B. für die Vorschaukarte oder
+                        Detailseite verwendet.
                     </p>
                     <p v-if="form.errors.image" class="form-field__error">
                         {{ form.errors.image }}
                     </p>
-                </div>
-
-                <div class="form-field">
-                    <label class="form-field__label" for="source">Quelle</label>
-                    <input
-                        id="source"
-                        v-model="form.source"
-                        type="text"
-                        class="form-field__input"
-                        placeholder="z. B. Eigene Sammlung, Blog, Kochbuch …"
-                    />
                 </div>
 
                 <!-- TAGS -->
@@ -159,7 +154,11 @@
                                 :key="category.id"
                                 type="button"
                                 class="tag-chip"
-                                :class="{ 'tag-chip--active': form.tags.includes(category.name) }"
+                                :class="{
+                                    'tag-chip--active': form.tags.includes(
+                                        category.name,
+                                    ),
+                                }"
                                 @click="toggleTag(category.name)"
                                 @dblclick.stop="openTagEditModal(category)"
                             >
@@ -182,7 +181,8 @@
         <div class="recipe-form__section recipe-form__section--wide">
             <h2 class="recipe-form__section-title">Zutaten</h2>
             <p class="recipe-form__section-hint">
-                Jede Zeile entspricht einer Zutat. Menge links, Bezeichnung rechts.
+                Jede Zeile entspricht einer Zutat. Menge links, Bezeichnung
+                rechts.
             </p>
 
             <div class="ingredients-builder" ref="ingredientsListEl">
@@ -190,7 +190,10 @@
                     v-for="(ingredient, index) in form.ingredients"
                     :key="ingredientIds[index]"
                     class="ingredients-builder__row"
-                    :class="{ 'ingredients-builder__row--dragging': draggedIngredientIndex === index }"
+                    :class="{
+                        'ingredients-builder__row--dragging':
+                            draggedIngredientIndex === index,
+                    }"
                 >
                     <button
                         v-if="form.ingredients.length > 1"
@@ -231,7 +234,9 @@
                                 :key="option.id"
                                 type="button"
                                 class="ingredients-dropdown__item"
-                                @mousedown.prevent="selectIngredient(index, option.name)"
+                                @mousedown.prevent="
+                                    selectIngredient(index, option.name)
+                                "
                             >
                                 {{ option.name }}
                             </button>
@@ -240,7 +245,10 @@
 
                     <!-- + oder Stift abhängig davon, ob Zutat existiert -->
                     <button
-                        v-if="ingredient.name.trim() && !findIngredientByName(ingredient.name)"
+                        v-if="
+                            ingredient.name.trim() &&
+                            !findIngredientByName(ingredient.name)
+                        "
                         type="button"
                         class="secondary-pill-button ingredients-builder__action"
                         @click="createIngredientFromRow(index)"
@@ -252,7 +260,11 @@
                         v-else-if="findIngredientByName(ingredient.name)"
                         type="button"
                         class="secondary-pill-button ingredients-builder__action"
-                        @click="openEditIngredientModal(findIngredientByName(ingredient.name)!)"
+                        @click="
+                            openEditIngredientModal(
+                                findIngredientByName(ingredient.name)!,
+                            )
+                        "
                         aria-label="Zutat bearbeiten"
                     >
                         <svg
@@ -293,7 +305,6 @@
                                 d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
                             />
                         </svg>
-
                     </button>
 
                     <button
@@ -320,7 +331,8 @@
         <div class="recipe-form__section recipe-form__section--wide">
             <h2 class="recipe-form__section-title">Zubereitung</h2>
             <p class="recipe-form__section-hint">
-                Die Reihenfolge der Schritte entspricht der Darstellung im Rezept.
+                Die Reihenfolge der Schritte entspricht der Darstellung im
+                Rezept.
             </p>
 
             <ol class="steps-builder" ref="stepsListEl">
@@ -328,7 +340,10 @@
                     v-for="(step, index) in form.steps"
                     :key="stepIds[index]"
                     class="steps-builder__row"
-                    :class="{ 'steps-builder__row--dragging': draggedStepIndex === index }"
+                    :class="{
+                        'steps-builder__row--dragging':
+                            draggedStepIndex === index,
+                    }"
                 >
                     <button
                         v-if="form.steps.length > 1"
@@ -404,7 +419,11 @@
                     class="primary-pill-button"
                     :disabled="form.processing"
                 >
-                    {{ mode === 'edit' ? 'Rezept aktualisieren' : 'Rezept speichern' }}
+                    {{
+                        mode === 'edit'
+                            ? 'Rezept aktualisieren'
+                            : 'Rezept speichern'
+                    }}
                 </button>
             </div>
         </div>
@@ -427,34 +446,33 @@
             @deleted="onTagDeleted"
         />
 
+        <!-- F-13: Entwurf je Zeile; gespeichert wird mit dem Rezept -->
         <IngredientAlternativesModal
             v-if="ingredientForAlternatives"
             :show="isAlternativesModalOpen"
             :ingredient="ingredientForAlternatives"
             :all-ingredients="ingredientOptions"
-            :recipe-id="props.recipe?.id ?? null"
-            :base-ingredient-id="ingredientForAlternatives? (findIngredientByName(ingredientForAlternatives.name)?.id ?? null): null"
-            :draft-alternative-ids="ingredientAlternativesIndex !== null? (form.ingredients[ingredientAlternativesIndex]?.alternativeIngredientIds ?? []): []"
-            @update-draft="(ids) => {
-                if (ingredientAlternativesIndex !== null) {
-                    form.ingredients[ingredientAlternativesIndex].alternativeIngredientIds = ids;
-                }
-            }"
+            :base-ingredient-id="
+                findIngredientByName(ingredientForAlternatives.name)?.id ?? null
+            "
+            :draft-alternative-ids="
+                ingredientForAlternatives.alternativeIngredientIds ?? []
+            "
+            @update-draft="onAlternativesDraft"
             @close="isAlternativesModalOpen = false"
         />
-
     </form>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import IngredientAlternativesModal from '@/components/widgets/IngredientAlternativesModal.vue';
+import IngredientEditModal from '@/components/widgets/IngredientEditModal.vue';
+import TagEditModal from '@/components/widgets/TagEditModal.vue';
 import { useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import { GripVertical } from 'lucide-vue-next';
+import { ref } from 'vue';
 import { route } from 'ziggy-js';
-import IngredientEditModal from '@/components/widgets/IngredientEditModal.vue';
-import TagEditModal from '@/components/widgets/TagEditModal.vue';
-import IngredientAlternativesModal from '@/components/widgets/IngredientAlternativesModal.vue';
 
 interface RatingDimension {
     id: number;
@@ -476,22 +494,40 @@ interface IngredientOption {
 interface IngredientRow {
     amount: string;
     name: string;
-    alternativeIngredientIds?: number[];
+    alternativeIngredientIds: number[];
 }
 
+// Eingang aus Edit-Props bzw. Import-Ergebnis (Felder können fehlen)
+interface IngredientRowInput {
+    amount?: string | null;
+    name?: string | null;
+    alternativeIngredientIds?: (number | string)[];
+}
+
+// F-15: kein Feld „Quelle“ mehr. Ältere Import-Ergebnisse dürfen `source`
+// noch enthalten – es wird schlicht nicht übernommen.
 interface RecipeFormInput {
     id?: number;
     name?: string;
-    description?: string;
+    description?: string | null;
     duration_minutes?: string | number | null;
     servings?: string | number | null;
-    source?: string;
     tags?: string[];
-    ingredients?: IngredientRow[];
+    ingredients?: IngredientRowInput[];
+    // ADR-001: ein mehrzeiliger Schritt ist EIN String mit "\n"
     steps?: string[];
-    notes?: string;
+    notes?: string | null;
     ratings?: Record<number, number | null>;
 }
+
+/** Jede Zeile bekommt eine eigene, vollständige Liste der Alternativen (F-13). */
+const toIngredientRow = (row?: IngredientRowInput): IngredientRow => ({
+    amount: row?.amount ?? '',
+    name: row?.name ?? '',
+    alternativeIngredientIds: [
+        ...new Set((row?.alternativeIngredientIds ?? []).map(Number)),
+    ].filter((id) => Number.isInteger(id) && id > 0),
+});
 
 const props = defineProps<{
     mode: 'create' | 'edit';
@@ -512,27 +548,20 @@ const categoryOptions = ref<Category[]>(props.categories ?? []);
 const tagBeingEdited = ref<Category | null>(null);
 const isTagModalOpen = ref(false);
 
-// Alternativzutaten-Modal
+// Alternativzutaten-Modal (hält die Zeile selbst, nicht ihren Index)
 const isAlternativesModalOpen = ref(false);
 const ingredientForAlternatives = ref<IngredientRow | null>(null);
-const ingredientAlternativesIndex = ref<number | null>(null);
 
 const form = useForm({
-    name: props.recipe?.name
-        ?? (props.recipe as any)?.title
-        ?? '',
+    name: props.recipe?.name ?? (props.recipe as any)?.title ?? '',
     description: props.recipe?.description ?? '',
     duration_minutes: props.recipe?.duration_minutes ?? '',
     servings: props.recipe?.servings ?? '',
     image: null as File | null,
-    source: props.recipe?.source ?? '',
     tags: props.recipe?.tags ?? [],
-    ingredients: props.recipe?.ingredients ?? [
-        {
-            amount: '',
-            name: '',
-        },
-    ],
+    ingredients: props.recipe?.ingredients?.length
+        ? props.recipe.ingredients.map(toIngredientRow)
+        : [toIngredientRow()],
     steps: props.recipe?.steps ?? [''],
     notes: props.recipe?.notes ?? '',
     ratings: props.recipe?.ratings ?? ({} as Record<number, number | null>),
@@ -559,7 +588,7 @@ const addTagFromDraft = async () => {
 
     // Prüfen, ob es die Kategorie schon gibt
     const existing = categoryOptions.value.find(
-        (cat) => cat.name.toLowerCase().trim() === value.toLowerCase()
+        (cat) => cat.name.toLowerCase().trim() === value.toLowerCase(),
     );
 
     if (existing) {
@@ -592,10 +621,7 @@ const addTagFromDraft = async () => {
 
 // Zutaten
 const addIngredient = () => {
-    form.ingredients.push({
-        amount: '',
-        name: '',
-    });
+    form.ingredients.push(toIngredientRow());
     ingredientIds.value.push(nextRowId++);
 };
 
@@ -623,9 +649,7 @@ const getIngredientOptions = (index: number) => {
         return list;
     }
 
-    return list.filter((ing) =>
-        ing.name.toLowerCase().includes(query)
-    );
+    return list.filter((ing) => ing.name.toLowerCase().includes(query));
 };
 
 // Auswahl eines Vorschlags
@@ -766,6 +790,21 @@ const onImageChange = (event: Event) => {
 const submit = () => {
     const method = props.submitMethod;
 
+    // F-13: Für JEDE Zeile die aktuelle Liste der Alternativen mitsenden (auch
+    // nach Umsortieren, Umbenennen und für nie geöffnete Modals). Der Server
+    // nimmt sie als einzige Wahrheit; eine leere Liste überträgt FormData
+    // nicht – das bedeutet dort „keine Alternativen“.
+    form.transform((data) => ({
+        ...data,
+        ingredients: data.ingredients.map((row) => ({
+            amount: row.amount,
+            name: row.name,
+            alternativeIngredientIds: [
+                ...new Set(row.alternativeIngredientIds ?? []),
+            ],
+        })),
+    }));
+
     if (method === 'post') {
         form.post(props.submitRoute, {
             forceFormData: true,
@@ -792,8 +831,8 @@ const findIngredientByName = (name: string): IngredientOption | undefined => {
     const query = name.toLowerCase().trim();
     if (!query) return undefined;
 
-    return ingredientOptions.value.find((ing) =>
-        ing.name.toLowerCase().trim() === query
+    return ingredientOptions.value.find(
+        (ing) => ing.name.toLowerCase().trim() === query,
     );
 };
 
@@ -835,16 +874,27 @@ const openIngredientAlternatives = (index: number) => {
     const row = form.ingredients[index];
     if (!row) return;
 
-    ingredientAlternativesIndex.value = index;
     ingredientForAlternatives.value = row;
     isAlternativesModalOpen.value = true;
 };
 
-const onIngredientUpdated = (payload: { oldName: string; ingredient: IngredientOption }) => {
+// „Übernehmen“ im Modal: Entwurf in die Zeile schreiben (noch nicht gespeichert)
+const onAlternativesDraft = (ids: number[]) => {
+    if (ingredientForAlternatives.value) {
+        ingredientForAlternatives.value.alternativeIngredientIds = [...ids];
+    }
+};
+
+const onIngredientUpdated = (payload: {
+    oldName: string;
+    ingredient: IngredientOption;
+}) => {
     const { oldName, ingredient } = payload;
 
     // 1) ingredientOptions aktualisieren
-    const idx = ingredientOptions.value.findIndex((ing) => ing.id === ingredient.id);
+    const idx = ingredientOptions.value.findIndex(
+        (ing) => ing.id === ingredient.id,
+    );
     if (idx !== -1) {
         ingredientOptions.value[idx] = ingredient;
     } else {
@@ -863,13 +913,19 @@ const onIngredientDeleted = (payload: { id: number; name: string }) => {
     const { id, name } = payload;
 
     // 1) Aus Optionen entfernen
-    ingredientOptions.value = ingredientOptions.value.filter((ing) => ing.id !== id);
+    ingredientOptions.value = ingredientOptions.value.filter(
+        (ing) => ing.id !== id,
+    );
 
-    // 2) In aktuell offenen Formular-Zeilen ggf. Namen leeren
+    // 2) In aktuell offenen Formular-Zeilen ggf. Namen leeren und die
+    //    gelöschte Zutat aus vorgemerkten Alternativen entfernen
     form.ingredients.forEach((row) => {
         if (row.name.trim().toLowerCase() === name.toLowerCase()) {
             row.name = '';
         }
+        row.alternativeIngredientIds = row.alternativeIngredientIds.filter(
+            (altId) => altId !== id,
+        );
     });
 };
 
@@ -892,9 +948,7 @@ const onTagUpdated = (payload: { oldName: string; category: Category }) => {
 
     // 2) form.tags (Name-Liste) aktualisieren
     form.tags = form.tags.map((t) =>
-        t.trim().toLowerCase() === oldName.toLowerCase()
-            ? category.name
-            : t
+        t.trim().toLowerCase() === oldName.toLowerCase() ? category.name : t,
     );
 };
 
@@ -906,7 +960,7 @@ const onTagDeleted = (payload: { id: number; name: string }) => {
 
     // 2) Tag aus dem Rezept entfernen
     form.tags = form.tags.filter(
-        (t) => t.trim().toLowerCase() !== name.toLowerCase()
+        (t) => t.trim().toLowerCase() !== name.toLowerCase(),
     );
 };
 </script>

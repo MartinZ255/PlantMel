@@ -1,12 +1,23 @@
 <template>
     <div v-if="show" class="modal-backdrop">
-        <div class="modal alternatives-modal">
-            <h2 class="modal__title">
+        <div
+            class="modal alternatives-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="alternatives-modal-title"
+        >
+            <h2 id="alternatives-modal-title" class="modal__title">
                 Alternativen für: {{ ingredient?.name || 'Zutat' }}
             </h2>
 
             <p class="modal__hint">
-                Wähle links Zutaten aus, die als Alternativen für diese Rezeptzutat gelten sollen.
+                Wähle links Zutaten aus, die als Alternativen für diese
+                Rezeptzutat gelten sollen.
+            </p>
+            <!-- F-13: Das Modal speichert nichts selbst; gespeichert wird mit dem Formular -->
+            <p class="modal__hint alternatives-modal__save-hint">
+                Wird mit dem Rezept gespeichert. „Übernehmen“ merkt die Auswahl
+                vor, „Abbrechen“ verwirft die Änderungen in diesem Fenster.
             </p>
 
             <!-- Falls gar keine Zutat ausgewählt ist -->
@@ -14,12 +25,14 @@
                 Bitte zuerst eine Zutat in der Zeile eingeben/auswählen.
             </div>
 
-            <!-- Hauptlayout: funktioniert sowohl im Draft- als auch im DB-Modus -->
+            <!-- Hauptlayout: arbeitet immer auf einem Entwurf -->
             <div v-else class="alternatives-layout">
                 <!-- Linke Seite: alle Zutaten mit Suche -->
                 <div class="alternatives-panel">
                     <div class="form-field">
-                        <label class="form-field__label" for="alt-search">Zutat suchen</label>
+                        <label class="form-field__label" for="alt-search"
+                            >Zutat suchen</label
+                        >
                         <input
                             id="alt-search"
                             v-model="searchTerm"
@@ -35,13 +48,19 @@
                             :key="ing.id"
                             type="button"
                             class="alternatives-list__item"
-                            :class="{ 'alternatives-list__item--selected': selectedAvailableId === ing.id }"
+                            :class="{
+                                'alternatives-list__item--selected':
+                                    selectedAvailableId === ing.id,
+                            }"
                             @click="selectedAvailableId = ing.id"
                         >
                             {{ ing.name }}
                         </button>
 
-                        <div v-if="filteredAvailableIngredients.length === 0" class="alternatives-list__empty">
+                        <div
+                            v-if="filteredAvailableIngredients.length === 0"
+                            class="alternatives-list__empty"
+                        >
                             Keine passenden Zutaten gefunden.
                         </div>
                     </div>
@@ -52,6 +71,7 @@
                     <button
                         type="button"
                         class="primary-pill-button alternatives-panel__btn"
+                        aria-label="Als Alternative hinzufügen"
                         @click="addAlternative"
                         :disabled="!canAdd"
                     >
@@ -60,6 +80,7 @@
                     <button
                         type="button"
                         class="secondary-pill-button alternatives-panel__btn"
+                        aria-label="Alternative entfernen"
                         @click="removeAlternative"
                         :disabled="!canRemove"
                     >
@@ -72,8 +93,7 @@
                     <div class="form-field">
                         <div class="form-field__label">
                             Ausgewählte Alternativen
-                            <span v-if="isDbMode" class="inline-badge">gespeichert</span>
-                            <span v-else class="inline-badge">Entwurf</span>
+                            <span class="inline-badge">Entwurf</span>
                         </div>
                     </div>
 
@@ -83,13 +103,19 @@
                             :key="alt.id"
                             type="button"
                             class="alternatives-list__item"
-                            :class="{ 'alternatives-list__item--selected': selectedAlternativeId === alt.id }"
+                            :class="{
+                                'alternatives-list__item--selected':
+                                    selectedAlternativeId === alt.id,
+                            }"
                             @click="selectedAlternativeId = alt.id"
                         >
                             {{ alt.alternative.name }}
                         </button>
 
-                        <div v-if="rightItems.length === 0" class="alternatives-list__empty">
+                        <div
+                            v-if="rightItems.length === 0"
+                            class="alternatives-list__empty"
+                        >
                             Noch keine Alternativzutaten hinterlegt.
                         </div>
                     </div>
@@ -100,9 +126,17 @@
                 <button
                     type="button"
                     class="secondary-pill-button"
-                    @click="emit('close')"
+                    @click="cancel"
                 >
-                    Schließen
+                    Abbrechen
+                </button>
+                <button
+                    v-if="ingredient"
+                    type="button"
+                    class="primary-pill-button"
+                    @click="apply"
+                >
+                    Übernehmen
                 </button>
             </div>
         </div>
@@ -111,8 +145,15 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import axios from 'axios';
-import { route } from 'ziggy-js';
+
+/**
+ * F-13: Das Modal arbeitet immer als Entwurf. Es sendet keine Requests,
+ * sondern gibt die gewählten Zutat-IDs per `update-draft` an das
+ * Rezeptformular zurück; gespeichert wird beim Absenden des Rezepts
+ * (`ingredients[i].alternativeIngredientIds`). Startwert sind die IDs der
+ * Formularzeile – beim Bearbeiten also die vom Server gelieferten
+ * Alternativen aus den Edit-Props.
+ */
 
 interface IngredientRow {
     amount: string;
@@ -126,8 +167,6 @@ interface IngredientOption {
 
 interface AlternativeItem {
     id: number;
-    ingredient_id: number;
-    alternative_ingredient_id: number;
     alternative: IngredientOption;
 }
 
@@ -135,9 +174,8 @@ const props = defineProps<{
     show: boolean;
     ingredient: IngredientRow | null;
     allIngredients: IngredientOption[];
-    recipeId?: number | null;
     baseIngredientId: number | null;
-    // Draft-IDs aus dem Formular (Create-Mode oder später vereinheitlicht)
+    // IDs der Formularzeile (Startwert der Sitzung)
     draftAlternativeIds?: number[];
 }>();
 
@@ -149,24 +187,22 @@ const emit = defineEmits<{
 const searchTerm = ref('');
 const selectedAvailableId = ref<number | null>(null);
 const selectedAlternativeId = ref<number | null>(null);
-const selectedAlternatives = ref<AlternativeItem[]>([]);
-const loading = ref(false);
 
-// DB- vs. Draft-Modus
-const isDbMode = computed(
-    () => !!(props.recipeId && props.baseIngredientId),
-);
+// Entwurf dieser Sitzung; wird erst mit „Übernehmen“ an das Formular gegeben
+const draftIds = ref<number[]>([]);
 
-// Draft-State
-const draftAlternativeIds = ref<number[]>(props.draftAlternativeIds ?? []);
+const initDraft = () => {
+    searchTerm.value = '';
+    selectedAvailableId.value = null;
+    selectedAlternativeId.value = null;
+    draftIds.value = [...new Set(props.draftAlternativeIds ?? [])];
+};
 
-// Draft von außen aktualisieren, falls Props sich ändern
+// Beim Öffnen mit dem aktuellen Stand der Zeile beginnen
 watch(
-    () => props.draftAlternativeIds,
-    (val) => {
-        if (!isDbMode.value) {
-            draftAlternativeIds.value = val ?? [];
-        }
+    () => props.show,
+    (show) => {
+        if (show) initDraft();
     },
     { immediate: true },
 );
@@ -174,187 +210,62 @@ watch(
 // Verfügbare Zutaten für die linke Liste berechnen
 const filteredAvailableIngredients = computed(() => {
     const q = searchTerm.value.toLowerCase().trim();
+    const excludeIds = new Set(draftIds.value);
 
-    const excludeIds = new Set<number>();
-
-    if (isDbMode.value) {
-        selectedAlternatives.value.forEach((alt) => {
-            excludeIds.add(alt.alternative_ingredient_id);
-        });
-    } else {
-        draftAlternativeIds.value.forEach((id) => excludeIds.add(id));
-    }
-
-    return props.allIngredients
-        .filter((ing) => {
-            if (props.baseIngredientId && ing.id === props.baseIngredientId) {
-                return false; // Basiszutat selbst nicht als Alternative
-            }
-            if (excludeIds.has(ing.id)) {
-                return false;
-            }
-            if (!q) return true;
-            return ing.name.toLowerCase().includes(q);
-        });
-});
-
-// Rechte Seite vereinheitlichen
-const rightItems = computed<AlternativeItem[]>(() => {
-    if (isDbMode.value) {
-        return selectedAlternatives.value;
-    }
-
-    // Draft-Modus: aus IDs eine „Fake-Liste“ bauen
-    return draftAlternativeIds.value.map((id) => {
-        const ing = props.allIngredients.find((i) => i.id === id);
-        return {
-            id, // hier dient id nur als key
-            ingredient_id: 0,
-            alternative_ingredient_id: id,
-            alternative: ing ?? { id, name: 'Unbekannte Zutat' },
-        };
+    return props.allIngredients.filter((ing) => {
+        if (props.baseIngredientId && ing.id === props.baseIngredientId) {
+            return false; // Basiszutat selbst nicht als Alternative
+        }
+        if (excludeIds.has(ing.id)) {
+            return false;
+        }
+        if (!q) return true;
+        return ing.name.toLowerCase().includes(q);
     });
 });
 
-// Kann hinzugefügt / entfernt werden?
-const canAdd = computed(() =>
-    isDbMode.value
-        ? !!(props.recipeId && props.baseIngredientId && selectedAvailableId.value)
-        : !!selectedAvailableId.value,
+// Rechte Seite: gewählte Alternativen mit Namen
+const rightItems = computed<AlternativeItem[]>(() =>
+    draftIds.value.map((id) => ({
+        id,
+        alternative: props.allIngredients.find((i) => i.id === id) ?? {
+            id,
+            name: 'Unbekannte Zutat',
+        },
+    })),
 );
 
-const canRemove = computed(() =>
-    isDbMode.value
-        ? !!(props.recipeId && props.baseIngredientId && selectedAlternativeId.value)
-        : !!selectedAlternativeId.value,
-);
+const canAdd = computed(() => !!selectedAvailableId.value);
+const canRemove = computed(() => !!selectedAlternativeId.value);
 
-// DB-Alternativen laden
-const loadAlternativesFromApi = async () => {
-    selectedAlternatives.value = [];
+const addAlternative = () => {
+    const id = selectedAvailableId.value;
+    if (!id) return;
+
+    if (!draftIds.value.includes(id)) {
+        draftIds.value = [...draftIds.value, id];
+    }
     selectedAvailableId.value = null;
-    selectedAlternativeId.value = null;
-
-    if (!props.recipeId || !props.baseIngredientId) {
-        return;
-    }
-
-    try {
-        loading.value = true;
-        const response = await axios.get(
-            route('ingredientAlternatives.index', {
-                recipe: props.recipeId,
-                ingredient: props.baseIngredientId,
-            }),
-        );
-
-        selectedAlternatives.value = response.data as AlternativeItem[];
-    } catch (error) {
-        console.error('Alternativen laden fehlgeschlagen', error);
-    } finally {
-        loading.value = false;
-    }
 };
 
-// Draft initialisieren
-const initDraftAlternatives = () => {
-    selectedAvailableId.value = null;
-    selectedAlternativeId.value = null;
-    draftAlternativeIds.value = props.draftAlternativeIds ?? [];
-};
-
-// Auf show reagieren: beim Öffnen initialisieren
-watch(
-    () => props.show,
-    (show) => {
-        if (!show) return;
-
-        if (isDbMode.value) {
-            loadAlternativesFromApi();
-        } else {
-            initDraftAlternatives();
-        }
-    },
-);
-
-// Beim Wechsel der Basiszutat im DB-Modus neu laden
-watch(
-    () => props.baseIngredientId,
-    () => {
-        if (props.show && isDbMode.value) {
-            loadAlternativesFromApi();
-        }
-    },
-);
-
-const addAlternative = async () => {
-    if (!selectedAvailableId.value) return;
-
-    if (isDbMode.value) {
-        if (!props.recipeId || !props.baseIngredientId) return;
-
-        try {
-            loading.value = true;
-
-            const response = await axios.post(
-                route('ingredientAlternatives.store', {
-                    recipe: props.recipeId,
-                    ingredient: props.baseIngredientId,
-                }),
-                {
-                    alternative_ingredient_id: selectedAvailableId.value,
-                },
-            );
-
-            const created = response.data as AlternativeItem;
-            selectedAlternatives.value.push(created);
-            selectedAvailableId.value = null;
-        } catch (error) {
-            console.error('Alternativzutat anlegen fehlgeschlagen', error);
-        } finally {
-            loading.value = false;
-        }
-    } else {
-        // Draft-Modus
-        if (!draftAlternativeIds.value.includes(selectedAvailableId.value)) {
-            draftAlternativeIds.value = [
-                ...draftAlternativeIds.value,
-                selectedAvailableId.value,
-            ];
-            emit('update-draft', [...draftAlternativeIds.value]);
-        }
-        selectedAvailableId.value = null;
-    }
-};
-
-const removeAlternative = async () => {
-    if (!selectedAlternativeId.value) return;
-
+const removeAlternative = () => {
     const id = selectedAlternativeId.value;
+    if (!id) return;
 
-    if (isDbMode.value) {
-        try {
-            loading.value = true;
+    draftIds.value = draftIds.value.filter((altId) => altId !== id);
+    selectedAlternativeId.value = null;
+};
 
-            await axios.delete(route('ingredientAlternatives.destroy', id));
+// „Übernehmen“: Entwurf an das Formular geben (gespeichert wird mit dem Rezept)
+const apply = () => {
+    emit('update-draft', [...draftIds.value]);
+    emit('close');
+};
 
-            selectedAlternatives.value = selectedAlternatives.value.filter(
-                (alt) => alt.id !== id,
-            );
-            selectedAlternativeId.value = null;
-        } catch (error) {
-            console.error('Alternativzutat löschen fehlgeschlagen', error);
-        } finally {
-            loading.value = false;
-        }
-    } else {
-        // Draft-Modus
-        draftAlternativeIds.value = draftAlternativeIds.value.filter(
-            (altId) => altId !== id,
-        );
-        selectedAlternativeId.value = null;
-        emit('update-draft', [...draftAlternativeIds.value]);
-    }
+// „Abbrechen“: Änderungen dieser Sitzung verwerfen
+const cancel = () => {
+    initDraft();
+    emit('close');
 };
 </script>
 
@@ -383,7 +294,6 @@ const removeAlternative = async () => {
     overflow: hidden; /* Inhalt wird innerhalb gescrollt */
 }
 
-
 .modal__title {
     margin-bottom: 0.5rem;
     font-size: 1.125rem;
@@ -409,9 +319,8 @@ const removeAlternative = async () => {
     flex: 1;
     min-height: 260px;
     max-height: 100%;
-    overflow: hidden;  /* Panels selbst scrollen */
+    overflow: hidden; /* Panels selbst scrollen */
 }
-
 
 .alternatives-panel {
     display: flex;
@@ -419,7 +328,6 @@ const removeAlternative = async () => {
     min-width: 0;
     min-height: 0; /* erlaubt, dass die Liste flex:1 wirklich schrumpft */
 }
-
 
 .alternatives-panel--middle {
     align-items: center;

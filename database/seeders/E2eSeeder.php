@@ -9,6 +9,7 @@ use App\Models\IngredientAlternative;
 use App\Models\RatingDimension;
 use App\Models\Recipe;
 use App\Models\RecipeImage;
+use App\Models\RecipeImport;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeRating;
 use App\Models\User;
@@ -46,7 +47,8 @@ class E2eSeeder extends Seeder
             IngredientSeeder::class,
         ]);
 
-        // Wegwerf-Kategorie für den F-07-Test (darf geloescht werden).
+        // Wegwerf-Kategorie für den F-07-Test (darf geloescht werden). Seit Slice 2 einem
+        // Rezept zugeordnet (Rezept 6, siehe unten), damit die Bestätigung eine Anzahl nennt.
         Category::firstOrCreate(['name' => 'E2E-Wegwerf-Tag'], ['description' => 'Nur für den E2E-Test F-07.']);
 
         $base = Carbon::create(2025, 6, 1, 12, 0, 0, 'UTC');
@@ -55,8 +57,36 @@ class E2eSeeder extends Seeder
         // Konten (verifiziert, ohne 2FA)
         // ---------------------------------------------------------------
         $user = $this->makeUser('E2E Nutzerin', 'user@example.test', false, $base);
-        $this->makeUser('E2E Host', 'host@example.test', true, $base);
+        $host = $this->makeUser('E2E Host', 'host@example.test', true, $base);
         $this->makeUser('E2E Zweitnutzer', 'user2@example.test', false, $base);
+
+        // Abgeschlossener TikTok-Import des Hosts (ID 1) im Altformat MIT `source`:
+        // Die Vorbelegung über /rezepte/erstellen?import=1 muss trotz entfallenem
+        // Feld „Quelle“ funktionieren (F-15). Wird von keiner Baseline-Seite genutzt.
+        $import = new RecipeImport;
+        $import->forceFill([
+            'user_id' => $host->id,
+            'url' => 'https://www.tiktok.com/@e2e/video/1',
+            'status' => 'done',
+            'source' => 'caption',
+            'error' => null,
+            'result' => [
+                'name' => 'E2E Import-Vorbelegung',
+                'description' => 'Synthetisches Import-Ergebnis.',
+                'duration_minutes' => 25,
+                'servings' => 2,
+                'source' => 'https://www.tiktok.com/@e2e/video/1',
+                'tags' => ['abendessen'],
+                'ingredients' => [
+                    ['amount' => '1 Kopf', 'name' => 'Brokkoli'],
+                    ['amount' => '3 EL', 'name' => 'Sojasauce'],
+                ],
+                'steps' => ['Brokkoli waschen.', 'Mit Sojasauce braten.'],
+                'notes' => 'Schmeckt auch kalt.',
+            ],
+            'created_at' => $base,
+            'updated_at' => $base,
+        ])->save();
 
         // ---------------------------------------------------------------
         // Bilder (lokal erzeugt)
@@ -177,7 +207,8 @@ class E2eSeeder extends Seeder
                 'duration' => 15,
                 'servings' => 2,
                 'image' => [200, 70, 60],
-                'categories' => ['Mittagessen'],
+                // E2E-Wegwerf-Tag: F-07-Regressionstest löscht die Kategorie mit Bestätigung
+                'categories' => ['Mittagessen', 'E2E-Wegwerf-Tag'],
                 'ingredients' => [
                     ['Vollkornpasta', '250 g', []],
                     ['Dosentomaten (stückig)', '1 Dose', []],
