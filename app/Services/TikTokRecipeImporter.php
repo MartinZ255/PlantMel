@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
+use Throwable;
 
 /**
  * Importiert ein Rezept aus einem TikTok-Video.
@@ -18,7 +21,28 @@ class TikTokRecipeImporter
 {
     private const GEMINI_BASE = 'https://generativelanguage.googleapis.com';
 
+    /**
+     * Fehlerklassen (Exception-Code), aus denen der Job die generische
+     * Nutzermeldung ableitet. Der Exception-Text selbst ist nur fürs Log.
+     */
+    public const ERROR_NOT_CONFIGURED = 1;
+
+    public const ERROR_DOWNLOAD = 2;
+
+    public const ERROR_ANALYSIS = 3;
+
+    /** Obergrenze für das Video (yt-dlp --max-filesize und Nachprüfung). */
+    public const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+
+    /**
+     * yt-dlp-Optionen für jeden Aufruf: keine fremden Konfigurationsdateien
+     * laden, keine --exec-Befehle ausführen (belegt mit `yt-dlp --help`,
+     * Version 2026.07.04).
+     */
+    private const YTDLP_SAFE_OPTIONS = ['--ignore-config', '--no-exec'];
+
     public function __construct(
+        #[\SensitiveParameter]
         private readonly string $apiKey,
         private readonly string $model,
         private readonly string $ytdlpPath,
@@ -29,6 +53,11 @@ class TikTokRecipeImporter
      */
     public function import(string $url, ?callable $onProgress = null): array
     {
+        // Ohne Schlüssel gar nicht erst yt-dlp starten
+        if (trim($this->apiKey) === '') {
+            throw new RuntimeException('Gemini-API-Schlüssel ist nicht gesetzt (services.gemini.key).', self::ERROR_NOT_CONFIGURED);
+        }
+
         $progress = $onProgress ?? static fn (string $status) => null;
 
         // 1) Metadaten (Caption, Titel, Dauer) ohne Video-Download
@@ -49,18 +78,28 @@ class TikTokRecipeImporter
 
         // 3) Video-Analyse als Fallback
         $progress('downloading');
-        $videoPath = $this->downloadVideo($url);
+        $tempBase = $this->reserveTempBase();
+        $geminiFile = null;
 
         try {
+            $videoPath = $this->downloadVideo($url, $tempBase);
+
             $progress('analyzing');
-            $fileUri = $this->uploadToGemini($videoPath);
-            $recipe = $this->analyzeVideo($fileUri, $caption);
+            $upload = $this->uploadToGemini($videoPath);
+            $geminiFile = $upload['name'];
+            $this->awaitActive($upload['name'], $upload['file']);
+            $recipe = $this->analyzeVideo($upload['uri'], $caption);
         } finally {
-            @unlink($videoPath);
+            // Datenschutz (F-48) und Aufräumen (F-27): Gemini-Datei und alle
+            // lokalen Dateien dieses Imports entfernen – auch im Fehlerfall.
+            if ($geminiFile !== null) {
+                $this->deleteGeminiFile($geminiFile);
+            }
+            $this->cleanupTempFiles($tempBase);
         }
 
         if ($recipe === null) {
-            throw new RuntimeException('Gemini konnte kein Rezept aus dem Video extrahieren.');
+            throw new RuntimeException('Gemini konnte kein Rezept aus dem Video extrahieren.', self::ERROR_ANALYSIS);
         }
 
         return ['recipe' => $this->normalize($recipe, $url, $meta), 'source' => 'video'];
@@ -69,54 +108,95 @@ class TikTokRecipeImporter
     private function fetchMetadata(string $url): array
     {
         $result = Process::timeout(120)->run([
-            $this->ytdlpPath, '-J', '--no-warnings', '--no-playlist', $url,
+            $this->ytdlpPath, ...self::YTDLP_SAFE_OPTIONS, '-J', '--no-warnings', '--no-playlist', '--', $url,
         ]);
 
         if (! $result->successful()) {
             throw new RuntimeException(
-                'Video-Metadaten konnten nicht geladen werden: ' . mb_substr($result->errorOutput(), 0, 400)
+                'Video-Metadaten konnten nicht geladen werden: '.mb_substr($result->errorOutput(), 0, 400),
+                self::ERROR_DOWNLOAD,
             );
         }
 
         $meta = json_decode($result->output(), true);
 
         if (! is_array($meta)) {
-            throw new RuntimeException('yt-dlp lieferte keine lesbaren Metadaten.');
+            throw new RuntimeException('yt-dlp lieferte keine lesbaren Metadaten.', self::ERROR_DOWNLOAD);
         }
 
         return $meta;
     }
 
-    private function downloadVideo(string $url): string
+    /**
+     * Legt einen eindeutigen Dateinamen-Stamm im Temp-Verzeichnis fest.
+     * Alle Dateien des Downloads (Video, .part, Fragmente) beginnen damit.
+     */
+    private function reserveTempBase(): string
     {
         $target = tempnam(sys_get_temp_dir(), 'tiktok_');
+
+        if ($target === false) {
+            throw new RuntimeException('Temp-Datei konnte nicht angelegt werden.', self::ERROR_DOWNLOAD);
+        }
+
         // yt-dlp hängt selbst die Endung an; wir geben das Muster vor
         @unlink($target);
-        $pattern = $target . '.%(ext)s';
 
+        return $target;
+    }
+
+    private function downloadVideo(string $url, string $tempBase): string
+    {
         $result = Process::timeout(240)->run([
             $this->ytdlpPath,
+            ...self::YTDLP_SAFE_OPTIONS,
             '-f', 'mp4/best',
             '--max-filesize', '80M',
             '--no-playlist',
-            '-o', $pattern,
+            '-o', $tempBase.'.%(ext)s',
+            '--',
             $url,
         ]);
 
         if (! $result->successful()) {
             throw new RuntimeException(
-                'Video-Download fehlgeschlagen: ' . mb_substr($result->errorOutput(), 0, 400)
+                'Video-Download fehlgeschlagen: '.mb_substr($result->errorOutput(), 0, 400),
+                self::ERROR_DOWNLOAD,
             );
         }
 
-        foreach (glob($target . '.*') as $file) {
+        foreach (glob($tempBase.'.*') ?: [] as $file) {
+            if (str_ends_with($file, '.part') || str_ends_with($file, '.ytdl') || str_contains($file, '.part-Frag')) {
+                continue;
+            }
+
+            if (filesize($file) > self::MAX_VIDEO_BYTES) {
+                throw new RuntimeException('Video ist größer als 80 MB.', self::ERROR_DOWNLOAD);
+            }
+
             return $file;
         }
 
-        throw new RuntimeException('Video-Download lieferte keine Datei (evtl. über 80 MB?).');
+        throw new RuntimeException('Video-Download lieferte keine Datei (evtl. über 80 MB?).', self::ERROR_DOWNLOAD);
     }
 
-    private function uploadToGemini(string $path): string
+    /**
+     * Entfernt alle lokalen Dateien, die zu diesem Import gehören
+     * (fertiges Video, `.part`, `.ytdl`, Fragmente).
+     */
+    private function cleanupTempFiles(string $tempBase): void
+    {
+        foreach (glob($tempBase.'*') ?: [] as $file) {
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
+    }
+
+    /**
+     * @return array{name: string, uri: string, file: array}
+     */
+    private function uploadToGemini(string $path): array
     {
         $size = filesize($path);
         $mime = 'video/mp4';
@@ -128,55 +208,100 @@ class TikTokRecipeImporter
             'X-Goog-Upload-Header-Content-Length' => (string) $size,
             'X-Goog-Upload-Header-Content-Type' => $mime,
         ])->post(
-            self::GEMINI_BASE . '/upload/v1beta/files',
+            self::GEMINI_BASE.'/upload/v1beta/files',
             ['file' => ['display_name' => 'tiktok-import']]
         );
 
         $uploadUrl = $response->header('X-Goog-Upload-URL');
 
         if (! $response->successful() || ! $uploadUrl) {
-            throw new RuntimeException('Gemini-Upload konnte nicht gestartet werden: ' . mb_substr($response->body(), 0, 300));
+            throw new RuntimeException('Gemini-Upload konnte nicht gestartet werden: '.mb_substr($response->body(), 0, 300), self::ERROR_ANALYSIS);
         }
 
-        $upload = Http::withHeaders([
-            'X-Goog-Upload-Command' => 'upload, finalize',
-            'X-Goog-Upload-Offset' => '0',
-        ])->withBody(file_get_contents($path), $mime)
-            ->timeout(300)
-            ->post($uploadUrl);
+        // Video als Stream senden statt komplett in den Speicher zu laden
+        $handle = fopen($path, 'rb');
+
+        if ($handle === false) {
+            throw new RuntimeException('Heruntergeladenes Video ist nicht lesbar.', self::ERROR_DOWNLOAD);
+        }
+
+        $stream = Utils::streamFor($handle);
+
+        try {
+            $upload = Http::withHeaders([
+                'X-Goog-Upload-Command' => 'upload, finalize',
+                'X-Goog-Upload-Offset' => '0',
+            ])->withBody($stream, $mime)
+                ->timeout(300)
+                ->post($uploadUrl);
+        } finally {
+            // Handle schließen, damit die Datei (auch unter Windows) gelöscht werden kann
+            $stream->close();
+        }
 
         if (! $upload->successful()) {
-            throw new RuntimeException('Gemini-Upload fehlgeschlagen: ' . mb_substr($upload->body(), 0, 300));
+            throw new RuntimeException('Gemini-Upload fehlgeschlagen: '.mb_substr($upload->body(), 0, 300), self::ERROR_ANALYSIS);
         }
 
         $file = $upload->json('file');
-        $name = $file['name'] ?? null;
-        $uri = $file['uri'] ?? null;
+        $name = is_array($file) ? ($file['name'] ?? null) : null;
+        $uri = is_array($file) ? ($file['uri'] ?? null) : null;
 
-        if (! $name || ! $uri) {
-            throw new RuntimeException('Gemini-Upload lieferte keine Datei-Referenz.');
+        // Der Name wird in URLs eingesetzt (Status, DELETE) – nur das bekannte Format zulassen
+        if (! is_string($name) || ! preg_match('#^files/[A-Za-z0-9_-]+$#', $name) || ! is_string($uri) || $uri === '') {
+            throw new RuntimeException('Gemini-Upload lieferte keine Datei-Referenz.', self::ERROR_ANALYSIS);
         }
 
-        // Warten, bis Google das Video verarbeitet hat
+        return ['name' => $name, 'uri' => $uri, 'file' => $file];
+    }
+
+    /**
+     * Wartet, bis Google das Video verarbeitet hat.
+     */
+    private function awaitActive(string $name, array $file): void
+    {
         $deadline = time() + 180;
         while (($file['state'] ?? '') === 'PROCESSING' && time() < $deadline) {
             sleep(3);
             $file = Http::withHeaders(['x-goog-api-key' => $this->apiKey])
-                ->get(self::GEMINI_BASE . '/v1beta/' . $name)
-                ->json();
+                ->get(self::GEMINI_BASE.'/v1beta/'.$name)
+                ->json() ?? [];
         }
 
         if (($file['state'] ?? '') !== 'ACTIVE') {
-            throw new RuntimeException('Gemini hat das Video nicht verarbeitet (Status: ' . ($file['state'] ?? 'unbekannt') . ').');
+            throw new RuntimeException('Gemini hat das Video nicht verarbeitet (Status: '.($file['state'] ?? 'unbekannt').').', self::ERROR_ANALYSIS);
         }
+    }
 
-        return $uri;
+    /**
+     * Löscht die hochgeladene Datei bei Gemini. Ein Fehler hier darf den
+     * Import nicht scheitern lassen und wird nur geloggt (ohne Schlüssel).
+     */
+    private function deleteGeminiFile(string $name): void
+    {
+        try {
+            $response = Http::withHeaders(['x-goog-api-key' => $this->apiKey])
+                ->timeout(30)
+                ->delete(self::GEMINI_BASE.'/v1beta/'.$name);
+
+            if (! $response->successful()) {
+                Log::warning('TikTok-Import: Gemini-Datei konnte nicht gelöscht werden.', [
+                    'file' => $name,
+                    'status' => $response->status(),
+                ]);
+            }
+        } catch (Throwable $e) {
+            Log::warning('TikTok-Import: Gemini-Datei konnte nicht gelöscht werden.', [
+                'file' => $name,
+                'exception' => $e::class,
+            ]);
+        }
     }
 
     private function analyzeCaption(string $caption): ?array
     {
         return $this->generate([
-            ['text' => $this->prompt() . "\n\nHier die Video-Beschreibung:\n\n" . $caption],
+            ['text' => $this->prompt()."\n\nHier die Video-Beschreibung:\n\n".$caption],
         ]);
     }
 
@@ -185,7 +310,7 @@ class TikTokRecipeImporter
         $parts = [
             ['file_data' => ['file_uri' => $fileUri, 'mime_type' => 'video/mp4']],
             ['text' => $this->prompt()
-                . ($caption !== '' ? "\n\nZusätzlich die Video-Beschreibung:\n\n" . $caption : '')],
+                .($caption !== '' ? "\n\nZusätzlich die Video-Beschreibung:\n\n".$caption : '')],
         ];
 
         return $this->generate($parts);
@@ -217,18 +342,18 @@ PROMPT;
         $response = Http::timeout(120)
             ->withHeaders(['x-goog-api-key' => $this->apiKey])
             ->post(
-            self::GEMINI_BASE . '/v1beta/models/' . $this->model . ':generateContent',
-            [
-                'contents' => [['parts' => $parts]],
-                'generationConfig' => [
-                    'response_mime_type' => 'application/json',
-                    'temperature' => 0.2,
-                ],
-            ]
-        );
+                self::GEMINI_BASE.'/v1beta/models/'.$this->model.':generateContent',
+                [
+                    'contents' => [['parts' => $parts]],
+                    'generationConfig' => [
+                        'response_mime_type' => 'application/json',
+                        'temperature' => 0.2,
+                    ],
+                ]
+            );
 
         if (! $response->successful()) {
-            throw new RuntimeException('Gemini-Anfrage fehlgeschlagen: ' . mb_substr($response->body(), 0, 300));
+            throw new RuntimeException('Gemini-Anfrage fehlgeschlagen: '.mb_substr($response->body(), 0, 300), self::ERROR_ANALYSIS);
         }
 
         $text = $response->json('candidates.0.content.parts.0.text');
@@ -278,7 +403,7 @@ PROMPT;
             'servings' => is_numeric($recipe['servings'] ?? null)
                 ? (int) $recipe['servings']
                 : null,
-            'source' => 'TikTok: ' . $url,
+            'source' => 'TikTok: '.$url,
             'tags' => $tags,
             'ingredients' => $ingredients !== [] ? $ingredients : [['amount' => '', 'name' => '']],
             'steps' => $steps !== [] ? $steps : [''],

@@ -7,49 +7,32 @@ use App\Models\RecipeImport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Queue\TimeoutExceededException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
-use Illuminate\Support\Str;
 use RuntimeException;
+use Tests\Feature\Import\Concerns\FakesTikTokImport;
 use Tests\TestCase;
 
 /**
- * Charakterisierung Job ImportTikTokRecipe + TikTokRecipeImporter mit
- * Process- und HTTP-Fakes (kein echtes yt-dlp, keine echte Gemini-API).
+ * Job ImportTikTokRecipe + TikTokRecipeImporter mit Process- und HTTP-Fakes
+ * (kein echtes yt-dlp, keine echte Gemini-API).
  */
 class ImportTikTokRecipeJobTest extends TestCase
 {
+    use FakesTikTokImport;
     use RefreshDatabase;
-
-    private const URL = 'https://www.tiktok.com/@example/video/7000000000000000001';
-
-    private const GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent';
-
-    private const UPLOAD_START_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
-
-    private const UPLOAD_SESSION_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=test-session';
-
-    /** @var list<string> */
-    private array $tempFiles = [];
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        config([
-            'services.gemini.key' => 'test-key',
-            'services.gemini.model' => 'gemini-test',
-            'services.ytdlp.path' => 'yt-dlp-test',
-        ]);
+        $this->configureImporter();
     }
 
     protected function tearDown(): void
     {
-        foreach ($this->tempFiles as $file) {
-            if (is_file($file)) {
-                @unlink($file);
-            }
-        }
+        $this->cleanupImportTempFiles();
 
         parent::tearDown();
     }
@@ -113,9 +96,9 @@ class ImportTikTokRecipeJobTest extends TestCase
         // Zwischenstände, die der Client per Polling sieht
         $this->assertSame(['ytdlp' => 'downloading', 'gemini' => 'analyzing'], $statuses);
 
-        // yt-dlp wird als Array-Aufruf gestartet, URL ist ein eigenes Argument
+        // F-26: yt-dlp ohne fremde Konfiguration, ohne --exec, "--" direkt vor der URL
         Process::assertRanTimes(fn (PendingProcess $p) => $p->command === [
-            'yt-dlp-test', '-J', '--no-warnings', '--no-playlist', self::URL,
+            'yt-dlp-test', '--ignore-config', '--no-exec', '-J', '--no-warnings', '--no-playlist', '--', self::URL,
         ], 1);
 
         // Kein Video-Download im Caption-Pfad
@@ -146,17 +129,16 @@ class ImportTikTokRecipeJobTest extends TestCase
         $this->assertSame('video', $import->source);
         $this->assertSame('Aus Video', $import->result['name']);
 
-        // Nur ein generateContent-Aufruf (Video), keiner für die Caption
-        Http::assertSentCount(3);
+        // Upload-Start, Upload, Video-Analyse, DELETE – keine Caption-Analyse
+        Http::assertSentCount(4);
         Http::assertNotSent(fn (Request $r) => $r->url() === self::GENERATE_URL
             && ! str_contains(json_encode($r->data()), 'file_data'));
     }
 
     /**
      * Video-Pfad: Caption unvollständig -> Download per yt-dlp (Fake legt die
-     * Datei an), Upload zu Gemini (resumable), Video-Analyse, Temp-Datei wird
-     * gelöscht. Ist-Zustand: Die Gemini-Datei wird NICHT gelöscht (F-27, siehe
-     * tests/KnownDefects/Backend/ImportErrorHandlingTest).
+     * Datei an), Upload zu Gemini (resumable, als Stream), Video-Analyse,
+     * DELETE der Gemini-Datei (F-27/F-48), Temp-Datei wird gelöscht.
      */
     public function test_incomplete_caption_falls_back_to_video_analysis(): void
     {
@@ -184,40 +166,46 @@ class ImportTikTokRecipeJobTest extends TestCase
         $this->assertSame('Bunte Bowl', $import->result['name']);
         $this->assertSame([['amount' => '1', 'name' => 'Avocado']], $import->result['ingredients']);
 
-        // Download-Aufruf als Array mit URL als letztem eigenem Argument
+        // Download-Aufruf als Array; "--" unmittelbar vor der URL als letztem Argument
         Process::assertRan(function (PendingProcess $p) {
             return is_array($p->command)
                 && $p->command[0] === 'yt-dlp-test'
-                && array_slice($p->command, 1, 6) === ['-f', 'mp4/best', '--max-filesize', '80M', '--no-playlist', '-o']
-                && str_ends_with($p->command[7], '.%(ext)s')
-                && $p->command[8] === self::URL
-                && count($p->command) === 9;
+                && array_slice($p->command, 1, 8) === ['--ignore-config', '--no-exec', '-f', 'mp4/best', '--max-filesize', '80M', '--no-playlist', '-o']
+                && str_ends_with($p->command[9], '.%(ext)s')
+                && $p->command[10] === '--'
+                && $p->command[11] === self::URL
+                && count($p->command) === 12;
         });
 
         // Heruntergeladene Temp-Datei wurde entfernt
         $this->assertNotNull($downloaded->path);
         $this->assertFileDoesNotExist($downloaded->path);
+        $this->assertNoImportTempFiles();
 
         // Upload-Start mit Header-Schlüssel, Upload ohne Schlüssel, Analyse mit file_data
         Http::assertSent(fn (Request $r) => $r->url() === self::UPLOAD_START_URL
             && $r->header('x-goog-api-key') === ['test-key']
-            && $r->header('X-Goog-Upload-Command') === ['start']);
+            && $r->header('X-Goog-Upload-Command') === ['start']
+            && $r->header('X-Goog-Upload-Header-Content-Length') === ['8']);
         Http::assertSent(fn (Request $r) => $r->url() === self::UPLOAD_SESSION_URL
             && $r->header('X-Goog-Upload-Command') === ['upload, finalize']
-            && $r->body() === 'FAKE-MP4');
+            && $r->header('x-goog-api-key') === []);
+        $this->assertSame('FAKE-MP4', $this->uploadedBody);
         Http::assertSent(fn (Request $r) => $r->url() === self::GENERATE_URL
-            && ($r['contents'][0]['parts'][0]['file_data']['file_uri'] ?? null) === 'https://generativelanguage.googleapis.com/v1beta/files/abc123'
+            && ($r['contents'][0]['parts'][0]['file_data']['file_uri'] ?? null) === self::GEMINI_FILE_URL
             && str_contains($r['contents'][0]['parts'][1]['text'], 'Leckere Bowl'));
-        Http::assertSentCount(4);
 
-        // Ist-Zustand F-27: kein DELETE der hochgeladenen Gemini-Datei
-        Http::assertNotSent(fn (Request $r) => $r->method() === 'DELETE');
+        // F-27/F-48: hochgeladene Gemini-Datei wird gelöscht
+        Http::assertSent(fn (Request $r) => $r->method() === 'DELETE'
+            && $r->url() === self::GEMINI_FILE_URL
+            && $r->header('x-goog-api-key') === ['test-key']);
+        Http::assertSentCount(5);
 
         // Kein Request enthält den Schlüssel in der URL
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'test-key'));
     }
 
-    public function test_ytdlp_failure_marks_import_failed_and_rethrows(): void
+    public function test_ytdlp_failure_marks_import_failed_with_generic_message_and_rethrows(): void
     {
         $import = RecipeImport::factory()->pending()->create(['url' => self::URL]);
         Process::fake(['*' => Process::result(output: '', errorOutput: 'ERROR: Unsupported URL', exitCode: 1)]);
@@ -231,14 +219,13 @@ class ImportTikTokRecipeJobTest extends TestCase
         }
 
         $this->assertNotNull($thrown, 'Der Job muss die Exception weiterreichen.');
-        // Der Process-Fake hängt an errorOutput einen Zeilenumbruch an.
-        $expected = "Video-Metadaten konnten nicht geladen werden: ERROR: Unsupported URL\n";
-        $this->assertSame($expected, $thrown->getMessage());
+        // Die Exception (nur Server-Log/failed_jobs) behält den Rohtext
+        $this->assertSame("Video-Metadaten konnten nicht geladen werden: ERROR: Unsupported URL\n", $thrown->getMessage());
 
         $import->refresh();
         $this->assertSame('failed', $import->status);
-        // Ist-Zustand: roher Tool-Fehlertext landet im Nutzerfeld (F-27)
-        $this->assertSame($expected, $import->error);
+        // F-27: im Nutzerfeld nur die generische Meldung
+        $this->assertSame(ImportTikTokRecipe::MESSAGE_DOWNLOAD, $import->error);
         $this->assertNull($import->result);
         Http::assertNothingSent();
     }
@@ -249,54 +236,65 @@ class ImportTikTokRecipeJobTest extends TestCase
         Process::fake(['*' => Process::result(output: 'kein json')]);
         Http::fake();
 
-        $this->expectExceptionMessageAndAssertImport(
-            $import,
-            'yt-dlp lieferte keine lesbaren Metadaten.',
-        );
+        $this->runAndAssertFailed($import, 'yt-dlp lieferte keine lesbaren Metadaten.', ImportTikTokRecipe::MESSAGE_DOWNLOAD);
     }
 
     public function test_gemini_http_500_marks_import_failed(): void
     {
         $import = RecipeImport::factory()->pending()->create(['url' => self::URL]);
-        $this->fakeYtDlp(['description' => str_repeat('Rezept mit vielen Zutaten. ', 3)]);
+        $this->fakeYtDlp(['description' => self::LONG_CAPTION]);
         Http::fake(['*' => Http::response('{"error":{"code":500,"message":"internal"}}', 500)]);
 
-        $this->expectExceptionMessageAndAssertImport(
+        $this->runAndAssertFailed(
             $import,
             'Gemini-Anfrage fehlgeschlagen: {"error":{"code":500,"message":"internal"}}',
+            ImportTikTokRecipe::MESSAGE_ANALYSIS,
         );
     }
 
-    public function test_error_message_is_truncated_to_900_characters(): void
+    public function test_video_without_recipe_marks_import_failed_with_analysis_message(): void
     {
         $import = RecipeImport::factory()->pending()->create(['url' => self::URL]);
-        $this->fakeYtDlp(['description' => str_repeat('Rezept mit vielen Zutaten. ', 3)]);
-        // Service kürzt den Body auf 300 Zeichen -> Gesamtlänge < 900
-        Http::fake(['*' => Http::response(str_repeat('x', 2000), 500)]);
+        $this->fakeYtDlp(['title' => 'Kurz', 'description' => '']);
+        $this->fakeGeminiVideoFlow(captionRecipe: null, videoRecipe: null);
 
-        try {
-            (new ImportTikTokRecipe($import))->handle();
-            $this->fail('Exception erwartet');
-        } catch (RuntimeException) {
-        }
+        $this->runAndAssertFailed(
+            $import,
+            'Gemini konnte kein Rezept aus dem Video extrahieren.',
+            ImportTikTokRecipe::MESSAGE_ANALYSIS,
+        );
 
-        $error = $import->fresh()->error;
-        $this->assertSame('Gemini-Anfrage fehlgeschlagen: '.str_repeat('x', 300), $error);
+        // Auch ohne Rezept wird die Gemini-Datei gelöscht
+        Http::assertSent(fn (Request $r) => $r->method() === 'DELETE' && $r->url() === self::GEMINI_FILE_URL);
     }
 
-    public function test_failed_method_marks_running_import_as_failed(): void
+    public function test_worker_timeout_is_reported_as_timeout(): void
     {
-        $running = RecipeImport::factory()->create(['status' => 'analyzing']);
-        (new ImportTikTokRecipe($running))->failed(new RuntimeException('Worker abgestürzt'));
+        $import = RecipeImport::factory()->running('downloading')->create(['url' => self::URL]);
+        // Der Worker ruft bei Überschreiten von $timeout failed() mit einer
+        // TimeoutExceededException auf (nur mit echtem Worker reproduzierbar).
+        (new ImportTikTokRecipe($import))->failed(new TimeoutExceededException('ImportTikTokRecipe has timed out.'));
+
+        $this->assertSame('failed', $import->fresh()->status);
+        $this->assertSame(ImportTikTokRecipe::MESSAGE_TIMEOUT, $import->fresh()->error);
+    }
+
+    public function test_failed_method_marks_running_import_as_failed_with_generic_message(): void
+    {
+        $running = RecipeImport::factory()->running()->create();
+        (new ImportTikTokRecipe($running))->failed(new RuntimeException('Worker abgestürzt: /var/www/geheim'));
         $this->assertSame('failed', $running->fresh()->status);
-        $this->assertSame('Worker abgestürzt', $running->fresh()->error);
+        $this->assertSame(ImportTikTokRecipe::MESSAGE_GENERIC, $running->fresh()->error);
 
         $timeout = RecipeImport::factory()->pending()->create();
         (new ImportTikTokRecipe($timeout))->failed(null);
         $this->assertSame('failed', $timeout->fresh()->status);
-        $this->assertSame('Import abgebrochen (Zeitüberschreitung).', $timeout->fresh()->error);
+        $this->assertSame(ImportTikTokRecipe::MESSAGE_TIMEOUT, $timeout->fresh()->error);
     }
 
+    /**
+     * F-25: failed() überschreibt keinen abgeschlossenen Import.
+     */
     public function test_failed_method_does_not_overwrite_finished_imports(): void
     {
         $done = RecipeImport::factory()->done()->create();
@@ -311,104 +309,51 @@ class ImportTikTokRecipeJobTest extends TestCase
         $this->assertSame('Ursprünglicher Fehler', $failed->fresh()->error);
     }
 
+    /**
+     * F-25/F-24: Ein Import, der schon beendet (z. B. als veraltet
+     * abgebrochen) ist, wird vom Job nicht nachträglich doch gestartet.
+     */
+    public function test_handle_skips_imports_that_are_no_longer_pending(): void
+    {
+        $failed = RecipeImport::factory()->failed(ImportTikTokRecipe::MESSAGE_TIMEOUT)->create(['url' => self::URL]);
+        $done = RecipeImport::factory()->done()->create(['url' => self::URL]);
+        Http::fake();
+
+        (new ImportTikTokRecipe($failed))->handle();
+        (new ImportTikTokRecipe($done))->handle();
+
+        $this->assertSame('failed', $failed->fresh()->status);
+        $this->assertSame('done', $done->fresh()->status);
+        Process::assertNothingRan();
+        Http::assertNothingSent();
+    }
+
+    /**
+     * F-25: retry_after muss größer sein als der Job-Timeout, sonst startet
+     * ein zweiter Worker denselben Job, während der erste noch läuft.
+     */
     public function test_job_configuration(): void
     {
         $job = new ImportTikTokRecipe(RecipeImport::factory()->create());
 
-        // Ist-Zustand zu F-25: timeout 600 s, ein Versuch
         $this->assertSame(600, $job->timeout);
         $this->assertSame(1, $job->tries);
-        $this->assertSame(90, config('queue.connections.database.retry_after'));
+        $this->assertGreaterThan($job->timeout, config('queue.connections.database.retry_after'));
+        $this->assertGreaterThan($job->timeout / 60, ImportTikTokRecipe::STALE_AFTER_MINUTES);
     }
 
-    private function expectExceptionMessageAndAssertImport(RecipeImport $import, string $message): void
+    private function runAndAssertFailed(RecipeImport $import, string $rawMessage, string $userMessage): void
     {
         try {
             (new ImportTikTokRecipe($import))->handle();
             $this->fail('Exception erwartet');
         } catch (RuntimeException $e) {
-            $this->assertSame($message, $e->getMessage());
+            $this->assertSame($rawMessage, $e->getMessage());
         }
 
         $import->refresh();
         $this->assertSame('failed', $import->status);
-        $this->assertSame($message, $import->error);
+        $this->assertSame($userMessage, $import->error);
         $this->assertNull($import->result);
-    }
-
-    /**
-     * Fake für yt-dlp: "-J" liefert Metadaten, der Download-Aufruf legt die
-     * Zieldatei gemäß "-o"-Muster an (wie das echte yt-dlp).
-     *
-     * @param  array<string, mixed>  $meta
-     */
-    private function fakeYtDlp(array $meta): object
-    {
-        $downloaded = new class
-        {
-            public ?string $path = null;
-        };
-
-        Process::fake(['*' => function (PendingProcess $process) use ($meta, $downloaded) {
-            $command = $process->command;
-
-            if (in_array('-J', $command, true)) {
-                return Process::result(output: json_encode($meta));
-            }
-
-            $pattern = $command[array_search('-o', $command, true) + 1];
-            $path = str_replace('%(ext)s', 'mp4', $pattern);
-            file_put_contents($path, 'FAKE-MP4');
-            $downloaded->path = $path;
-            $this->tempFiles[] = $path;
-
-            return Process::result();
-        }]);
-
-        return $downloaded;
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $captionRecipe
-     * @param  array<string, mixed>  $videoRecipe
-     */
-    private function fakeGeminiVideoFlow(?array $captionRecipe, array $videoRecipe): void
-    {
-        Http::fake(function (Request $request) use ($captionRecipe, $videoRecipe) {
-            if ($request->url() === self::UPLOAD_START_URL) {
-                return Http::response([], 200, ['X-Goog-Upload-URL' => self::UPLOAD_SESSION_URL]);
-            }
-
-            if ($request->url() === self::UPLOAD_SESSION_URL) {
-                return Http::response(['file' => [
-                    'name' => 'files/abc123',
-                    'uri' => 'https://generativelanguage.googleapis.com/v1beta/files/abc123',
-                    'state' => 'ACTIVE',
-                ]]);
-            }
-
-            if ($request->url() === self::GENERATE_URL) {
-                $isVideo = Str::contains(json_encode($request->data()), 'file_data');
-
-                return Http::response($this->geminiText($isVideo ? $videoRecipe : $captionRecipe));
-            }
-
-            if ($request->method() === 'DELETE') {
-                return Http::response([], 200);
-            }
-
-            return Http::response('unerwartet: '.$request->method().' '.$request->url(), 599);
-        });
-    }
-
-    /**
-     * Antwortstruktur von generateContent: candidates.0.content.parts.0.text
-     *
-     * @param  array<string, mixed>|null  $recipe
-     * @return array<string, mixed>
-     */
-    private function geminiText(?array $recipe): array
-    {
-        return ['candidates' => [['content' => ['parts' => [['text' => json_encode($recipe)]]]]]];
     }
 }
