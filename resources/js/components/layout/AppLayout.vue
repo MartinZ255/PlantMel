@@ -12,19 +12,18 @@
                 ☰
             </button>
 
-            <a
-                :href="route('home')"
-                class="app-header__logo"
-            >
-                PlantMel
-            </a>
+            <a :href="route('home')" class="app-header__logo"> PlantMel </a>
             <div class="app-header__title">{{ pageTitle }}</div>
             <div class="app-header__spacer"></div>
-            <div class="app-header__icons user-menu">
+            <div ref="userMenuRef" class="app-header__icons user-menu">
                 <button
+                    ref="userMenuTriggerRef"
                     class="app-header__icon"
                     type="button"
                     title="Profil"
+                    aria-haspopup="true"
+                    :aria-expanded="isUserMenuOpen ? 'true' : 'false'"
+                    aria-controls="user-menu-dropdown"
                     @click="toggleUserMenu"
                 >
                     <!-- Minimalistisches Outline-User-Icon, passend zum UI-Stil -->
@@ -42,9 +41,12 @@
                     </svg>
                 </button>
 
+                <!-- geschlossen: per CSS unsichtbar/nicht klickbar und per inert nicht fokussierbar (F-04) -->
                 <div
+                    id="user-menu-dropdown"
                     class="user-menu__dropdown"
                     :class="{ 'is-open': isUserMenuOpen }"
+                    :inert="!isUserMenuOpen"
                 >
                     <template v-if="currentUser">
                         <div class="user-menu__item user-menu__item--label">
@@ -67,10 +69,7 @@
                     </template>
 
                     <template v-else>
-                        <a
-                            :href="route('login')"
-                            class="user-menu__item"
-                        >
+                        <a :href="route('login')" class="user-menu__item">
                             Anmelden
                         </a>
                         <a
@@ -90,7 +89,6 @@
             class="app-main"
             :class="{ 'app-main--sidebar-closed': !isSidebarOpen }"
         >
-
             <!-- Backdrop: nur wenn Sidebar offen -->
             <div
                 v-if="isSidebarOpen"
@@ -120,7 +118,9 @@
                             @click="toggleSearchMenu"
                         >
                             <span class="sidebar-pill-label">Suche</span>
-                            <span class="sidebar-chevron">{{ searchChevron }}</span>
+                            <span class="sidebar-chevron">{{
+                                searchChevron
+                            }}</span>
                         </button>
                     </nav>
                 </div>
@@ -130,13 +130,17 @@
                     <nav class="sidebar-nav">
                         <a
                             :href="route('collections.index')"
-                            class="sidebar-collection-pill" type="button"
+                            class="sidebar-collection-pill"
+                            type="button"
                         >
                             Sammlungen
                         </a>
-                        <button class="sidebar-collection-pill" type="button">
+                        <a
+                            :href="route('myIngredients')"
+                            class="sidebar-collection-pill"
+                        >
                             Meine Zutaten
-                        </button>
+                        </a>
                     </nav>
                 </div>
 
@@ -154,7 +158,9 @@
                             </a>
                         </template>
                         <template v-else>
-                            <div class="sidebar-collection-pill sidebar-collection-pill--empty">
+                            <div
+                                class="sidebar-collection-pill sidebar-collection-pill--empty"
+                            >
                                 Noch keine Sammlungen
                             </div>
                         </template>
@@ -174,10 +180,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { usePage, Link } from '@inertiajs/vue3';
-import { route } from 'ziggy-js';
 import SidebarSearchSubmenu from '@/components/widgets/SidebarSearchSubmenu.vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { route } from 'ziggy-js';
 
 interface Props {
     pageTitle?: string;
@@ -190,10 +196,16 @@ const page = usePage();
 const isSearchMenuOpen = ref(false);
 const isSidebarOpen = ref(true);
 const isUserMenuOpen = ref(false);
+const userMenuRef = ref<HTMLElement | null>(null);
+const userMenuTriggerRef = ref<HTMLButtonElement | null>(null);
 
 const currentUser = computed(() => (page.props as any).auth?.user ?? null);
 const userCollections = computed(
-    () => ((page.props as any).auth?.collections as Array<{ id: number | string; name: string }>) ?? [],
+    () =>
+        ((page.props as any).auth?.collections as Array<{
+            id: number | string;
+            name: string;
+        }>) ?? [],
 );
 const canRegister = computed(
     () => ((page.props as any).canRegister as boolean | undefined) ?? true,
@@ -201,10 +213,37 @@ const canRegister = computed(
 // Typische Pfeile: geschlossen = ▸ (rechts), offen = ▾ (unten)
 const searchChevron = computed(() => (isSearchMenuOpen.value ? '▾' : '▸'));
 
+// User-Menue: Escape schliesst (Fokus zurueck auf den Ausloeser), Klick ausserhalb schliesst (F-04)
+const closeUserMenu = (restoreFocus = false) => {
+    if (!isUserMenuOpen.value) return;
+    isUserMenuOpen.value = false;
+    if (restoreFocus) userMenuTriggerRef.value?.focus();
+};
+
+const onDocumentKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && isUserMenuOpen.value) {
+        closeUserMenu(true);
+    }
+};
+
+const onDocumentPointerdown = (event: PointerEvent) => {
+    if (!isUserMenuOpen.value) return;
+    const target = event.target as Node | null;
+    if (target && userMenuRef.value?.contains(target)) return;
+    closeUserMenu();
+};
+
 onMounted(() => {
     if (window.matchMedia('(max-width: 900px)').matches) {
         isSidebarOpen.value = false;
     }
+    document.addEventListener('keydown', onDocumentKeydown);
+    document.addEventListener('pointerdown', onDocumentPointerdown);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('keydown', onDocumentKeydown);
+    document.removeEventListener('pointerdown', onDocumentPointerdown);
 });
 
 const toggleSearchMenu = () => {

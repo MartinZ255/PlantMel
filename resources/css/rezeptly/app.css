@@ -120,16 +120,27 @@ body {
     padding: 6px 0;
     z-index: 1200;
     opacity: 0;
+    /* geschlossen: weder sichtbar noch klickbar (F-04); visibility erst nach dem Ausblenden umschalten */
+    visibility: hidden;
+    pointer-events: none;
     transform: translateY(-6px) scale(0.98);
     transition:
         opacity var(--transition-fast),
         transform var(--transition-fast),
-        box-shadow var(--transition-fast);
+        box-shadow var(--transition-fast),
+        visibility 0s linear 0.15s;
 }
 
 .user-menu__dropdown.is-open {
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
     transform: translateY(0) scale(1);
+    transition:
+        opacity var(--transition-fast),
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        visibility 0s linear 0s;
 }
 
 .user-menu__item {

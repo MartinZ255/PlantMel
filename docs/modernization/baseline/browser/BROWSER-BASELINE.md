@@ -1,6 +1,6 @@
 # Browser-Baseline (Slice 0)
 
-Stand: 2026-11-13 · Basis-Commit `16add69` (Branch `chore/slice-0-test-baseline`) · Anwendungscode unverändert.
+Stand: 2026-11-13 · Basis-Commit `16add69` (Nachtrag Slice 1a: Abschnitt 7a) (Branch `chore/slice-0-test-baseline`) · Anwendungscode unverändert.
 
 Dieser Bericht hält fest, was im echten Browser gemessen wurde. Alles, was hier nicht als Messung steht, ist nicht geprüft.
 
@@ -167,6 +167,23 @@ Nicht im Browser geprüft (außerhalb des Auftrags oder nicht beobachtbar): F-08
 Die Wrapper-Shell von Vergleich 1 meldete Exit 1, weil ein nachgelagertes `cp test-results/results.json` scheiterte (der CLI-Reporter `line` ersetzt den JSON-Reporter der Konfiguration); Playwright selbst endete mit Exit 0.
 
 Playwright zählt Tests mit `test.fail()`, die erwartungsgemäß scheitern, als „passed“. Aufschlüsselung: 4 Setup-Tests, 115 Baseline-Tests, 24 Defekt-Tests, davon **22 erwartete Fehlschläge** (`test.fail`) und 2 normal grüne Tests (F-30 Normalfall bei 320 und 390).
+
+## 7a. Nachtrag Slice 1a – Frontend-Funktion (2026-11-13)
+
+Basis-Commit `67a82d5`. Behoben: F-01, F-02, F-03, F-04 (sowie der F-04-Anteil von F-05). Die zugehoerigen Tests stehen jetzt ohne `test.fail()` in `tests/e2e/regression.spec.ts` (eigenes Playwright-Projekt `regression`, 1440×900; mobile Tests per `test.use`). Gemeinsame Helfer `hitTest`/`freshLogin` liegen in `tests/e2e/support/helpers.ts`. Rohdaten der Regressionstests: `kind = "regression"`.
+
+**Regressionstests (14):** F-01 POST `/reset-password` ohne Ziggy-Fehler · F-02 Tippen filtert (39 → 2, Meta-Zeile folgt) · F-02 Ein-/Ausschluss im Filterpanel (Einschluss „Linsen“ 2, Ausschluss 37 von 39) · F-02 keine Kategorie-Chips/-Zaehler · F-04 Gast: Anmelden-Position nicht klickbar · F-03 Gast: Sidebar „Meine Zutaten“ fuehrt zu `/login` · F-04/F-05 (390) Untermenue-Links nicht mehr vom User-Menue verdeckt · F-03 `/meineZutaten` ohne JS-Fehler mit Leerzustand · F-03 Sidebar-Eintrag navigiert · F-04 Abmelden-Position nicht klickbar (1440/390; gemessen `visibility: hidden`, `pointer-events: none`, `inert`, 0× `POST /logout`) · F-04 Escape schliesst, Fokus zurueck auf Ausloeser · F-04 Aussenklick schliesst · F-04 geschlossen nicht per Tab erreichbar, geoeffnet per Tab/Klick bedienbar.
+
+**Geschaerfte Defekt-Tests (bleiben `test.fail`):**
+- F-05: Nach F-04 trifft der rechte Messpunkt (90 %) den Link, links/Mitte verdeckt weiterhin der Drawer (`a.sidebar-collection-pill`, `nav.sidebar-nav`). Das bisherige Kriterium „mindestens ein Messpunkt“ wurde dadurch faelschlich gruen; Sollkriterium ist jetzt „alle Messpunkte“. Eigentliche Korrektur: Slice 3.
+- F-30 (Zurueckscrollen): Bei 390 px lag am Titel-Mittelpunkt bisher das unsichtbare Dropdown; jetzt ist der Mittelpunkt frei (y = 64), der Header (0–60 px) ueberlappt aber weiter den oberen Titelrand (Titel ab y ≈ 51). Zusaetzliches Kriterium: Titel- und Header-Box ueberschneiden sich nicht. Bei 320 px trifft der Mittelpunkt weiterhin den Header.
+
+**Screenshot-Baselines aktualisiert (10 von 110):**
+- `guest-zutatensuche-{w320,m390,t768,d1024,d1440}`: erfundene Kategorie-Chips („alle, gemüse, obst, gewürz, vegan, glutenfrei, …“) und das Panel mit Dummy-Zaehlern entfernt; Suchbereich dadurch niedriger, Liste unveraendert (39 Zutaten). Vorher/Nachher bei 390 px angesehen: kein Layoutbruch.
+- `user-meine-zutaten-{w320,m390,t768,d1024,d1440}`: statt teilgerenderter Fehlerseite („Zutaten … 0 Zutaten gefunden“) jetzt Leerzustand „Meine Zutaten – Du hast noch keine Zutaten gespeichert. Diese Funktion wird gerade ausgebaut.“
+- Alle anderen 100 Aufnahmen unveraendert (Vergleichslauf ohne Update: nur diese 10 wichen ab). Der Sidebar-Eintrag „Meine Zutaten“ (`<button>` → `<a>`) und das unsichtbare Dropdown (`visibility: hidden`) erzeugen keinen Pixelunterschied.
+
+**Laeufe Slice 1a:** siehe Bericht des Slices; Kennzahlen: 151 Tests (4 Setup, 115 Baseline, 14 Regression, 18 Defekt-Tests, davon 16 `test.fail` und 2 normal gruene F-30-Normalfaelle). Fuer parallele Arbeitskopien den Port per `E2E_PORT=<port>` setzen.
 
 ## 8. Offene Risiken
 
