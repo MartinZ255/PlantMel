@@ -232,7 +232,7 @@ class E2eSeeder extends Seeder
         $created = [];
         foreach ($recipes as $i => $data) {
             $timestamp = $base->copy()->addDays($i);
-            $recipe = new Recipe();
+            $recipe = new Recipe;
             $recipe->forceFill([
                 'title' => $data['title'],
                 'description' => $data['description'],
@@ -287,7 +287,7 @@ class E2eSeeder extends Seeder
         // ---------------------------------------------------------------
         // Sammlungen der Nutzerin: eine gefuellt (ID 1), eine leer (ID 2)
         // ---------------------------------------------------------------
-        $filled = new Collection();
+        $filled = new Collection;
         $filled->forceFill([
             'user_id' => $user->id,
             'name' => 'Wochenplan',
@@ -297,7 +297,7 @@ class E2eSeeder extends Seeder
         ])->save();
         $filled->recipes()->sync([$created[0]->id, $created[1]->id, $created[2]->id]);
 
-        $empty = new Collection();
+        $empty = new Collection;
         $empty->forceFill([
             'user_id' => $user->id,
             'name' => 'Leere Sammlung',
@@ -309,7 +309,7 @@ class E2eSeeder extends Seeder
 
     private function makeUser(string $name, string $email, bool $isHost, Carbon $at): User
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name' => $name,
             'email' => $email,

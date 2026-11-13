@@ -1,135 +1,146 @@
 # Roadmap / Backlog
 
-Stand: 2026-11-13 · Commit `c7227e4` · **Status: Vorschlag, wartet auf Freigabe.**
+Stand: 2026-11-13 · Branch `chore/slice-0-test-baseline` · **Slice 0 abgeschlossen; Slice 1 wartet auf Freigabe.**
 
-Grundlage sind `FINDINGS.md` (F-01 bis F-63) und `FEATURE-MATRIX.md`. Alle Befunde stammen aus statischer Analyse; nichts wurde ausgeführt oder im Browser gesehen.
+Grundlage: `FINDINGS.md` (F-01 bis F-71, Abschnitt 11 mit den Ergebnissen aus Testlauf und Browser), `FEATURE-MATRIX.md`, `SLICE-0-BERICHT.md`.
 
 **Prioritäten:** P0 Datenverlust/Sicherheitsvorfall/kompletter Ausfall; P1 Kernfunktion kaputt; P2 merkliche UX-/Darstellungsprobleme; P3 Politur/optional.
 
-## Gate A – Bestandsaufnahme (abgeschlossen, Freigabe offen)
+## Gate A – Bestandsaufnahme (abgeschlossen)
 
-- [x] Repo-/Architektur- und Abhängigkeitsinventar
-- [x] Routen-/Feature-Matrix mit Auth-/Rollenprüfung
-- [x] UX-/UI-Audit aller Ansichten und Breakpoints – **nur aus dem Code**, ohne Browser
-- [x] Testabdeckung erfasst – **ohne Testlauf**; die Baseline entsteht in Slice 0
-- [x] Sicherheits- und Deployment-Risiken erfasst – ohne Produktionszugriff, ohne `composer audit`/`npm audit`
-- [x] Befunde mit Reproduktionsschritten und Evidenz dokumentiert
-- [ ] Priorisierten Implementierungsplan freigeben ← **hier**
+- [x] Inventar, Feature-Matrix, Audit-Befunde, priorisierter Plan
+- [x] Freigabe für Slice 0 erteilt (2026-11-13)
 
-## Entscheidungen, die vor der Umsetzung nötig sind
+## Gate B – Stabilisierung
 
-Jede wird als ADR in `DECISIONS.md` festgehalten. Empfehlung jeweils zuerst.
+### Slice 0 – Testumgebung und Baseline · **abgeschlossen**
 
-| # | Frage | Empfehlung | Blockiert |
-|---|---|---|---|
-| E1 | Ziel nach Login/Registrierung: `/home` oder `/`? | `/home` | Slice 0 (Starter-Tests), Slice 1 |
-| E2 | E-Mail-Verifizierung: durchsetzen oder entfernen? | durchsetzen, nach Prüfung der Bestandskonten | Slice 5 |
-| E3 | „Meine Zutaten“: bauen oder Menüpunkt und Route entfernen? | vorerst entfernen | Slice 1 |
-| E4 | 2FA und Darstellung: Seiten wiederherstellen oder deaktivieren? | 2FA wiederherstellen, Darstellung/Dark Mode deaktivieren | Slice 5, Gate C |
-| E5 | `sort_order`: additive Migration oder nach Name sortieren? | nach Name sortieren (keine Migration nötig) | Slice 3 |
-| E6 | API-Routen (`routes/api.php`): entfernen oder reparieren? | entfernen (ungenutzt) | Slice 3 |
-| E7 | Mehrere Hosts geplant? Dann Besitz/Policies für Rezepte | bei einem einzigen Host: dokumentieren, nicht bauen | Gate D |
-| E8 | Nutzerbewertungen/Kommentare: bauen oder Landing-Text anpassen? | Text anpassen | Slice 1 |
-| E9 | Impressum/Datenschutz: wer liefert die Inhalte? | Betreiber liefert, Technik baut die Seiten | Slice 5 |
-| E10 | Welche Datenbank läuft in Produktion? | – (Auskunft nötig) | Priorität von F-11, F-12 |
+- [x] Lokale Umgebung: Composer (Herd-phar), `composer install`, `npm ci --ignore-scripts`, Build
+- [x] Unveränderte Suite gemessen: 18 bestanden / 23 rot ohne Build, 27 / 14 mit Build
+- [x] `TestCase` mit `withoutVite()`, HTTP- und Prozess-Sperre, `actingAsUser()`/`actingAsHost()`; fester Test-Key, `APP_DEBUG`/`APP_URL` fixiert
+- [x] Factories für alle 11 Fachmodelle, `HasFactory` in den Modellen (einzige Änderung am Anwendungscode)
+- [x] Charakterisierungstests: reguläre Suite **334 Tests grün**
+- [x] Bekannte Defekte als eigene Suite `KnownDefects`: **36 Tests rot** (beabsichtigt, 19 Befunde)
+- [x] Starter-Tests an echte Routen angepasst (Ist-Zustand, E1 bleibt offen)
+- [x] CI: Trigger `master` + Pull Requests, Prüfmodus, `contents: read`, Audits; Altbestand als dokumentierte Ausnahmen
+- [x] Browser-Baseline: Playwright, 5 Viewports, 3 Rollen, 110 Screenshots, **143 Tests** (121 regulär, 22 erwartete Defekte)
+- [ ] Offen: erster echter CI-Lauf auf GitHub (braucht einen Push – nicht ohne Freigabe)
 
-## Gate B – Stabilisierung (nach Freigabe)
+### Arbeitsweise ab Slice 1
 
-Reihenfolge nach Risiko. Jeder Slice ist ein eigener Branch und einzeln rückrollbar.
+Jeder Fix macht mindestens einen Test aus `tests/KnownDefects` bzw. ein `test.fail()` aus `tests/e2e/known-defects.spec.ts` grün. Der Test wandert dann in die reguläre Suite; der zugehörige grüne Ist-Test (`…_currently_…`) wird angepasst oder entfernt. Geänderte Seiten brauchen neue Screenshot-Baselines (`npm run e2e:update`), der Diff wird vorher angesehen.
 
-### Slice 0 – Testumgebung und Baseline · **empfohlener erster Schritt**
+### Slice 1 – Kritische Sicherheits- und Funktionsprobleme · **nächster Schritt, Freigabe nötig**
 
-Ändert kein Verhalten der Anwendung. Ohne diesen Slice lässt sich keine spätere Änderung absichern.
+Zwei Pakete mit getrennten Dateien, parallel umsetzbar.
 
-- **Umfang:**
-  1. Lokale Umgebung: Composer verfügbar machen, `composer install`, `npm ci`, lokale `.env` aus `.env.example` mit Dummy-Werten, `key:generate`. **Nicht** `composer setup` (führt `migrate --force` aus).
-  2. Bestehende Suite einmal ausführen und die Prognose (14 von 41 rot) bestätigen oder korrigieren.
-  3. `TestCase`: `withoutVite()`, `Http::preventStrayRequests()`, `Process::preventStrayProcesses()`, `actingAsHost()`; fester Test-Key in `phpunit.xml`.
-  4. Factories + `HasFactory` für Recipe, Ingredient, Category, RatingDimension, Collection, RecipeImport, RecipeImage, RecipeIngredient, IngredientAlternative, RecipeRating; `UserFactory` mit `host()`.
-  5. Charakterisierungstests des Ist-Zustands: 403-Matrix aller Host-Routen, Besitz bei Sammlungen, Rezept store/update/delete inkl. Bild und Reihenfolge, Rezeptliste/-detail, Import-Start mit `Queue::fake`.
-  6. Bekannte Defekte als markierte Tests (Gruppe `known-defect`), damit die Baseline grün bleibt.
-  7. Starter-Tests an die echten Routen anpassen (braucht E1).
-  8. CI: Trigger auf `master` und Pull Requests, Prüfmodus statt Fix-Modus, `npm ci`, `contents: read`.
-- **Betroffene Dateien:** `tests/**`, `phpunit.xml`, `database/factories/**`, `app/Models/*.php` (nur `HasFactory`-Trait), `.github/workflows/*.yml`.
-- **Befunde:** F-09, F-28, F-50, F-63.
-- **Risiken:** `HasFactory` ist die einzige Berührung von Anwendungscode und verhaltensneutral. CI wird beim ersten Lauf rot sein, bis Schritt 7 erledigt ist.
-- **Akzeptanz:** `php artisan test` läuft lokal grün (bekannte Defekte markiert); CI läuft auf einem PR; Befehle und Exit-Status dokumentiert.
-- **Freigaben nötig:** Installation von Abhängigkeiten (Netzwerk), Anlegen einer lokalen `.env`.
+**1a – Frontend-Funktion**
 
-### Slice 1 – App-Shell und kaputte Seiten (P1, Frontend)
+| Befund | Änderung | Dateien |
+|---|---|---|
+| F-04 | Geschlossenes User-Menü nicht klickbar; Escape/Außenklick schließen | `AppLayout.vue`, `rezeptly/app.css` (Shell) |
+| F-01 | `route('password.update')` | `pages/auth/ResetPassword.vue` |
+| F-02 | Zutatensuche ohne `category` absichern, Dummy-Zähler entfernen | `IngredientSearchArea.vue`, `pages/IngredientSearch.vue` |
+| F-03 | nach E3: Menüpunkt und Route entfernen oder Seite absichern | `AppLayout.vue`, `pages/MyIngredients.vue`, `routes/web.php` |
 
-- **Umfang:** F-04 (Dropdown), F-05 (Such-Untermenü mobil), F-29 (Backdrop), F-01 (Reset-Formular, eine Zeile), F-02 (Zutatensuche absichern), F-03 nach E3, F-21 Gäste-Links, F-55 Landing-Text nach E8.
-- **Betroffene Dateien:** `resources/js/components/layout/AppLayout.vue`, `components/widgets/SidebarSearchSubmenu.vue`, `resources/css/rezeptly/app.css` (Shell-Abschnitte), `pages/auth/ResetPassword.vue`, `components/recipes/IngredientSearchArea.vue`, `pages/IngredientSearch.vue`, `pages/MyIngredients.vue`, `pages/Landing.vue`, ggf. `routes/web.php`.
-- **Risiken:** `AppLayout.vue` und die Shell-CSS betreffen jede Seite → ein Besitzer, Sichtprüfung bei 320/390/768/1280 px.
-- **Akzeptanz:** geschlossenes Menü nicht klickbar; Such-Links mobil erreichbar; Backdrop schließt den Drawer; Passwort-Reset funktioniert Ende-zu-Ende; Zutatensuche filtert ohne Konsolenfehler; kein Menüpunkt ohne Funktion.
-- **Abhängigkeiten:** Slice 0; E1, E3, E8. Für Sichtprüfung lokale lauffähige App.
+- **Akzeptanz:** die E2E-Tests zu F-01 bis F-04 laufen ohne `test.fail()`; PHPUnit F-02/F-03 je nach Entscheidung grün oder entfernt; keine neuen Konsolenfehler in der Baseline.
+- **Risiko:** `AppLayout.vue` betrifft jede Seite → ein Besitzer, Screenshot-Diff aller 110 Aufnahmen prüfen.
 
-### Slice 2 – Rezeptformular: Rückmeldung und Schutz vor Fehlklicks (P1)
+**1b – Backend-Sicherheit**
 
-- **Umfang:** F-06 (alle Validierungsfehler anzeigen, leere Zeilen filtern), F-17 (Flash teilen und anzeigen), F-07 (Bestätigung beim Löschen/Umbenennen von Kategorien und Zutaten), F-39 (Entfernen aus Sammlung mit Bestätigung/Rückgängig).
-- **Betroffene Dateien:** `components/recipes/RecipeForm.vue`, `widgets/TagEditModal.vue`, `widgets/IngredientEditModal.vue`, `widgets/AddToCollectionModal.vue`, `pages/collections/Show.vue`, `app/Http/Middleware/HandleInertiaRequests.php`, `AppLayout.vue` (Meldungsbereich).
-- **Risiken:** `RecipeForm.vue` hat 912 Zeilen; Änderungen klein halten. `AppLayout.vue` überschneidet sich mit Slice 1 → nacheinander, nicht parallel.
-- **Akzeptanz:** jeder Server-Fehler erscheint am Feld; nach Speichern/Löschen/Hinzufügen erscheint eine Meldung; kein globales Löschen ohne Bestätigung.
-- **Abhängigkeiten:** Slice 0, Slice 1.
+| Befund | Änderung | Dateien |
+|---|---|---|
+| F-16 | drei tote Routen entfernen (E6) | `routes/web.php`, `routes/api.php` |
+| F-46 | `is_host` aus `$fillable`; Artisan-Command `user:make-host` | `app/Models/User.php`, `CreateNewUser.php`, neues Command |
+| F-22 | 422 statt 500: `search` als String, Bewertungsdimension prüfen, doppelte Alternative | `RecipeController.php`, `IngredientAlternativeController.php` |
+| F-18 | 422 beim Löschen einer als Alternative genutzten Zutat | `IngredientController.php` |
+| F-26, F-27 | Import: Rate-Limit, ein laufender Import pro Nutzer, generische Fehlermeldung, Gemini-Datei löschen | `routes/web.php`, `RecipeImportController.php`, `TikTokRecipeImporter.php`, `ImportTikTokRecipe.php` |
+| F-64 | Abhängigkeiten innerhalb der Major-Version aktualisieren, `sqlite3` entfernen | `composer.lock`, `package.json`, `package-lock.json` |
+| F-47 | Security-Header als Middleware (CSP zunächst Report-Only) – oder Entscheidung „in Nginx“ | `bootstrap/app.php`, neue Middleware |
 
-### Slice 3 – Datenintegrität beim Rezept (P2, Backend)
+- **Akzeptanz:** zugehörige KnownDefects-Tests grün und in die reguläre Suite verschoben; Rollen-Matrix und CSRF-Tests unverändert grün; `composer audit`/`npm audit` ohne critical.
+- **Risiko:** F-64 kann Verhalten ändern → eigener Commit, beide Suiten und Browser-Baseline danach. F-46: vorher klären, wie Hosts heute angelegt werden.
+- **Nicht in Slice 1:** F-08 (E-Mail-Verifizierung) – braucht E2 und Auskunft über Bestandskonten, sonst werden Nutzer ausgesperrt.
 
-- **Umfang:** F-13 (Alternativen im Update), F-14 (mehrzeilige Schritte), F-15 (Quelle), F-16 (tote Routen, E6), F-18 (422 statt 500), F-19 (Bilddateien), F-12 (`sort_order`, E5), F-22 (Validierung), F-46 (`is_host` aus `$fillable`).
-- **Betroffene Dateien:** `app/Http/Controllers/RecipeController.php`, `IngredientController.php`, `IngredientAlternativeController.php`, `CategoryController.php`, `routes/web.php`, `routes/api.php`, `app/Models/User.php`, ggf. eine additive Migration für `source`.
-- **Risiken:** Kernlogik des Rezept-Speicherns. Nur mit den Charakterisierungstests aus Slice 0. F-15 braucht eine Migration → eigene Freigabe, vorher F-11 klären.
-- **Akzeptanz:** die als `known-defect` markierten Tests werden grün; keine 500er bei den dokumentierten Eingaben.
-- **Abhängigkeiten:** Slice 0; E5, E6.
+### Slice 2 – Datenverlust beim Bearbeiten von Rezepten
 
-### Slice 4 – TikTok-Import robust machen (P2)
+| Befund | Änderung |
+|---|---|
+| F-13 | Alternativen im Update synchronisieren, einheitliche Speicherlogik im Modal |
+| F-14, F-66 | mehrzeilige Schritte und „Notizen:“-Zeilen verlustfrei speichern |
+| F-15 | Quelle speichern (additive Migration) oder Feld entfernen |
+| F-19 | Bilddateien beim Löschen/Ersetzen nach Commit entfernen |
+| F-07, F-65 | Bestätigung vor globalem Löschen/Umbenennen von Kategorien und Zutaten, mit Zahl betroffener Rezepte |
+| F-39 | Entfernen aus Sammlungen mit Bestätigung oder Rückgängig |
+| F-12 | Sortierung ohne fehlende Spalte (E5) |
 
-- **Umfang:** F-24 (Zeitlimit, Abbrechen, kein Datenverlust), F-25 (Timeouts), F-26 (Rate-Limit, Stream), F-27 (Aufräumen, generische Fehlermeldung, Gemini-Datei löschen).
-- **Betroffene Dateien:** `app/Services/TikTokRecipeImporter.php`, `app/Jobs/ImportTikTokRecipe.php`, `RecipeImportController.php`, `routes/web.php` (Throttle), `config/queue.php`, `pages/recipes/Create.vue`.
-- **Risiken:** nur mit Fakes testbar; echter Ende-zu-Ende-Lauf erst auf Staging.
-- **Abhängigkeiten:** Slice 0.
+- **Dateien:** `RecipeController.php`, `IngredientController.php`, `CategoryController.php`, `RecipeForm.vue`, `TagEditModal.vue`, `IngredientEditModal.vue`, `IngredientAlternativesModal.vue`, `collections/Show.vue`, ggf. eine additive Migration.
+- **Vorbedingung für jede Migration:** F-11 (Schema-Abgleich der Produktion) und E10 – nur mit gesonderter Freigabe.
 
-### Slice 5 – Konto, Recht, Härtung (P1/P2, braucht Entscheidungen)
+### Slice 3 – Navigation, mobile Darstellung, Formulare
 
-- **Umfang:** F-08 (E2), F-20 (E4), F-10 (E9), F-47 (Header, Produktions-Checkliste), F-48 (Datenschutzhinweis Import), F-60.
-- **Risiken:** F-08 kann Bestandskonten aussperren → vorher klären, wie viele Konten unverifiziert sind (Produktionsauskunft, eigene Freigabe).
-- **Abhängigkeiten:** E2, E4, E9.
+| Befund | Änderung |
+|---|---|
+| F-05, F-29, F-69 | Such-Untermenü mobil in der Sidebar, Backdrop, Header-Höhe |
+| F-21 | Gäste-Links auf öffentliche Seiten; Login-Ziel nach E1 |
+| F-06, F-17 | alle Validierungsfehler sichtbar, Erfolgsmeldungen zentral |
+| F-20 | 2FA-Seite wiederherstellen, Darstellung deaktivieren (E4) |
+| F-30, F-31, F-32 | Modal-Ebene und Scroll-Sperre, Rezeptdetail-Kopf, Umbruch langer Titel |
+| F-42, F-68 | `lang="de"`, Seitentitel, `h1`, deutsche Validierungstexte, Inertia-Fehlerseite |
+| F-24 | Import-Zeitlimit und Abbrechen |
 
-### Vor jedem Schema- oder Deployment-Schritt
+### Slice 4 – Konto und Recht (braucht Entscheidungen)
 
-- [ ] F-11: Schema-Abgleich Produktion gegen Migrationen – **nur lesend, nur mit ausdrücklicher Freigabe**, bevorzugt auf einer Staging-Kopie.
-- [ ] E10 beantworten.
+- F-08 (E2), F-10 (E9), F-48, F-60
 
-## Gate C – UX / Redesign (nach Gate B)
+## Gate C – Konsistentes Redesign (nach Gate B)
 
-- [ ] Browser-Baseline: Playwright mit Screenshots bei 320/390/768/1024/1440 px, axe-Scan (neue Abhängigkeiten → Freigabe)
-- [ ] Design-Tokens und eine Breakpoint-Skala (F-33); CSS-Layer-Entscheidung und Dark Mode (F-34)
+- [ ] Design-Tokens und eine Breakpoint-Skala (F-33); CSS-Layer und Dark Mode (F-34)
 - [ ] Gemeinsame Bausteine: Button, Dialog, Formularfeld, Suchleiste, Sternebewertung, Auth-Layout (F-35, F-40, F-41)
-- [ ] Responsive-Korrekturen: Overflow, Rezeptdetail, Modals, Zutatenzeile, Touch-Drag (F-30, F-31, F-32, F-36)
-- [ ] Barrierefreiheit: Tastatur-Alternativen, Struktur, Titel, Sprache, Fehlerseiten, Kontrast nach Messung (F-38, F-42, F-43)
-- [ ] Leer-, Lade- und Fehlerzustände, Filter-Chips (F-44)
+- [ ] Barrierefreiheit: Tastatur-Alternativen, Kontrast nach Messung (F-38, F-43; axe-Zählung als Ausgangswert vorhanden)
+- [ ] Leer-, Lade- und Fehlerzustände, Filter-Chips, Touch-Drag (F-36, F-44)
+- Die Screenshot-Baseline aus Slice 0 ist der Vergleichsstand.
 
 ## Gate D – Qualitätsverbesserung
 
-- [ ] Performance: Pagination, Eager Loading, Shared Props, Bilder/Thumbnails (F-23, F-37)
-- [ ] Refactoring nach Tests: Form Requests, Recipe-Action, Policies (F-53, ggf. F-45 nach E7)
-- [ ] Abhängigkeiten und toter Code (F-51, F-52), Typecheck (F-57), Inertia-Links (F-54)
-- [ ] `composer audit` / `npm audit` in CI
-- [ ] Dokumentation: README, `.env.example` (F-62)
-- [ ] Optionaler Feature-Backlog mit Nutzen-/Aufwandsbewertung: eigene Zutaten, Nutzerbewertungen, Kommentare, Zutaten-Detailseite
+- [ ] Altbestand Lint/Typen bereinigen und CI-Ausnahmen entfernen (F-70)
+- [ ] Performance: Pagination, N+1, Shared Props, Bilder (F-23, F-37)
+- [ ] Refactoring: Form Requests, Recipe-Action, Policies (F-53, ggf. F-45 nach E7)
+- [ ] Toter Code, Abhängigkeiten, Typecheck, Inertia-Links (F-51, F-52, F-54, F-57)
+- [ ] Playwright in der CI (Linux-Baselines), Lauf gegen MySQL
+- [ ] README, `.env.example` (F-62)
 
 ## Gate E – Release (gesonderte Freigabe)
 
-- [ ] Staging mit synthetischen Testdaten
-- [ ] Runbook: Nginx-Vorlage, Queue-Worker-Unit, `storage:link`, env-Schlüssel, yt-dlp-Update (F-49)
+- [ ] Staging mit synthetischen Daten, Schema-Abgleich (F-11)
+- [ ] Runbook: Nginx, Queue-Worker, `storage:link`, env-Schlüssel, yt-dlp (F-49)
 - [ ] CI grün, Smoke-Tests, Backup-/Rollback-Plan
 - [ ] Manuelle Abnahme, erst danach Production
 
-## Verbleibende Risiken nach Gate A
+## Offene Entscheidungen
 
-- **Nichts wurde ausgeführt.** Einzelne Befunde können sich im Browser oder im Testlauf anders zeigen; Slice 0 und die Browser-Baseline schließen diese Lücke.
-- **Produktion unbekannt:** Schema-Stand (F-11), Datenbank-Treiber (F-12), Header und `.env` (F-47), ob der Queue-Worker läuft, ob plantmel.de überhaupt den Stand `c7227e4` ausliefert.
+| # | Frage | Empfehlung | Blockiert |
+|---|---|---|---|
+| E1 | Ziel nach Login/Registrierung: `/home` oder `/`? Der Code setzt heute bewusst `/`. | `/home` | Slice 3 |
+| E2 | E-Mail-Verifizierung durchsetzen oder entfernen? | durchsetzen, nach Prüfung der Bestandskonten | Slice 4 |
+| E3 | „Meine Zutaten“ bauen oder entfernen? | vorerst entfernen | Slice 1a |
+| E4 | 2FA und Darstellung: wiederherstellen oder deaktivieren? | 2FA wiederherstellen, Darstellung deaktivieren | Slice 3 |
+| E5 | `sort_order`: Migration oder nach Name sortieren? | nach Name | Slice 2 |
+| E6 | API-Routen entfernen oder reparieren? | entfernen | Slice 1b |
+| E7 | Mehrere Hosts geplant? | bei einem Host: dokumentieren | Gate D |
+| E8 | Nutzerbewertungen/Kommentare bauen oder Landing-Text anpassen? | Text anpassen | Slice 3 |
+| E9 | Impressum/Datenschutz: wer liefert die Inhalte? | Betreiber | Slice 4 |
+| E10 | Welche Datenbank läuft in Produktion? | – | F-11, F-12 |
+| E11 | Security-Header in Laravel oder in Nginx? | Laravel-Middleware (testbar) | Slice 1b |
+
+## Verbleibende Risiken
+
+- **CI ist ungetestet:** Die Workflows liefen noch nie auf GitHub.
+- **Nur SQLite geprüft:** F-12 und die Längenverletzung aus F-22 zeigen sich erst unter MySQL/Postgres.
+- **Produktion unbekannt:** Schema (F-11), Treiber, Header, Worker, ausgelieferter Stand.
+- **Screenshot-Baseline gilt nur für Windows/Chromium** und ohne die Web-Schrift (fremde Hosts sind im Test blockiert).
 - **Rechtliche Punkte** (F-10, F-48, F-58) brauchen eine Bewertung durch einen Menschen.
-- **Abhängigkeits-Schwachstellen** sind ungeprüft (kein Netzwerk).
 
 ## Nächste empfohlene Aufgabe
 
-Freigabe dieser Roadmap, Beantwortung von E1 und E10, dann **Slice 0** über `/plantmel-implement`.
+Freigabe von **Slice 1** (1a und 1b), dazu die Entscheidungen E3, E6 und E11.

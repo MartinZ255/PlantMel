@@ -201,3 +201,72 @@ Die Agenten haben zusätzlich nur lesende Befehle ausgeführt (u. a. `php -l` ü
 | Migrationen gegen SQLite-Datei oder MySQL | in dieser Phase nicht erlaubt |
 | Produktion: Schema, Nginx, Header, `.env`, Worker, yt-dlp-Version | keine Freigabe |
 | GitHub: Webhooks, Environments, Actions-Status | keine `gh`-CLI, kein Netzwerk |
+
+## 11. Nachtrag Slice 0 (2026-11-13): Bestätigung durch Testlauf und Browser
+
+Seit Slice 0 gibt es ausgeführte Tests. Dieser Abschnitt ersetzt die Einschränkung „nichts wurde ausgeführt“ aus Abschnitt 1 für die hier genannten Befunde. Rohdaten: `baseline/phpunit-*.txt`, `baseline/lint-*.txt`, `baseline/browser/`.
+
+**Belegarten:** PHPUnit = roter Test in `tests/KnownDefects` (Sollverhalten) plus meist ein grüner Ist-Test in `tests/Feature`; Browser = Playwright-Test in `tests/e2e/known-defects.spec.ts` (Chromium, 320–1440 px), als `test.fail()` markiert.
+
+### 11.1 Bestätigte Befunde
+
+| ID | Beleg | Ergebnis |
+|---|---|---|
+| F-01 | Browser, `route:list` | bestätigt: `Ziggy error: route 'password.store' is not in the route list`, kein POST; richtiger Name `password.update` |
+| F-02 | Browser, PHPUnit | bestätigt: `TypeError (reading 'map')` beim Tippen, Liste bleibt bei 39 von 39 |
+| F-03 | Browser, PHPUnit | bestätigt: `TypeError (reading 'filter')` auf allen Viewports; Sidebar-Eintrag navigiert nicht |
+| F-04 | Browser | bestätigt bei 1440 und 390 px: Klick auf die unsichtbare Fläche löst `POST /logout` aus; betrifft auch Gäste (Anmelden/Registrieren) |
+| F-05 | Browser | bestätigt, Ursache genauer: Links liegen hinter dem Drawer **und** unter dem unsichtbaren Dropdown aus F-04 |
+| F-06 | Browser, PHPUnit | bestätigt: Server liefert Fehler für `ingredients.0.name` und `steps.0`, sichtbar ist keine Meldung |
+| F-07 | Browser, PHPUnit | bestätigt: `DELETE /categories/{id}` geht ohne Dialog raus; Kategorie wird von allen Rezepten gelöst |
+| F-08 | PHPUnit | bestätigt zur Laufzeit: unverifizierter Nutzer erreicht `/home` (200) und legt Sammlungen an; bei der Registrierung wird keine Verifizierungsmail versendet |
+| F-09 | Testlauf | Prognose exakt bestätigt: unverändert 18 bestanden / 23 rot ohne Build, 27 / 14 mit Build |
+| F-12 | PHPUnit | bestätigt: `recipes.create`/`edit` sortieren nach fehlender Spalte `sort_order`; unter SQLite ohne Fehler |
+| F-13 | PHPUnit | bestätigt: nach Update ist `ingredient_alternatives` leer bzw. enthält Waisen |
+| F-14 | PHPUnit | bestätigt: aus 2 Schritten werden 3; siehe auch F-66 |
+| F-15 | PHPUnit | bestätigt: `source` kommt als `null` zurück |
+| F-16 | PHPUnit | bestätigt: 3 von 61 Controller-Routen zeigen auf fehlende Methoden; API-Schreibrouten mit echter Session für niemanden nutzbar (302 bzw. 401) |
+| F-17 | Browser, PHPUnit | bestätigt: `Property [flash.success] does not exist`, keine Meldung im Browser |
+| F-18 | PHPUnit | bestätigt: 500 mit `FOREIGN KEY constraint failed` statt 422 |
+| F-19 | PHPUnit | bestätigt: Bilddatei bleibt nach dem Löschen auf dem Disk |
+| F-20 | Browser, PHPUnit | bestätigt, genauer: `/settings/appearance` liefert **HTTP 500**; `/settings/two-factor` nach Passwortbestätigung „Page not found“ |
+| F-21 | Browser, PHPUnit | bestätigt: Gast-Klick aufs Logo führt zu `/login`; nach Login landet man auf `/`. Der Code setzt dieses Ziel ausdrücklich (`FortifyServiceProvider.php:93-100`), es ist also Absicht des bisherigen Stands; Entscheidung E1 offen |
+| F-22 | PHPUnit | bestätigt: `?search[]=a` → 500 (`TypeError`); unbekannte Bewertungsdimension → 500; doppelte Alternative → 500 |
+| F-23 | PHPUnit | bestätigt und gemessen: `collections.index` 4 Queries bei 2 Sammlungen, 12 bei 10 |
+| F-24 | PHPUnit | bestätigt: Import wird nach 30 Minuten weiter als laufend gemeldet |
+| F-26 | PHPUnit | bestätigt: 6. Import und paralleler Import werden mit 200 angenommen |
+| F-27 | PHPUnit | bestätigt: roher yt-dlp-/Gemini-Fehlertext wird ausgeliefert; kein `DELETE` der Gemini-Datei |
+| F-29 | Browser | bestätigt: Backdrop `display:none`, Tippen daneben schließt den Drawer nicht |
+| F-31 | Browser | bestätigt bei 1024 px für alle drei geprüften Rezepte |
+| F-38 | Browser | bestätigt (Stichprobe): Drag-Griff fokussierbar, reagiert auf keine Taste |
+| F-42 | Browser | bestätigt: `lang="en"` überall; 9 von 11 Seiten ohne `h1`; 8 von 11 mit Titel „Laravel“; zweimal „favRezepte“ |
+| F-43 | Browser (axe) | Tendenz bestätigt: `color-contrast` 216 Treffer in 38 von 46 Scans (Zählung, keine Einzelmessung) |
+| F-46 | PHPUnit | bestätigt: `is_host` ist mass-assignable; Registrierung und Profil-Update setzen es trotzdem nicht |
+| F-47 | PHPUnit | bestätigt im Code: weder `X-Content-Type-Options` noch Clickjacking-Schutz; Nginx ungeprüft |
+| F-49 | PHPUnit | teilweise: in der Testumgebung liefern beide Disks dieselbe URL; mit gesetztem `APP_URL` weichen sie ab |
+| F-50 | Messung | bestätigt, siehe F-70 |
+
+### 11.2 Korrekturen am Audit
+
+| ID | Korrektur |
+|---|---|
+| F-22 | Ein Kategoriename mit 101–255 Zeichen führt unter SQLite **nicht** zu 500, sondern wird gespeichert. Der 500 ist nur für MySQL/Postgres zu erwarten (Hypothese). |
+| F-27 | „Importierte Tags ohne passende Kategorie werden still verworfen“ stimmt für die Route `recipes.create` nicht: Sie bleiben in `importedRecipe.tags`. Verworfen werden unbekannte Tags erst beim Speichern (`RecipeController.php:381,646`). |
+| F-30 | Nur teilweise: Direkt nach dem Öffnen ist der Modaltitel nicht verdeckt. Erst nach Scrollen liegen Header und Dropdown darüber, weil die Scroll-Sperre fehlt. |
+| F-32 | Nur teilweise: Es entsteht kein Scroll-Overflow. Der lange Titel wird aber abgeschnitten (h1 240 px breit, Inhalt 367 px), auch bei 390 und 1024 px. `<body>` ist tatsächlich der Scroll-Container. |
+| F-28 | `Process::preventStrayProcesses()` allein schützt nicht; es braucht zusätzlich `Process::fake([])`. In `tests/TestCase.php` umgesetzt. |
+
+Kein Befund ist vollständig weggefallen. Nicht erneut geprüft wurden u. a. F-10, F-11, F-25, F-33 bis F-37, F-39 bis F-41, F-44, F-45 (nur Ist-Zustand festgehalten), F-48, F-51 bis F-63.
+
+### 11.3 Neue Befunde aus Slice 0
+
+| ID | Priorität | Bereich | Beobachtung / Beleg | Vorschlag | Status |
+|---|---|---|---|---|---|
+| F-64 | P2 | Abhängigkeiten | `composer audit`: 55 Advisories in 15 Paketen (1 critical: laravel/framework, Umgehung der TokenGuard-Authentifizierung, GHSA-f9x3-7vq9-cph6; 15 high u. a. guzzle, league/commonmark, symfony/mime). `npm audit --omit=dev`: 24 (1 critical: `tar` über das ungenutzte `sqlite3`; 19 high u. a. vite, axios). Die App nutzt keinen Token-Guard (Grep in `config/`, `app/`, `routes/` ohne Treffer). Protokolle: `baseline/lint-composer-audit.txt`, `lint-npm-audit.txt`. | Framework und Pakete innerhalb der Major-Version aktualisieren, `sqlite3` entfernen; danach beide Suiten laufen lassen | gemessen; Betroffenheit im Einzelnen nicht bewertet |
+| F-65 | P2 | Zutaten | Löschen einer Zutat, die nur Basiszutat von Alternativen ist, löscht die Alternativen per Kaskade ohne Rückfrage mit (200). Die Prüfung in `IngredientController.php:67` greift nicht. | in die Bestätigung aus F-07 aufnehmen bzw. blockieren | verifiziert (grüner Ist-Test) |
+| F-66 | P2 | Rezept-Schritte | Variante von F-14: Enthält ein mehrzeiliger Schritt eine Zeile „Notizen:“, landen alle folgenden Schritte in den Notizen (`RecipeController.php:80,564`). Nummerierte Notizzeilen verlieren ihre Nummer (`:86,569`). | mit F-14 beheben | verifiziert (grüner Ist-Test) |
+| F-67 | P3 | Alternativen / Import | `ingredientAlternatives.store` akzeptiert eine Basiszutat, die nicht im Rezept vorkommt, und die Zutat als ihre eigene Alternative. Import akzeptiert `http://`-Links und prüft keinen leeren API-Schlüssel vorab (`ImportTikTokRecipe.php:26`). | Validierung ergänzen | verifiziert |
+| F-68 | P2 | Fehlerseiten | Die 403 der Host-Middleware kommt bei Inertia-Requests als vollständige HTML-Seite ohne `X-Inertia`-Header (`bootstrap/app.php:31-33`, kein Renderer). Vermutlich erscheint im Frontend das Inertia-Fehler-Modal mit Roh-HTML. | Inertia-Fehlerseite (mit F-42) | Antwort verifiziert; Darstellung Hypothese |
+| F-69 | P3 | App-Shell mobil | Mobiler Header ist 60 px hoch, der Drawer beginnt bei `top: 50px` (10 px Überlappung); der Header ist nicht fixiert. Login und Registrierung haben kein Logo und keinen Weg zurück zur Startseite. Platzhaltertexte werden bei 320 px abgeschnitten. Validierungstexte sind englisch. | mit Slice 3 bzw. Gate C | im Browser beobachtet |
+| F-70 | P3 | Codequalität | Altbestand im Prüfmodus: Pint 27 Verstöße, Prettier 36 Dateien, ESLint 4 Fehler, `vue-tsc` 6 Typfehler. In der CI als dokumentierte, nicht blockierende Ausnahmen hinterlegt. | in Gate D bereinigen, Ausnahmen dann entfernen | gemessen |
+| F-71 | P3 | Rezept-Anzeige | `show` liefert `tags` fest als `[]` (`RecipeController.php:141`); die Liste rundet Bewertungen auf ganze Zahlen (4,67 → 5), die Detailseite auf eine Nachkommastelle; `tagStats.key` nutzt die nicht vorhandene Spalte `slug` (`:282`). | bei Gelegenheit vereinheitlichen | verifiziert |
