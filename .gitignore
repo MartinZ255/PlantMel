@@ -26,3 +26,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Playwright (E2E-Browser-Baseline)
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+/playwright/.auth
