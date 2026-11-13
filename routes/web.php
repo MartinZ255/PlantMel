@@ -141,7 +141,7 @@ Route::middleware(['auth', 'is_host'])->group(function () {
 
     // TikTok-Rezeptimport
     Route::post('/rezept-import', [\App\Http\Controllers\RecipeImportController::class, 'store'])
-        ->name('recipeImports.store');
+        ->name('recipeImports.store')->middleware('throttle:recipe-imports');
 
     Route::get('/rezept-import/{recipeImport}', [\App\Http\Controllers\RecipeImportController::class, 'show'])
         ->name('recipeImports.show');

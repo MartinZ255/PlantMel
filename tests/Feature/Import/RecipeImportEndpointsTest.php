@@ -37,8 +37,7 @@ class RecipeImportEndpointsTest extends TestCase
             'm' => ['https://m.tiktok.com/v/7000000000000000001.html'],
             'ohne Subdomain' => ['https://tiktok.com/@example/video/1'],
             'Großschreibung' => ['HTTPS://WWW.TIKTOK.COM/@example/video/1'],
-            // Ist-Zustand: http:// wird akzeptiert (Regex https?)
-            'http' => ['http://www.tiktok.com/@example/video/1'],
+            'genau 255 Zeichen' => ['https://www.tiktok.com/@example/video/'.str_repeat('1', 255 - 38)],
         ];
     }
 
@@ -80,6 +79,10 @@ class RecipeImportEndpointsTest extends TestCase
             'ohne Pfad-Slash' => ['https://www.tiktok.com'],
             'Userinfo-Trick' => ['https://www.tiktok.com@evil.tld/'],
             'Array' => [['https://www.tiktok.com/@x/video/1']],
+            // F-67: nur https://
+            'http' => ['http://www.tiktok.com/@example/video/1'],
+            // F-26: Spalte recipe_imports.url ist string(255)
+            '256 Zeichen' => ['https://www.tiktok.com/@example/video/'.str_repeat('1', 256 - 38)],
         ];
     }
 
@@ -113,6 +116,17 @@ class RecipeImportEndpointsTest extends TestCase
 
         $this->postJson(route('recipeImports.store'), ['url' => 'https://example.com/'])
             ->assertJsonValidationErrors(['url' => 'Bitte einen gültigen TikTok-Link einfügen.']);
+    }
+
+    public function test_store_rejects_http_and_too_long_urls_with_german_messages(): void
+    {
+        $this->actingAsHost();
+
+        $this->postJson(route('recipeImports.store'), ['url' => 'http://www.tiktok.com/@example/video/1'])
+            ->assertJsonValidationErrors(['url' => 'Bitte einen gültigen TikTok-Link einfügen.']);
+
+        $this->postJson(route('recipeImports.store'), ['url' => 'https://www.tiktok.com/@example/video/'.str_repeat('1', 300)])
+            ->assertJsonValidationErrors(['url' => 'Der Link ist zu lang.']);
     }
 
     public function test_show_returns_status_for_pending_import(): void

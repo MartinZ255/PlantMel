@@ -43,6 +43,21 @@ class RecipeImportFactory extends Factory
     }
 
     /**
+     * Laufender Import (Job arbeitet gerade bzw. wartet in der Queue).
+     *
+     * @param  'pending'|'downloading'|'analyzing'  $status
+     */
+    public function running(string $status = 'analyzing'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => $status,
+            'source' => null,
+            'error' => null,
+            'result' => null,
+        ]);
+    }
+
+    /**
      * Abgeschlossener Import mit einem result im Format von
      * TikTokRecipeImporter::normalize().
      *
