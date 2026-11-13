@@ -1,8 +1,8 @@
 # Roadmap / Backlog
 
-Stand: 2026-11-13 · Branch `fix/slice-1-kritisch` · **Slice 0 und Slice 1 abgeschlossen; Slice 2 wartet auf Freigabe.**
+Stand: 2026-11-13 · Branch `fix/slice-2-datenverlust` · **Slice 0, 1 und 2 abgeschlossen; Slice 3 wartet auf Freigabe.**
 
-Grundlage: `FINDINGS.md` (F-01 bis F-76; Abschnitt 11 Testlauf und Browser, Abschnitt 12 Stand nach Slice 1), `FEATURE-MATRIX.md` (Stand Audit), `SLICE-0-BERICHT.md`, `SLICE-1-BERICHT.md`.
+Grundlage: `FINDINGS.md` (F-01 bis F-79; Abschnitt 11 Testlauf und Browser, Abschnitte 12 und 13 Stand nach Slice 1 und 2), `FEATURE-MATRIX.md` (Stand Audit), `SLICE-0-BERICHT.md`, `SLICE-1-BERICHT.md`, `SLICE-2-BERICHT.md`, `DECISIONS.md`.
 
 **Prioritäten:** P0 Datenverlust/Sicherheitsvorfall/kompletter Ausfall; P1 Kernfunktion kaputt; P2 merkliche UX-/Darstellungsprobleme; P3 Politur/optional.
 
@@ -65,7 +65,11 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 - **Nicht in Slice 1:** F-08 (E-Mail-Verifizierung) – braucht E2 und Auskunft über Bestandskonten, sonst werden Nutzer ausgesperrt.
 - **Aus Slice 1 offen geblieben:** Array-Größen und Obergrenzen (F-22), sichtbare Anzeige der neuen 422-Meldungen (F-74), CSP erzwingen (F-75).
 
-### Slice 2 – Datenverlust beim Bearbeiten von Rezepten · **nächster Schritt, Freigabe nötig**
+### Slice 2 – Datenverlust beim Bearbeiten von Rezepten · **abgeschlossen (lokal)**
+
+Ergebnis: reguläre Suite 465 grün, bekannte Defekte 14 → 7, Browser 164 grün (15 erwartete Defekte). Erledigt: F-07, F-12, F-13, F-14, F-15 (Feld entfernt), F-19, F-65, F-66; teilweise F-39 (Entfernen aus Sammlungen) und F-74 (Fehler in den Modals). Keine Migration. Details: `SLICE-2-BERICHT.md`.
+
+Ursprünglicher Plan (zur Nachvollziehbarkeit):
 
 | Befund | Änderung |
 |---|---|
@@ -80,13 +84,14 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 - **Dateien:** `RecipeController.php`, `IngredientController.php`, `CategoryController.php`, `RecipeForm.vue`, `TagEditModal.vue`, `IngredientEditModal.vue`, `IngredientAlternativesModal.vue`, `collections/Show.vue`, ggf. eine additive Migration.
 - **Vorbedingung für jede Migration:** F-11 (Schema-Abgleich der Produktion) und E10 – nur mit gesonderter Freigabe.
 
-### Slice 3 – Navigation, mobile Darstellung, Formulare
+### Slice 3 – Navigation, mobile Darstellung, Formulare · **nächster Schritt, Freigabe nötig**
 
 | Befund | Änderung |
 |---|---|
 | F-05, F-29, F-69 | Such-Untermenü mobil in der Sidebar, Backdrop, Header-Höhe |
 | F-21 | Gäste-Links auf öffentliche Seiten; Login-Ziel nach E1 |
-| F-06, F-17, F-74 | alle Validierungsfehler sichtbar (auch die neuen 422-Meldungen), Erfolgsmeldungen zentral |
+| F-06, F-17, F-74 | alle Validierungsfehler im Rezeptformular sichtbar, Erfolgsmeldungen zentral |
+| F-39 (Rest) | „Zur Sammlung hinzufügen“: Gast-Hinweis, Fehleranzeige |
 | F-20 | 2FA-Seite wiederherstellen, Darstellung deaktivieren (E4) |
 | F-30, F-31, F-32 | Modal-Ebene und Scroll-Sperre, Rezeptdetail-Kopf, Umbruch langer Titel |
 | F-42, F-68 | `lang="de"`, Seitentitel, `h1`, deutsche Validierungstexte, Inertia-Fehlerseite |
@@ -129,7 +134,7 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 | E2 | E-Mail-Verifizierung durchsetzen oder entfernen? | durchsetzen, nach Prüfung der Bestandskonten | Slice 4 |
 | E3 | „Meine Zutaten“ bauen oder entfernen? | **entschieden:** bleibt, wird später ausgebaut | – |
 | E4 | 2FA und Darstellung: wiederherstellen oder deaktivieren? | 2FA wiederherstellen, Darstellung deaktivieren | Slice 3 |
-| E5 | `sort_order`: Migration oder nach Name sortieren? | nach Name | Slice 2 |
+| E5 | `sort_order`: Migration oder nach Name sortieren? | **umgesetzt:** nach Name (Empfehlung, nicht widersprochen) | – |
 | E6 | API-Routen entfernen oder reparieren? | **entschieden:** entfernt | – |
 | E7 | Mehrere Hosts geplant? | bei einem Host: dokumentieren | Gate D |
 | E8 | Nutzerbewertungen/Kommentare bauen oder Landing-Text anpassen? | Text anpassen | Slice 3 |
@@ -150,4 +155,4 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 
 ## Nächste empfohlene Aufgabe
 
-Freigabe von **Slice 2** (Datenverlust beim Bearbeiten von Rezepten), dazu E5 (`sort_order`) und E10 (Datenbank in Produktion). Parallel sinnvoll: lesende Prüfung des VPS (PHP-Version, ausgecheckter Stand, Schema) – nur mit ausdrücklicher Freigabe für genau diese Befehle.
+Freigabe von **Slice 3** (Navigation, mobile Darstellung, Formulare), dazu E1 (Ziel nach Login), E4 (2FA/Darstellung) und E8 (Landing-Text). Parallel sinnvoll: lesende Prüfung des VPS (PHP-Version, ausgecheckter Stand, Schema) – nur mit ausdrücklicher Freigabe für genau diese Befehle.

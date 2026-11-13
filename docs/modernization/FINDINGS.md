@@ -304,3 +304,28 @@ Branch `fix/slice-1-kritisch` (lokal). Belege: reguläre Suite 410 Tests grün, 
 | F-74 | P2 | Neue 422-Antworten (Tag über 100 Zeichen, doppelte Alternative, Zutat als Alternative genutzt) landen im Frontend weiter nur in `console.error`; neue Fehler-Keys im Rezeptformular (`ratings`, `ingredients.N.amount`, `tags.N`) werden nicht angezeigt. | mit F-06/F-17 in Slice 3 |
 | F-75 | P3 | CSP-Report-Only meldet auf jeder Seite vier Verstöße: zwei Inline-Scripts (`app.blade.php`, Ziggy `@routes`), ein Inline-Style, der Inertia-Fortschrittsbalken. | Nonce einführen, dann CSP erzwingen (Schritte in `SECURITY-HEADERS.md`) |
 | F-76 | P3 | `RatingDimensionController` ist nach dem Entfernen der API-Routen unbenutzt. Fehlgeschlagene Import-Jobs stehen mit Rohfehler in `failed_jobs` und im Log – braucht eine Aufbewahrungsregel. Das Import-Limit zählt auch abgelehnte Versuche (Tippfehler im Link verbraucht einen von fünf). | Gate D bzw. mit F-48 |
+
+## 13. Nachtrag Slice 2 (2026-11-13): behobene Befunde
+
+Branch `fix/slice-2-datenverlust` (lokal). Belege: reguläre Suite 465 Tests grün, Browser 164 Tests grün; Details in `SLICE-2-BERICHT.md`, Entscheidungen in `DECISIONS.md`.
+
+| ID | Status | Was geändert wurde | Regressionstest |
+|---|---|---|---|
+| F-07 | behoben | Löschen von Kategorien verlangt serverseitig `confirmed`; ohne → 409 mit Zahl der betroffenen Rezepte. Bestätigungsbereich im Modal, Hinweis beim Umbenennen | `CatalogDeleteConfirmationTest`, E2E |
+| F-12 | behoben | Sortierung nach `name`; unter MySQL/Postgres nicht ausgeführt | `SortOrderColumnTest` |
+| F-13 | behoben | Gemeinsame Sync-Methode für `store` und `update`; Modal arbeitet nur noch als Entwurf | `RecipeAlternativesSyncTest`, E2E |
+| F-14, F-66 | behoben | ADR-001: Fortsetzungszeilen mit vier Leerzeichen, ein Parser für `show` und `edit`. Bereits zerfallene Schritte werden nicht repariert | `RecipeInstructionsRoundTripTest`, E2E |
+| F-15 | behoben | Feld „Quelle“ entfernt (Entscheidung des Auftraggebers) | `RecipeSourceRemovedTest`, E2E |
+| F-19 | behoben | Bilddateien werden nach erfolgreichem Commit gelöscht; Rollback lässt keine Waisen. Altbestand an verwaisten Dateien bleibt | `RecipeImageFilesTest`, `RecipeDeleteImageTest` |
+| F-39 | teilweise | Entfernen aus Sammlungen mit eigenem Button und Rückfrage. Offen: Gast-Sackgasse und Fehlerbehandlung in „Zur Sammlung hinzufügen“ → Slice 3 | E2E |
+| F-65 | behoben | Löschen einer Zutat nennt die Zahl mitgelöschter Alternativen und verlangt Bestätigung | `CatalogDeleteConfirmationTest`, E2E |
+| F-67 | behoben (Rest) | Doppelte Alternativen und „Zutat als eigene Alternative“ werden beim Speichern des Rezepts verworfen | `RecipeAlternativesSyncTest` |
+| F-74 | teilweise | Fehler in den Modals für Kategorien, Zutaten und Alternativen sind sichtbar. Offen: Fehler-Keys im Rezeptformular → Slice 3 | E2E |
+
+### Neue Punkte aus Slice 2
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-77 | P3 | Toter Code: Endpunkte und Controller `ingredientAlternatives.*` (vom Frontend nicht mehr genutzt), `RecipeController::create()` (Route nutzt eine Closure), ungenutzter Parameter in `TikTokRecipeImporter::normalize`. `RecipeImportFactory` erzeugt weiter `result.source`. | in Gate D entfernen |
+| F-78 | P3 | Fehlerbehandlung für axios-Aufrufe ist in drei Modal-Dateien dupliziert. | gemeinsamer Helfer bei den Bausteinen in Gate C |
+| F-79 | P3 | Altbestand: bereits zerfallene Schritte und verwaiste Bilddateien werden nicht nachträglich bereinigt. | bei Bedarf einmaliges Aufräum-Command, nur mit Freigabe und Backup |
