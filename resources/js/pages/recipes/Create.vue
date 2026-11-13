@@ -35,12 +35,16 @@
                 </div>
 
                 <p v-if="importRunning" class="tiktok-import__status">
-                    {{ importStatusText }} – das kann bis zu zwei Minuten dauern.
+                    {{ importStatusText }} – das kann bis zu zwei Minuten
+                    dauern.
                 </p>
                 <p v-else-if="importError" class="form-field__error">
                     {{ importError }}
                 </p>
-                <p v-else-if="importedRecipe" class="tiktok-import__status tiktok-import__status--success">
+                <p
+                    v-else-if="importedRecipe"
+                    class="tiktok-import__status tiktok-import__status--success"
+                >
                     Import übernommen – bitte unten prüfen und speichern.
                 </p>
             </div>
@@ -59,26 +63,28 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue';
-import { router } from '@inertiajs/vue3';
-import axios from 'axios';
-import { route } from 'ziggy-js';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import RecipeForm from '@/components/recipes/RecipeForm.vue';
+import { router } from '@inertiajs/vue3';
+import axios from 'axios';
+import { onBeforeUnmount, ref } from 'vue';
+import { route } from 'ziggy-js';
 
 interface ImportedRecipe {
     name?: string;
     description?: string;
     duration_minutes?: number | null;
     servings?: number | null;
-    source?: string;
+    // F-15: `source` wird nicht mehr übernommen; ältere Import-Ergebnisse
+    // dürfen das Feld noch enthalten (RecipeForm ignoriert es)
+    source?: string | null;
     tags?: string[];
     ingredients?: { amount: string; name: string }[];
     steps?: string[];
     notes?: string;
 }
 
-const props = defineProps<{
+defineProps<{
     ratingDimensions: {
         id: number;
         name: string;
@@ -124,7 +130,9 @@ const startImport = async () => {
     importStatusText.value = statusLabels.pending;
 
     try {
-        const { data } = await axios.post(route('recipeImports.store'), { url });
+        const { data } = await axios.post(route('recipeImports.store'), {
+            url,
+        });
         const importId: number = data.id;
 
         pollTimer = setInterval(async () => {
@@ -142,7 +150,8 @@ const startImport = async () => {
                     stopPolling();
                     importRunning.value = false;
                     importError.value =
-                        status.error ?? 'Import fehlgeschlagen. Bitte erneut versuchen.';
+                        status.error ??
+                        'Import fehlgeschlagen. Bitte erneut versuchen.';
                 } else {
                     importStatusText.value =
                         statusLabels[status.status] ?? 'Import läuft';
@@ -156,7 +165,8 @@ const startImport = async () => {
     } catch (error: any) {
         importRunning.value = false;
         importError.value =
-            error?.response?.data?.message ?? 'Import konnte nicht gestartet werden.';
+            error?.response?.data?.message ??
+            'Import konnte nicht gestartet werden.';
     }
 };
 

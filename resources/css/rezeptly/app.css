@@ -1959,6 +1959,11 @@ body {
     color: var(--text-main);
 }
 
+/* Slice 2 (F-14): Zeilenumbrüche innerhalb eines Schritts sichtbar lassen */
+.step-text--multiline {
+    white-space: pre-line;
+}
+
 /* Zweispaltiges Grid für Nährwerte + Notizen */
 
 .section-grid {
@@ -2557,6 +2562,49 @@ body {
 
 .modal__delete {
 
+}
+
+/* Slice 2 (F-07/F-65): Fehlermeldung und Lösch-Bestätigung im Modal */
+.modal__alert {
+    margin: 1rem 0 0;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--danger);
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--danger);
+    background: #fff;
+}
+
+.modal__confirm {
+    margin-top: 1.25rem;
+    padding: 0.85rem;
+    border: 1px solid var(--danger);
+    border-radius: 0.5rem;
+    background: #fff;
+}
+
+.modal__confirm-text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.modal__confirm-actions {
+    margin-top: 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.modal__confirm-delete,
+.modal__confirm-delete:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+.modal__confirm-delete:hover {
+    filter: brightness(0.92);
 }
 
 /* ======================================
