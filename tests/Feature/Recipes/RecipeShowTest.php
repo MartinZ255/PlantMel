@@ -53,7 +53,7 @@ class RecipeShowTest extends TestCase
                 ->where('rating', null)
                 ->where('ratingCount', 0)
                 ->where('ratingDimensions', [])
-                ->where('source', null) // fest null, siehe F-15
+                ->missing('source') // F-15: Feld entfällt
                 ->has('ingredients')
                 ->has('steps')
                 ->has('notes')

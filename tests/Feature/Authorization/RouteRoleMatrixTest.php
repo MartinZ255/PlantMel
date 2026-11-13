@@ -424,6 +424,8 @@ class RouteRoleMatrixTest extends TestCase
             'categories.store', 'categories.update' => ['name' => 'Matrix-Kategorie'],
             'ingredients.store', 'ingredients.update' => ['name' => 'Matrix-Zutat'],
             'ingredientAlternatives.store' => ['alternative_ingredient_id' => Ingredient::factory()->create()->id],
+            // ADR-002: globales Löschen nur mit Bestätigung (sonst 409)
+            'categories.destroy', 'ingredients.destroy' => ['confirmed' => 1],
             default => [],
         };
     }

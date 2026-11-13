@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\KnownDefects\Recipes;
+namespace Tests\Feature\Recipes;
 
 use App\Models\Ingredient;
 use App\Models\IngredientAlternative;
@@ -11,15 +11,12 @@ use Tests\Feature\Recipes\Concerns\InteractsWithRecipes;
 use Tests\TestCase;
 
 /**
- * Bekannter Defekt F-13: RecipeController::update() validiert
- * ingredients.*.alternativeIngredientIds, speichert sie aber nie
- * (app/Http/Controllers/RecipeController.php:605-606 vs. :657-674).
+ * Regressionstest zu F-13 (behoben in Slice 2): RecipeController::update()
+ * validierte ingredients.*.alternativeIngredientIds, speicherte sie aber nie.
  *
  * Sollverhalten: Nach dem Update entsprechen die Alternativen exakt dem Gesendeten;
- * Alternativen entfernter Zutaten sind gelöscht.
- * Gegenpart (Ist-Verhalten): Tests\Feature\Recipes\RecipeCurrentDefectBehaviourTest (…_f13).
+ * Alternativen entfernter Zutaten sind gelöscht. Weitere Fälle: RecipeAlternativesSyncTest.
  */
-#[Group('known-defect')]
 #[Group('F-13')]
 class RecipeUpdateAlternativesTest extends TestCase
 {

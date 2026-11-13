@@ -105,9 +105,10 @@ Route::middleware(['auth', 'is_host'])->group(function () {
 
     // Rezepte anlegen / bearbeiten / löschen
     Route::get('/rezepte/erstellen', function (Request $request) {
-        $ratingDimensions = RatingDimension::orderBy('sort_order')
+        // F-12/E5: nach Name statt nach der nicht vorhandenen Spalte sort_order
+        $ratingDimensions = RatingDimension::orderBy('name')
             ->get(['id', 'name', 'description']);
-        $categories = Category::orderBy('sort_order')
+        $categories = Category::orderBy('name')
             ->get(['id', 'name']);
         $ingredients = Ingredient::orderBy('name')
             ->get(['id', 'name']);

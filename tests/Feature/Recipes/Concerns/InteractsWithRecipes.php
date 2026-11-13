@@ -15,8 +15,10 @@ use Illuminate\Testing\TestResponse;
  *
  * Die Payload-Struktur entspricht dem, was resources/js/components/recipes/RecipeForm.vue
  * per useForm(...).post(..., { forceFormData: true }) sendet:
- * name, description, duration_minutes, servings, image, source, tags[],
+ * name, description, duration_minutes, servings, image, tags[],
  * ingredients[][amount|name|alternativeIngredientIds[]], steps[], notes, ratings{dimensionId: wert}.
+ * Das frühere Feld `source` entfällt (F-15); ein mitgesendetes wird ignoriert
+ * (RecipeSourceRemovedTest).
  */
 trait InteractsWithRecipes
 {
@@ -33,7 +35,6 @@ trait InteractsWithRecipes
             'description' => 'Herzhafte Sauce mit roten Linsen.',
             'duration_minutes' => 45,
             'servings' => 4,
-            'source' => '',
             'tags' => [],
             'ingredients' => [
                 ['amount' => '200 g', 'name' => 'Rote Linsen'],
