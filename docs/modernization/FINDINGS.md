@@ -270,3 +270,37 @@ Kein Befund ist vollständig weggefallen. Nicht erneut geprüft wurden u. a. F-1
 | F-69 | P3 | App-Shell mobil | Mobiler Header ist 60 px hoch, der Drawer beginnt bei `top: 50px` (10 px Überlappung); der Header ist nicht fixiert. Login und Registrierung haben kein Logo und keinen Weg zurück zur Startseite. Platzhaltertexte werden bei 320 px abgeschnitten. Validierungstexte sind englisch. | mit Slice 3 bzw. Gate C | im Browser beobachtet |
 | F-70 | P3 | Codequalität | Altbestand im Prüfmodus: Pint 27 Verstöße, Prettier 36 Dateien, ESLint 4 Fehler, `vue-tsc` 6 Typfehler. In der CI als dokumentierte, nicht blockierende Ausnahmen hinterlegt. | in Gate D bereinigen, Ausnahmen dann entfernen | gemessen |
 | F-71 | P3 | Rezept-Anzeige | `show` liefert `tags` fest als `[]` (`RecipeController.php:141`); die Liste rundet Bewertungen auf ganze Zahlen (4,67 → 5), die Detailseite auf eine Nachkommastelle; `tagStats.key` nutzt die nicht vorhandene Spalte `slug` (`:282`). | bei Gelegenheit vereinheitlichen | verifiziert |
+
+## 12. Nachtrag Slice 1 (2026-11-13): behobene Befunde
+
+Branch `fix/slice-1-kritisch` (lokal). Belege: reguläre Suite 410 Tests grün, Browser 151 Tests grün; Details in `SLICE-1-BERICHT.md`.
+
+| ID | Status | Was geändert wurde | Regressionstest |
+|---|---|---|---|
+| F-01 | behoben | `ResetPassword.vue` nutzt `route('password.update')` | `tests/e2e/regression.spec.ts` |
+| F-02 | behoben | Zutatensuche funktioniert ohne `category`; erfundene Chips und Zähler entfernt; Vertrag bewusst `{id, name}` | E2E (Tippen, Ein-/Ausschluss), `CatalogPagesTest` |
+| F-03 | entschärft | Seite stürzt nicht mehr ab, ehrlicher Leerzustand, Sidebar-Link navigiert, Route liefert `ingredients: []`. **Das Feature selbst (eigene Zutaten speichern) ist nicht gebaut** – laut Entscheidung späterer Ausbau | E2E, `MyIngredientsPropsTest` |
+| F-04 | behoben | Geschlossenes User-Menü ist `visibility: hidden`, `pointer-events: none`, `inert`; Escape und Außenklick schließen; `aria-expanded` | E2E bei 1440 und 390 px, Gast und Nutzer |
+| F-05 | teilweise | Zweite Ursache (unsichtbares Dropdown) behoben; Links liegen weiter hinter dem Drawer → Slice 3 | bleibt `test.fail()` |
+| F-16 | behoben | Alle API-Routen und `ingredients.show` entfernt; `routes/api.php` bleibt leer registriert | `RouteIntegrityTest`, `ApiRoutesRemovedTest` |
+| F-18 | behoben | 422 beim Löschen einer als Alternative genutzten Zutat | `IngredientUsedAsAlternativeDeleteTest` |
+| F-22 | behoben (Kern) | Suchparameter werden normalisiert, unbekannte Bewertungsdimension und doppelte Alternative → 422, Kategoriename `max:100`, `max` für Rezept-Strings. Offen: Array-Größen, Obergrenzen für Dauer/Portionen | `RecipeInputValidationTest`, `CatalogValidationGapsTest` |
+| F-24 | Server-Teil behoben | Importe ohne Fortschritt gelten nach 15 Minuten als `failed`. Client-Zeitlimit und Abbrechen → Slice 3 | `StaleImportStatusTest` |
+| F-25 | behoben (Default) | `retry_after` der Datenbank-Queue 700 statt 90; Status nur vorwärts. Wirkung mit mehreren Workern nur auf dem Server prüfbar | `ImportTikTokRecipeJobTest` |
+| F-26 | behoben | 5 Import-Starts pro Stunde und Nutzer (429), ein laufender Import pro Nutzer (409), URL `max:255`, Stream-Upload | `ImportThrottleTest` |
+| F-27 | behoben | generische deutsche Fehlermeldungen, Rohfehler nur im Log (Schlüssel geschwärzt), Temp-Dateien und Gemini-Datei werden aufgeräumt | `ImportErrorHandlingTest` |
+| F-30 | teilweise | Titel-Mittelpunkt nicht mehr vom Dropdown verdeckt; Header-Überlappung und fehlende Scroll-Sperre bleiben → Slice 3 | bleibt `test.fail()` |
+| F-46 | behoben | `is_host` nicht mehr in `$fillable`; Command `user:make-host {email} {--revoke}` | `HostFlagMassAssignmentTest`, `MakeHostCommandTest` |
+| F-47 | behoben im Code | Middleware `SecurityHeaders`: `nosniff`, `X-Frame-Options: DENY`, `frame-ancestors 'none'`, Referrer- und Permissions-Policy, HSTS nur bei HTTPS; ausführliche CSP als Report-Only. Wirkung hinter Nginx ungeprüft (`SECURITY-HEADERS.md`) | `SecurityHeadersTest` |
+| F-64 | behoben | `composer audit` 55 → 0, `npm audit --omit=dev` 24 → 0; Laravel 12.72, Fortify 1.42, Vite 7.3.8; `sqlite3` entfernt | beide Suiten und Browser-Baseline nach dem Update grün |
+| F-67 | teilweise | Import nur noch `https://`, leerer API-Schlüssel bricht früh ab. Offen: Konsistenzprüfung der Alternativen | `RecipeImportEndpointsTest` |
+
+### Neue Punkte aus Slice 1
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-72 | P2 | **Das Lockfile verlangt jetzt PHP ≥ 8.4** (acht Symfony-8-Pakete, z. B. `symfony/string` 8.0.15). `composer.json` erlaubt weiter `^8.2`. Vor Slice 1 genügte PHP 8.2. Der VPS läuft laut Angabe mit 8.4.27 – ungeprüft. | Vor dem ersten Deployment `php -v` auf dem VPS lesend prüfen (Freigabe nötig); falls älter, Lockfile mit `config.platform.php` neu auflösen |
+| F-73 | P3 | Fortify 1.42 bringt `laravel/passkeys` und `web-auth/webauthn-lib` als neue Abhängigkeiten mit; die App nutzt keine Passkeys. Laravel 12.72 registriert zusätzlich `PUT storage/{path}` (signierte Uploads der lokalen Disk, `serve => true`); unsignierte Requests liefern 403 (per Test belegt). | bei Gelegenheit prüfen, ob `serve` für die lokale Disk nötig ist |
+| F-74 | P2 | Neue 422-Antworten (Tag über 100 Zeichen, doppelte Alternative, Zutat als Alternative genutzt) landen im Frontend weiter nur in `console.error`; neue Fehler-Keys im Rezeptformular (`ratings`, `ingredients.N.amount`, `tags.N`) werden nicht angezeigt. | mit F-06/F-17 in Slice 3 |
+| F-75 | P3 | CSP-Report-Only meldet auf jeder Seite vier Verstöße: zwei Inline-Scripts (`app.blade.php`, Ziggy `@routes`), ein Inline-Style, der Inertia-Fortschrittsbalken. | Nonce einführen, dann CSP erzwingen (Schritte in `SECURITY-HEADERS.md`) |
+| F-76 | P3 | `RatingDimensionController` ist nach dem Entfernen der API-Routen unbenutzt. Fehlgeschlagene Import-Jobs stehen mit Rohfehler in `failed_jobs` und im Log – braucht eine Aufbewahrungsregel. Das Import-Limit zählt auch abgelehnte Versuche (Tippfehler im Link verbraucht einen von fünf). | Gate D bzw. mit F-48 |

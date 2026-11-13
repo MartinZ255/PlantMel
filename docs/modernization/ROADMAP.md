@@ -1,8 +1,8 @@
 # Roadmap / Backlog
 
-Stand: 2026-11-13 · Branch `chore/slice-0-test-baseline` · **Slice 0 abgeschlossen; Slice 1 wartet auf Freigabe.**
+Stand: 2026-11-13 · Branch `fix/slice-1-kritisch` · **Slice 0 und Slice 1 abgeschlossen; Slice 2 wartet auf Freigabe.**
 
-Grundlage: `FINDINGS.md` (F-01 bis F-71, Abschnitt 11 mit den Ergebnissen aus Testlauf und Browser), `FEATURE-MATRIX.md`, `SLICE-0-BERICHT.md`.
+Grundlage: `FINDINGS.md` (F-01 bis F-76; Abschnitt 11 Testlauf und Browser, Abschnitt 12 Stand nach Slice 1), `FEATURE-MATRIX.md` (Stand Audit), `SLICE-0-BERICHT.md`, `SLICE-1-BERICHT.md`.
 
 **Prioritäten:** P0 Datenverlust/Sicherheitsvorfall/kompletter Ausfall; P1 Kernfunktion kaputt; P2 merkliche UX-/Darstellungsprobleme; P3 Politur/optional.
 
@@ -30,9 +30,11 @@ Grundlage: `FINDINGS.md` (F-01 bis F-71, Abschnitt 11 mit den Ergebnissen aus Te
 
 Jeder Fix macht mindestens einen Test aus `tests/KnownDefects` bzw. ein `test.fail()` aus `tests/e2e/known-defects.spec.ts` grün. Der Test wandert dann in die reguläre Suite; der zugehörige grüne Ist-Test (`…_currently_…`) wird angepasst oder entfernt. Geänderte Seiten brauchen neue Screenshot-Baselines (`npm run e2e:update`), der Diff wird vorher angesehen.
 
-### Slice 1 – Kritische Sicherheits- und Funktionsprobleme · **nächster Schritt, Freigabe nötig**
+### Slice 1 – Kritische Sicherheits- und Funktionsprobleme · **abgeschlossen (lokal)**
 
-Zwei Pakete mit getrennten Dateien, parallel umsetzbar.
+Ergebnis: reguläre Suite 410 grün, bekannte Defekte 36 → 14, Browser 151 grün (16 erwartete Defekte), beide Audits 0. Erledigt: F-01, F-02, F-04, F-16, F-18, F-22 (Kern), F-25, F-26, F-27, F-46, F-47, F-64; teilweise F-03 (Absturz behoben, Feature offen), F-05, F-24 (Server-Teil), F-30, F-67. Details: `SLICE-1-BERICHT.md`.
+
+Ursprünglicher Plan (zur Nachvollziehbarkeit):
 
 **1a – Frontend-Funktion**
 
@@ -61,8 +63,9 @@ Zwei Pakete mit getrennten Dateien, parallel umsetzbar.
 - **Akzeptanz:** zugehörige KnownDefects-Tests grün und in die reguläre Suite verschoben; Rollen-Matrix und CSRF-Tests unverändert grün; `composer audit`/`npm audit` ohne critical.
 - **Risiko:** F-64 kann Verhalten ändern → eigener Commit, beide Suiten und Browser-Baseline danach. F-46: vorher klären, wie Hosts heute angelegt werden.
 - **Nicht in Slice 1:** F-08 (E-Mail-Verifizierung) – braucht E2 und Auskunft über Bestandskonten, sonst werden Nutzer ausgesperrt.
+- **Aus Slice 1 offen geblieben:** Array-Größen und Obergrenzen (F-22), sichtbare Anzeige der neuen 422-Meldungen (F-74), CSP erzwingen (F-75).
 
-### Slice 2 – Datenverlust beim Bearbeiten von Rezepten
+### Slice 2 – Datenverlust beim Bearbeiten von Rezepten · **nächster Schritt, Freigabe nötig**
 
 | Befund | Änderung |
 |---|---|
@@ -83,15 +86,16 @@ Zwei Pakete mit getrennten Dateien, parallel umsetzbar.
 |---|---|
 | F-05, F-29, F-69 | Such-Untermenü mobil in der Sidebar, Backdrop, Header-Höhe |
 | F-21 | Gäste-Links auf öffentliche Seiten; Login-Ziel nach E1 |
-| F-06, F-17 | alle Validierungsfehler sichtbar, Erfolgsmeldungen zentral |
+| F-06, F-17, F-74 | alle Validierungsfehler sichtbar (auch die neuen 422-Meldungen), Erfolgsmeldungen zentral |
 | F-20 | 2FA-Seite wiederherstellen, Darstellung deaktivieren (E4) |
 | F-30, F-31, F-32 | Modal-Ebene und Scroll-Sperre, Rezeptdetail-Kopf, Umbruch langer Titel |
 | F-42, F-68 | `lang="de"`, Seitentitel, `h1`, deutsche Validierungstexte, Inertia-Fehlerseite |
-| F-24 | Import-Zeitlimit und Abbrechen |
+| F-24 | Import: Zeitlimit und Abbrechen im Client (Server-Teil erledigt) |
 
 ### Slice 4 – Konto und Recht (braucht Entscheidungen)
 
 - F-08 (E2), F-10 (E9), F-48, F-60
+- „Meine Zutaten“ als echtes Feature (eigene Zutaten speichern): eigenes Paket mit Datenmodell und Migration, nach Klärung des gewünschten Umfangs
 
 ## Gate C – Konsistentes Redesign (nach Gate B)
 
@@ -123,19 +127,22 @@ Zwei Pakete mit getrennten Dateien, parallel umsetzbar.
 |---|---|---|---|
 | E1 | Ziel nach Login/Registrierung: `/home` oder `/`? Der Code setzt heute bewusst `/`. | `/home` | Slice 3 |
 | E2 | E-Mail-Verifizierung durchsetzen oder entfernen? | durchsetzen, nach Prüfung der Bestandskonten | Slice 4 |
-| E3 | „Meine Zutaten“ bauen oder entfernen? | vorerst entfernen | Slice 1a |
+| E3 | „Meine Zutaten“ bauen oder entfernen? | **entschieden:** bleibt, wird später ausgebaut | – |
 | E4 | 2FA und Darstellung: wiederherstellen oder deaktivieren? | 2FA wiederherstellen, Darstellung deaktivieren | Slice 3 |
 | E5 | `sort_order`: Migration oder nach Name sortieren? | nach Name | Slice 2 |
-| E6 | API-Routen entfernen oder reparieren? | entfernen | Slice 1b |
+| E6 | API-Routen entfernen oder reparieren? | **entschieden:** entfernt | – |
 | E7 | Mehrere Hosts geplant? | bei einem Host: dokumentieren | Gate D |
 | E8 | Nutzerbewertungen/Kommentare bauen oder Landing-Text anpassen? | Text anpassen | Slice 3 |
 | E9 | Impressum/Datenschutz: wer liefert die Inhalte? | Betreiber | Slice 4 |
 | E10 | Welche Datenbank läuft in Produktion? | – | F-11, F-12 |
-| E11 | Security-Header in Laravel oder in Nginx? | Laravel-Middleware (testbar) | Slice 1b |
+| E11 | Security-Header in Laravel oder in Nginx? | **entschieden:** Laravel-Middleware; Wirkung auf dem VPS noch zu prüfen | – |
+| E12 | Umfang von „Meine Zutaten“: nur Liste vorhandener Zutaten, oder auch Mengen/Haltbarkeit und „Was kann ich kochen?“ | zuerst nur die Liste | Feature-Paket |
 
 ## Verbleibende Risiken
 
 - **CI ist ungetestet:** Die Workflows liefen noch nie auf GitHub.
+- **PHP ≥ 8.4 nötig (F-72):** Das Lockfile verlangt seit dem Paket-Update PHP 8.4; die Version auf dem VPS ist ungeprüft.
+- **Security-Header und Import-Härtung** sind nur lokal mit Fakes geprüft, nicht hinter Nginx bzw. mit echtem Worker.
 - **Nur SQLite geprüft:** F-12 und die Längenverletzung aus F-22 zeigen sich erst unter MySQL/Postgres.
 - **Produktion unbekannt:** Schema (F-11), Treiber, Header, Worker, ausgelieferter Stand.
 - **Screenshot-Baseline gilt nur für Windows/Chromium** und ohne die Web-Schrift (fremde Hosts sind im Test blockiert).
@@ -143,4 +150,4 @@ Zwei Pakete mit getrennten Dateien, parallel umsetzbar.
 
 ## Nächste empfohlene Aufgabe
 
-Freigabe von **Slice 1** (1a und 1b), dazu die Entscheidungen E3, E6 und E11.
+Freigabe von **Slice 2** (Datenverlust beim Bearbeiten von Rezepten), dazu E5 (`sort_order`) und E10 (Datenbank in Produktion). Parallel sinnvoll: lesende Prüfung des VPS (PHP-Version, ausgecheckter Stand, Schema) – nur mit ausdrücklicher Freigabe für genau diese Befehle.
