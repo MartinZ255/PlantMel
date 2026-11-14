@@ -14,6 +14,11 @@
 | 2026-11-14 | Hell/Dunkel-Umschaltung abgeschaltet, die App rendert immer hell (E4) | Entscheidung des Auftraggebers; Dark Mode war nur teilweise umgesetzt (F-34) | Slice 3 |
 | 2026-11-14 | Landing-Text ohne Verweis auf nicht vorhandene Bewertungen/Notizen (E8) | Entscheidung des Auftraggebers | Slice 3 |
 | 2026-11-14 | Zugriff auf den VPS erst, wenn lokal alles fertig ist | Entscheidung des Auftraggebers | offen |
+| 2026-11-14 | E-Mail-Verifizierung wird gebaut, bleibt aber per Schalter aus, bis auf dem Server ein kostenloser Mailversand eingerichtet ist (E2) | Entscheidung des Auftraggebers. DNS nennt `mail.plantmel.de` als MX; ob dort ein Mailserver läuft, ist ungeprüft | Slice 4 |
+| 2026-11-14 | Impressum und Datenschutzerklärung als Vorlagen mit Platzhaltern; der Auftraggeber füllt sie vor dem Release aus (E9) | Entscheidung des Auftraggebers; öffentliche Seite mit Registrierung (DSGVO, § 18 MStV) | Slice 4 |
+| 2026-11-14 | Schrift wird selbst gehostet statt von fonts.bunny.net geladen | Empfehlung des Leads, vom Auftraggeber freigegeben; entfernt einen Drittanbieter aus Datenschutz und CSP | Slice 4 |
+| 2026-11-14 | Import zeigt den Fortschritt in Schritten an | Wunsch des Auftraggebers | Slice 4 |
+| 2026-11-14 | Weitere Import-Quellen (Instagram, Rezept-Websites) als späteres Feature vormerken (E13) | Wunsch des Auftraggebers, langfristig; Bewertung im Slice-4-Bericht | vorgemerkt |
 
 Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren.
 
