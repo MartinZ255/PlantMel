@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/components/layout/AppLayout.vue';
-import { useForm, Head } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 
 const form = useForm({
@@ -21,28 +21,18 @@ const submit = () => {
 
 <template>
     <AppLayout page-title="Passwort ändern">
-        <Head title="Passwort ändern" />
-
         <section class="content-section">
             <div class="section-header">
-                <div class="section-header__title">
-                    Passwort ändern
-                </div>
+                <h1 class="section-header__title">Passwort ändern</h1>
                 <div class="section-header__meta">
                     Wähle ein sicheres Passwort für dein Konto
                 </div>
             </div>
 
-            <form
-                @submit.prevent="submit"
-                class="recipe-form"
-            >
+            <form @submit.prevent="submit" class="recipe-form">
                 <div class="recipe-form__section">
                     <div class="form-field">
-                        <label
-                            for="current_password"
-                            class="form-field__label"
-                        >
+                        <label for="current_password" class="form-field__label">
                             Aktuelles Passwort
                         </label>
                         <input
@@ -52,7 +42,7 @@ const submit = () => {
                             class="form-field__input"
                             required
                             autocomplete="current-password"
-                        >
+                        />
                         <p
                             v-if="form.errors.current_password"
                             class="form-field__error"
@@ -62,10 +52,7 @@ const submit = () => {
                     </div>
 
                     <div class="form-field">
-                        <label
-                            for="password"
-                            class="form-field__label"
-                        >
+                        <label for="password" class="form-field__label">
                             Neues Passwort
                         </label>
                         <input
@@ -75,7 +62,7 @@ const submit = () => {
                             class="form-field__input"
                             required
                             autocomplete="new-password"
-                        >
+                        />
                         <p
                             v-if="form.errors.password"
                             class="form-field__error"
@@ -101,7 +88,7 @@ const submit = () => {
                             class="form-field__input"
                             required
                             autocomplete="new-password"
-                        >
+                        />
                         <p
                             v-if="form.errors.password_confirmation"
                             class="form-field__error"
@@ -134,4 +121,3 @@ const submit = () => {
         </section>
     </AppLayout>
 </template>
-

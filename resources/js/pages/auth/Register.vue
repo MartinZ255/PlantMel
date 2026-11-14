@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { route } from 'ziggy-js';
+
+const page = usePage<AppPageProps>();
+const flashError = computed(() => page.props.flash?.error ?? null);
 
 const form = useForm({
     name: '',
     email: '',
     password: '',
     password_confirmation: '',
-    // is_host kannst du vorerst auf false lassen oder optionales Feld machen
 });
 
 const submit = () => {
@@ -21,6 +25,16 @@ const submit = () => {
     <Head title="Registrieren" />
 
     <div class="auth-container">
+        <Link :href="route('landing')" class="auth-brand">PlantMel</Link>
+
+        <p
+            v-if="flashError"
+            class="flash-message flash-message--error"
+            role="alert"
+        >
+            {{ flashError }}
+        </p>
+
         <form @submit.prevent="submit" class="auth-form">
             <h1 class="auth-form-title">Registrieren</h1>
             <div class="form-group">
@@ -29,6 +43,7 @@ const submit = () => {
                     id="name"
                     v-model="form.name"
                     type="text"
+                    autocomplete="name"
                     required
                 />
                 <div v-if="form.errors.name" class="error">
@@ -42,6 +57,7 @@ const submit = () => {
                     id="email"
                     v-model="form.email"
                     type="email"
+                    autocomplete="email"
                     required
                 />
                 <div v-if="form.errors.email" class="error">
@@ -55,6 +71,7 @@ const submit = () => {
                     id="password"
                     v-model="form.password"
                     type="password"
+                    autocomplete="new-password"
                     required
                 />
                 <div v-if="form.errors.password" class="error">
@@ -68,8 +85,12 @@ const submit = () => {
                     id="password_confirmation"
                     v-model="form.password_confirmation"
                     type="password"
+                    autocomplete="new-password"
                     required
                 />
+                <div v-if="form.errors.password_confirmation" class="error">
+                    {{ form.errors.password_confirmation }}
+                </div>
             </div>
 
             <button type="submit" :disabled="form.processing">
@@ -77,9 +98,7 @@ const submit = () => {
             </button>
 
             <div class="auth-links">
-                <a :href="route('login')">
-                    Bereits registriert? Zum Login
-                </a>
+                <a :href="route('login')"> Bereits registriert? Zum Login </a>
             </div>
         </form>
     </div>

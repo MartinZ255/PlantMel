@@ -3,9 +3,23 @@
     <div
         class="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_#FBEAE6_0,_#FFFDF6_50%,_#EFF5E8_100%)] px-4 text-[#3C382F]"
     >
-        <Head title="Neues Passwort – favRezepte" />
+        <Head title="Neues Passwort" />
 
         <div class="w-full max-w-md">
+            <div class="text-center">
+                <Link :href="route('landing')" class="auth-brand">
+                    PlantMel
+                </Link>
+            </div>
+
+            <p
+                v-if="flashError"
+                class="flash-message flash-message--error mb-4"
+                role="alert"
+            >
+                {{ flashError }}
+            </p>
+
             <div class="mb-6 text-center">
                 <h1 class="text-lg font-semibold text-[#3C382F]">
                     Neues Passwort setzen
@@ -32,7 +46,7 @@
                             type="email"
                             required
                             autocomplete="email"
-                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none"
+                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-base text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none md:text-sm"
                         />
                         <p
                             v-if="errors.email"
@@ -55,7 +69,7 @@
                             type="password"
                             required
                             autocomplete="new-password"
-                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none"
+                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-base text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none md:text-sm"
                         />
                         <p
                             v-if="errors.password"
@@ -78,7 +92,7 @@
                             type="password"
                             required
                             autocomplete="new-password"
-                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-sm text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none"
+                            class="w-full rounded-lg border border-[#EBE3D2] bg-white/80 px-3 py-2 text-base text-[#3C382F] placeholder:text-[#C9C0AE] focus:border-[#A8C7A4] focus:ring-2 focus:ring-[#A8C7A4] focus:outline-none md:text-sm"
                         />
                     </div>
 
@@ -96,7 +110,13 @@
 </template>
 
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { route } from 'ziggy-js';
+
+const page = usePage<AppPageProps>();
+const flashError = computed(() => page.props.flash?.error ?? null);
 
 interface Props {
     token: string;

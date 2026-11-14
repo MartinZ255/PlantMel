@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { route } from 'ziggy-js';
 
-const props = defineProps<{
+defineProps<{
     canResetPassword: boolean;
     canRegister: boolean;
     status: string | null;
 }>();
+
+// z. B. "Sitzung abgelaufen" nach 419 (Seite ohne AppLayout)
+const page = usePage<AppPageProps>();
+const flashError = computed(() => page.props.flash?.error ?? null);
 
 const form = useForm({
     email: '',
@@ -22,11 +28,20 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Login" />
+    <Head title="Anmelden" />
 
     <div class="auth-container">
+        <Link :href="route('landing')" class="auth-brand">PlantMel</Link>
 
-        <p v-if="status" class="status-message">
+        <p
+            v-if="flashError"
+            class="flash-message flash-message--error"
+            role="alert"
+        >
+            {{ flashError }}
+        </p>
+
+        <p v-if="status" class="status-message" role="status">
             {{ status }}
         </p>
 
@@ -67,22 +82,14 @@ const submit = () => {
                 </label>
             </div>
 
-            <button type="submit" :disabled="form.processing">
-                Einloggen
-            </button>
+            <button type="submit" :disabled="form.processing">Einloggen</button>
 
             <div class="auth-links">
-                <Link
-                    v-if="canResetPassword"
-                    :href="route('password.request')"
-                >
+                <Link v-if="canResetPassword" :href="route('password.request')">
                     Passwort vergessen?
                 </Link>
 
-                <Link
-                    v-if="canRegister"
-                    :href="route('register')"
-                >
+                <Link v-if="canRegister" :href="route('register')">
                     Noch kein Konto? Registrieren
                 </Link>
             </div>

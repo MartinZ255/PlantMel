@@ -207,6 +207,29 @@ Der bisherige Defekt-Test F-07 (`test.fail`) wurde aus `known-defects.spec.ts` e
 
 **Läufe Slice 2:** zwei vollständige Läufe `E2E_PORT=8151 npx playwright test` nach dem letzten Build: je 164 bestanden (Exit 0, ca. 5,0 min); 164 Tests (4 Setup, 115 Baseline, 28 Regression, 17 Defekt-Tests, davon 15 `test.fail` und 2 normal grüne F-30-Normalfälle).
 
+## 7c. Nachtrag Slice 3 – Shell (2026-11-14)
+
+Basis-Commit `8357b73` (Backend-Teil von Slice 3 gemergt). Behoben im Frontend: F-05 (Such-Untermenü in der Sidebar), F-17 (zentrale Flash-Meldung), F-21 (Gast-Navigation, aktiver Menüpunkt), F-29/F-69 (Backdrop, Escape, Drawer-Versatz, Scroll-Sperre, geschlossene Sidebar per `inert`), F-42 (Titel „… – PlantMel“, genau ein `h1`, Skip-Link, benannte `nav`), F-35 minimal (Logo-Link, Statusmeldung über dem Formular, 16 px Eingaben mobil, `autocomplete`), F-55/E8 (Landing-Text), F-68 (Fehlerseite im Seitenrahmen).
+
+**Testumgebung (`tests/e2e/support/env.ts`):** `APP_LOCALE=de` (Fallback `en`) und `APP_DEBUG=false`. Letzteres ist nötig, weil `bootstrap/app.php` lokal mit Debug bewusst die Debug-Seite statt der Inertia-Fehlerseite liefert. `APP_NAME`/`VITE_APP_NAME` bleiben `Laravel`; der Seitentitel hängt seit Slice 3 nicht mehr davon ab (fest „PlantMel“ in `app.ts`), der Test „kein Laravel im Titel“ wird dadurch strenger.
+
+**Regressionstests (neu, `tests/e2e/regression-shell.spec.ts`, Projekt `regression`):** F-21a Logo → `/` · F-21 Start aktiv auf `/` · F-21 „Rezepte entdecken“ → `/rezepte` · E8 Landing ohne „Bewertungen und Notizen“ · F-21 Gast-Hinweis „Anmeldung erforderlich“ · F-21 Untermenü `aria-expanded`/`aria-controls`/`aria-current`, kein `type` an `<a>` · F-42 `lang="de"` (Gast und Nutzer) · F-42 Skip-Link, ein `main`, alle `nav` benannt · F-42 deutsche Login-Fehlermeldung · F-35 Auth-Seiten Logo + 16 px bei 390 px · F-35 Statusmeldung über dem Formular · F-35 419 zeigt „Die Sitzung ist abgelaufen …“ auf `/login` · F-68 404 Gast · F-05 (390) Untermenü im Drawer, alle drei Messpunkte treffen, Klick navigiert, Drawer danach zu · F-05 geschlossenes Untermenü nicht per Tab · F-29 Backdrop sichtbar, Tippen schließt, Scroll-Sperre an/aus · F-29 Escape schließt, Fokus zurück auf ☰ · F-29/F-40 geschlossener Drawer ohne Tab-Fokus (390) · F-69 Drawer-Oberkante = Header-Unterkante · F-42 genau ein `h1` und eindeutiger Titel mit „PlantMel“ auf 18 Seiten · F-21 angemeldet: Logo/Start → `/home`, aktive Sammlung · F-20/E4 `/settings/appearance` und `/settings/two-factor` → deutsche 404 · F-20/E4 Einstellungen ohne 2FA/Darstellung · F-68 403 für Nutzer auf `/rezepte/erstellen` · F-29/F-40 Desktop: zugeklappte Sidebar ohne Tab-Fokus · F-05 Desktop: Untermenü bündig rechts neben der Sidebar auf Höhe des Auslösers · F-17 Sammlung anlegen/löschen (Meldung, schließbar, kein Fokusraub, nach Seitenwechsel weg) · F-17 „Profil gespeichert.“ · F-17 „Passwort geändert.“ (verschwindet nach ca. 6 s) · F-21b Login → `/home`.
+
+**Aus `known-defects.spec.ts` entfernt:** F-05, F-17, F-21a, F-21b, F-29, F-42a, F-42b (nach `regression-shell.spec.ts` verschoben, ohne `test.fail()`); F-20 (2 Tests) ersatzlos entfernt und durch die 404-Tests ersetzt. **Verbleiben dort (`test.fail()`):** F-32, F-06, F-38, F-31, F-30 (Zurückscrollen, 320 und 390) sowie die zwei grünen F-30-Normalfälle.
+
+**Baseline-Seitenliste:** `/settings/appearance` und `/settings/two-factor` entfernt (jetzt 404); neu `guest fehlerseite-404` (`/gibt-es-nicht`). Damit 22 Seiten × 5 Viewports = 110 Baseline-Tests. Die Screenshot-Baselines wurden in diesem Paket **nicht** aktualisiert (Läufe mit `--ignore-snapshots`); sie werden zentral neu erzeugt.
+
+**Erwartete sichtbare Änderungen für die Neuaufnahme:**
+- Alle Seiten mit App-Shell: aktiver Sidebar-Eintrag mit grünem Rahmen und fett (z. B. „Start“ auf `/` bzw. `/home`, „Suche“ auf `/rezepte` und `/zutatensuche`, Sammlung auf `/sammlung/{id}`, „Sammlungen“ auf `/sammlungen`, „Meine Zutaten“ auf `/meineZutaten`); als Gast „Sammlungen · Anmeldung“, „Meine Zutaten · Anmeldung“ und „Nach dem Anmelden verfügbar“ statt „Noch keine Sammlungen“.
+- 481–900 px: mobiler Header jetzt fest 52 px hoch, langer Header-Titel wird mit „…“ gekürzt statt umzubrechen. ≤480 px: unverändert 60 px.
+- Desktop: Untermenü (nur geöffnet sichtbar, in der Baseline geschlossen) sitzt bündig rechts an der Sidebar auf Höhe von „Suche“; sonst keine Lageänderung.
+- `/` (Gast): drei Spiegelpunkte neu formuliert, Buttons „Rezepte entdecken“ (primär), „Anmelden“ (sekundär). `h1` statt `div` ist optisch gleich (Preflight setzt Schriftgröße zurück, Klasse bestimmt Größe).
+- `/login`, `/register`: Schriftzug „PLANTMEL“ über dem Formular (Formular rutscht ca. 40 px nach unten). `/forgot-password` (und Reset/Bestätigen/Verifizieren): Schriftzug über der Überschrift, Eingaben unter 768 px 16 px statt 14 px.
+- Neue Aufnahme `guest-fehlerseite-404-*`.
+- Flash-Meldungen, Skip-Link, Backdrop und Drawer erscheinen in keiner Baseline-Aufnahme (Zustände nach Interaktion).
+
+**Kontrolle per Wegwerf-Skript** (gitignored unter `playwright/.cache/`, nicht committet): `/`, `/rezepte` (Drawer offen + Untermenü), `/login`, `/forgot-password`, `/gibt-es-nicht`, `/home` (Drawer/Untermenü), `/sammlungen`, `/settings` bei 320, 390, 768 und 1440 px angesehen: kein Layoutbruch, Untermenü bei 320/390/768 im Drawer unter „Suche“, Drawer schließt bündig an den Header an, Backdrop dunkelt den Inhalt ab.
+
 ## 8. Offene Risiken
 
 - Im Hauptverzeichnis mit `.env` nicht ausgeführt; die Umgebungsvariablen-Priorität ist dort begründet, aber nicht gemessen.

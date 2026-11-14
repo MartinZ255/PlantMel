@@ -1,34 +1,45 @@
 <!-- resources/js/pages/auth/VerifyEmail.vue -->
 <template>
     <div
-        class="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top_left,_#FBEAE6_0,_#FFFDF6_50%,_#EFF5E8_100%)] text-[#3C382F]"
+        class="flex min-h-screen flex-col items-center justify-center bg-[radial-gradient(circle_at_top_left,_#FBEAE6_0,_#FFFDF6_50%,_#EFF5E8_100%)] px-4 text-[#3C382F]"
     >
-        <Head title="E-Mail bestätigen – favRezepte" />
+        <Head title="E-Mail bestätigen" />
 
-        <div class="w-full max-w-md rounded-2xl bg-white/90 backdrop-blur shadow-xl border border-[#EBE3D2] px-6 py-7 space-y-6">
+        <Link :href="route('landing')" class="auth-brand">PlantMel</Link>
+
+        <p
+            v-if="flashError"
+            class="flash-message flash-message--error mb-4 w-full max-w-md"
+            role="alert"
+        >
+            {{ flashError }}
+        </p>
+
+        <div
+            class="w-full max-w-md space-y-6 rounded-2xl border border-[#EBE3D2] bg-white/90 px-6 py-7 shadow-xl backdrop-blur"
+        >
             <div class="space-y-1">
                 <h1 class="text-lg font-semibold text-[#3C382F]">
                     E-Mail-Adresse bestätigen
                 </h1>
                 <p class="text-xs text-[#877D6C]">
-                    Wir haben dir einen Bestätigungslink gesendet. Bitte prüfe dein Postfach.
+                    Wir haben dir einen Bestätigungslink gesendet. Bitte prüfe
+                    dein Postfach.
                 </p>
             </div>
 
             <p
                 v-if="status === 'verification-link-sent'"
-                class="text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2"
+                class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-600"
             >
-                Ein neuer Bestätigungslink wurde an deine E-Mail-Adresse gesendet.
+                Ein neuer Bestätigungslink wurde an deine E-Mail-Adresse
+                gesendet.
             </p>
 
-            <form
-                class="space-y-4"
-                @submit.prevent="submit"
-            >
+            <form class="space-y-4" @submit.prevent="submit">
                 <button
                     type="submit"
-                    class="w-full inline-flex items-center justify-center rounded-full bg-[#7DA879] hover:bg-[#628F5E] text-white px-5 py-2.5 text-sm font-semibold shadow-md hover:brightness-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    class="inline-flex w-full items-center justify-center rounded-full bg-[#7DA879] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#628F5E] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
                     :disabled="form.processing"
                 >
                     Link erneut senden
@@ -39,7 +50,13 @@
 </template>
 
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { route } from 'ziggy-js';
+
+const page = usePage<AppPageProps>();
+const flashError = computed(() => page.props.flash?.error ?? null);
 
 interface Props {
     status?: string | null;

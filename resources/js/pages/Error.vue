@@ -1,6 +1,5 @@
 <template>
-    <Head :title="heading" />
-
+    <!-- Seitentitel setzt AppLayout zentral -->
     <AppLayout :page-title="heading">
         <section class="content-section" aria-labelledby="error-heading">
             <div class="section-header">
@@ -10,18 +9,22 @@
                 <span class="section-header__meta">Fehler {{ status }}</span>
             </div>
 
-            <p>{{ message }}</p>
+            <p class="error-page__message">{{ message }}</p>
 
-            <div class="mt-4 flex flex-wrap gap-2">
-                <Link :href="route('landing')" class="primary-pill-button">
+            <div class="error-page__actions">
+                <a :href="startHref" class="primary-pill-button">
                     Zur Startseite
-                </Link>
-                <Link
-                    :href="route('recipes.index')"
+                </a>
+                <a :href="route('recipes.index')" class="secondary-pill-button">
+                    Zu den Rezepten
+                </a>
+                <a
+                    v-if="!currentUser"
+                    :href="route('login')"
                     class="secondary-pill-button"
                 >
-                    Zu den Rezepten
-                </Link>
+                    Anmelden
+                </a>
             </div>
         </section>
     </AppLayout>
@@ -31,7 +34,8 @@
 // F-68 (Slice 3): Fehlerseite fuer Inertia-Antworten mit Status 403, 404,
 // 429, 500 und 503 (gerendert in bootstrap/app.php, withExceptions).
 import AppLayout from '@/components/layout/AppLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -39,6 +43,13 @@ const props = defineProps<{
     status: number;
     message: string;
 }>();
+
+const page = usePage<AppPageProps>();
+const currentUser = computed(() => page.props.auth?.user ?? null);
+// Angemeldete zurueck auf ihre Startseite, Gaeste auf die oeffentliche Landing-Seite
+const startHref = computed(() =>
+    currentUser.value ? route('home') : route('landing'),
+);
 
 const headings: Record<number, string> = {
     403: 'Kein Zugriff',
