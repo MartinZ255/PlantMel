@@ -37,7 +37,7 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return to_route('profile.edit');
+        return to_route('profile.edit')->with('success', 'Profil gespeichert.');
     }
 
     /**
@@ -58,6 +58,7 @@ class ProfileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        // E1: Konto-Löschung endet auf der öffentlichen Landing-Seite.
+        return to_route('landing');
     }
 }

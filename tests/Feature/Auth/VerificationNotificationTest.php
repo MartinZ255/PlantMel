@@ -18,9 +18,11 @@ class VerificationNotificationTest extends TestCase
 
         $user = User::factory()->unverified()->create();
 
+        // Fortify antwortet mit back(); ohne Referer ist das die Startseite.
         $this->actingAs($user)
             ->post(route('verification.send'))
-            ->assertRedirect(route('landing'));
+            ->assertRedirect(route('landing'))
+            ->assertSessionHas('status', 'verification-link-sent');
 
         Notification::assertSentTo($user, VerifyEmail::class);
     }
@@ -33,7 +35,7 @@ class VerificationNotificationTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('verification.send'))
-            ->assertRedirect(route('landing', absolute: false));
+            ->assertRedirect(route('home', absolute: false));
 
         Notification::assertNothingSent();
     }

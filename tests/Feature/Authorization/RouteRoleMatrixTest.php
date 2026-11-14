@@ -79,7 +79,9 @@ class RouteRoleMatrixTest extends TestCase
     ];
 
     /**
-     * routes/settings.php:9-30, Gruppe ['auth'] (ohne 'verified').
+     * routes/settings.php, Gruppe ['auth'] (ohne 'verified').
+     * Slice 3 (F-20): `appearance.edit` und `two-factor.show` entfallen;
+     * TwoFactorDisabledTest haelt fest, dass keine two-factor-Route existiert.
      *
      * @var array<string, string>
      */
@@ -90,8 +92,6 @@ class RouteRoleMatrixTest extends TestCase
         'profile.destroy' => 'DELETE',
         'user-password.edit' => 'GET',
         'user-password.update' => 'PUT',
-        'appearance.edit' => 'GET',
-        'two-factor.show' => 'GET',
     ];
 
     /**
