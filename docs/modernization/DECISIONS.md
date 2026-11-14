@@ -9,6 +9,11 @@
 | 2026-11-13 | Security-Header als Laravel-Middleware (E11) | Auftraggeber: Ort egal, muss auf dem VPS laufen; Middleware ist testbar | umgesetzt (Slice 1), VPS-Prüfung offen |
 | 2026-11-13 | Feld „Quelle“ am Rezept entfällt | Entscheidung des Auftraggebers; es wurde nie gespeichert (F-15) | Slice 2 |
 | 2026-11-13 | Kategorien und Bewertungsdimensionen werden nach Name sortiert statt nach der nicht vorhandenen Spalte `sort_order` (E5) | Empfehlung des Leads, keine Migration nötig; vom Auftraggeber nicht widersprochen | Slice 2 |
+| 2026-11-14 | Nach Login und Registrierung landet man auf `/home` (E1) | Entscheidung des Auftraggebers | Slice 3 |
+| 2026-11-14 | Keine Zwei-Faktor-Authentifizierung; das Feature wird vollständig abgeschaltet (E4) | Entscheidung des Auftraggebers. DB-Spalten bleiben, keine Migration | Slice 3 |
+| 2026-11-14 | Hell/Dunkel-Umschaltung abgeschaltet, die App rendert immer hell (E4) | Entscheidung des Auftraggebers; Dark Mode war nur teilweise umgesetzt (F-34) | Slice 3 |
+| 2026-11-14 | Landing-Text ohne Verweis auf nicht vorhandene Bewertungen/Notizen (E8) | Entscheidung des Auftraggebers | Slice 3 |
+| 2026-11-14 | Zugriff auf den VPS erst, wenn lokal alles fertig ist | Entscheidung des Auftraggebers | offen |
 
 Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren.
 
