@@ -4,6 +4,7 @@
   Aufruf im Projektordner (PowerShell):
       .\scripts\demo.ps1            # startet, legt die Testdatenbank bei Bedarf an
       .\scripts\demo.ps1 -Fresh     # setzt die Testdatenbank vorher zurueck
+      .\scripts\demo.ps1 -WithWorker  # startet zusaetzlich den Hintergrunddienst fuer den TikTok-Import
 
   Danach im Browser: http://127.0.0.1:8010
   Testkonten (Passwort jeweils: E2e-Passwort-2026!):
@@ -12,10 +13,18 @@
 
   Alle Einstellungen kommen aus Umgebungsvariablen dieses Fensters und haben
   Vorrang vor der .env. Verwendet wird nur database/e2e.sqlite (synthetisch).
-  Es werden keine E-Mails versendet und kein Queue-Worker gestartet.
+  Es werden keine E-Mails versendet (sie landen im Log).
+
+  Ohne -WithWorker laeuft kein Hintergrunddienst: Ein TikTok-Import bleibt dann im
+  Zustand "wartet auf Verarbeitung" stehen. Mit -WithWorker wird der Import WIRKLICH
+  ausgefuehrt: yt-dlp laedt das Video von TikTok und der Text bzw. das Video geht an die
+  Google-Gemini-API. Dafuer muss GEMINI_API_KEY gesetzt sein - entweder in der .env oder
+  vorher in diesem Fenster per  $env:GEMINI_API_KEY = '...'. Das verbraucht Ihr Gemini-
+  Kontingent.
 #>
 param(
     [switch]$Fresh,
+    [switch]$WithWorker,
     [int]$Port = 8010
 )
 
@@ -67,4 +76,19 @@ Write-Host "PlantMel laeuft auf http://127.0.0.1:$Port  (Beenden: Strg+C)"
 Write-Host 'Login: host@example.test oder user@example.test, Passwort: E2e-Passwort-2026!'
 Write-Host ''
 
-php artisan serve --no-reload --host=127.0.0.1 --port=$Port
+$worker = $null
+if ($WithWorker) {
+    Write-Host 'Starte Hintergrunddienst fuer den Import (eigenes Fenster) ...'
+    # Das neue Fenster erbt die Umgebungsvariablen dieses Fensters (Testdatenbank usw.).
+    $worker = Start-Process -FilePath 'php' -ArgumentList 'artisan', 'queue:work', '--tries=1', '--timeout=620' -PassThru
+}
+
+try {
+    php artisan serve --no-reload --host=127.0.0.1 --port=$Port
+}
+finally {
+    if ($worker -and -not $worker.HasExited) {
+        Write-Host 'Beende Hintergrunddienst ...'
+        Stop-Process -Id $worker.Id -Confirm:$false
+    }
+}
