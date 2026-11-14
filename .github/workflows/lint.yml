@@ -60,11 +60,8 @@ jobs:
         continue-on-error: true
         run: npm run format:check
 
-      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 4 ESLint-Fehler
-      # (docs/modernization/baseline/lint-eslint.txt). Die Ausnahme wird entfernt,
-      # sobald der Altbestand bereinigt ist. Bewusst nicht `npm run lint` (enthält --fix).
+      # Blockierend seit Slice 3 (2026-11-14): 0 Fehler. Bewusst nicht `npm run lint` (enthält --fix).
       - name: ESLint (check)
-        continue-on-error: true
         run: npx eslint .
 
       # Erzeugt die gitignorierten Wayfinder-Dateien (resources/js/actions, routes,
@@ -73,23 +70,14 @@ jobs:
       - name: Generate Wayfinder Types
         run: php artisan wayfinder:generate --with-form
 
-      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 6 Typfehler in
-      # 5 Dateien (docs/modernization/baseline/lint-vue-tsc.txt). Die Ausnahme wird
-      # entfernt, sobald der Altbestand bereinigt ist.
+      # Blockierend seit Slice 3 (2026-11-14): 0 Typfehler.
       - name: Typecheck (vue-tsc)
-        continue-on-error: true
         run: npx vue-tsc --noEmit
 
-      # Ausnahme (2026-11-13): Gemessen 55 Advisories in 15 Paketen, davon 1 critical
-      # (docs/modernization/baseline/lint-composer-audit.txt). Die Ausnahme wird
-      # entfernt, sobald die Abhängigkeiten aktualisiert sind.
+      # Blockierend seit Slice 1 (Paket-Update): 0 Advisories. Neue Meldungen lassen den Lauf scheitern.
       - name: Composer Audit
-        continue-on-error: true
         run: composer audit
 
-      # Ausnahme (2026-11-13): Gemessen 24 Schwachstellen, davon 1 critical und 19 high
-      # (docs/modernization/baseline/lint-npm-audit.txt). Die Ausnahme wird entfernt,
-      # sobald die Abhängigkeiten aktualisiert sind.
+      # Blockierend seit Slice 1 (Paket-Update): 0 Schwachstellen. Neue Meldungen lassen den Lauf scheitern.
       - name: npm Audit (production)
-        continue-on-error: true
         run: npm audit --omit=dev

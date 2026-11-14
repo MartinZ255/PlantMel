@@ -30,7 +30,7 @@ const user = computed(() => page.props.auth?.user ?? null);
             </p>
 
             <!-- E8/F-55: nur vorhandene Funktionen bewerben -->
-            <ul>
+            <ul class="my-3 list-disc space-y-1 pl-5">
                 <li>
                     Rezepte durchsuchen und nach Zutaten und Kategorien filtern
                 </li>

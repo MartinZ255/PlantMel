@@ -54,10 +54,7 @@ test.describe('Gast', () => {
         test('F-32 langer Rezepttitel: kein horizontaler Overflow, Titel nicht abgeschnitten', async ({
             page,
         }) => {
-            test.fail(
-                true,
-                'F-32: kein Scroll-Overflow (overflow-x: hidden), aber h1 wird abgeschnitten (kein overflow-wrap)',
-            );
+            // F-32 behoben in Slice 3 (overflow-wrap/hyphens in Inhaltsbereichen).
             await page.goto(`/rezept/${DATA.recipes.longTitle.id}`);
             await settle(page);
             const layout = await measureLayout(page);
@@ -101,10 +98,7 @@ test.describe('Host', () => {
     test('F-06 Rezept nur mit Titel speichern zeigt Fehler an Zutat/Schritt', async ({
         page,
     }) => {
-        test.fail(
-            true,
-            'F-06: RecipeForm zeigt nur Fehler fuer name/description/image',
-        );
+        // F-06 behoben in Slice 3; ausfuehrlich in regression-forms.spec.ts.
         await page.goto('/rezepte/erstellen');
         await settle(page);
         await page.locator('#name').fill('E2E Nur Titel');
@@ -202,10 +196,7 @@ test.describe('Host', () => {
         test('F-31 Aktionsbuttons ueberlappen den Rezepttitel nicht', async ({
             page,
         }) => {
-            test.fail(
-                true,
-                'F-31: absolut positionierte Aktionen ueberlagern den Titel (mit und ohne Bild)',
-            );
+            // F-31 behoben in Slice 3; weitere Breiten in regression-forms.spec.ts.
             const rows: Record<string, unknown>[] = [];
             for (const r of [
                 DATA.recipes.withImage,
@@ -299,10 +290,8 @@ test.describe('Host', () => {
             test(`F-30 Alternativen-Modal nach Zurueckscrollen (keine Scroll-Sperre): Titel nicht verdeckt (${vp.viewport.width})`, async ({
                 page,
             }) => {
-                test.fail(
-                    true,
-                    'F-30: ohne Scroll-Sperre laesst sich der Header (z-index 1100) ueber das Modal (z-index 40) schieben',
-                );
+                // F-30 behoben in Slice 3: Modals liegen ueber der Shell (z-index 1300+) und
+                // sperren das Scrollen des Hintergrunds.
                 const title = await openModal(page);
                 // Modal offen lassen und an den Seitenanfang scrollen (Scroll-Container ist <body>)
                 await page.evaluate(() => {
@@ -331,14 +320,22 @@ test.describe('Host', () => {
                     hit.hitsTarget,
                     `Element am Titel-Mittelpunkt: ${hit.hit}`,
                 ).toBe(true);
-                // Seit Slice 1a (F-04) ist bei 390 px der Titel-Mittelpunkt frei (vorher: unsichtbares
-                // User-Dropdown); der Header (z-index 1100) liegt aber weiterhin ueber dem oberen Titelrand.
+                // Frueher pruefte dieser Test nur die Geometrie (Titel- und Header-Box schneiden sich).
+                // Seit die Modals ueber der Shell liegen, ist das kein Verdecken mehr: Der Header liegt
+                // dann hinter dem Modal-Hintergrund. Geprueft wird deshalb, welches Element am oberen
+                // Titelrand tatsaechlich oben liegt.
+                const topEdgeInModal = await title.evaluate((el) => {
+                    const r = el.getBoundingClientRect();
+                    const top = document.elementFromPoint(
+                        r.left + r.width / 2,
+                        r.top + 2,
+                    );
+                    return !!top && !!top.closest('.alternatives-modal');
+                });
                 expect(
-                    titleBox && headerBox
-                        ? intersects(titleBox, headerBox)
-                        : true,
-                    'Header ueberlappt den Modaltitel nicht',
-                ).toBe(false);
+                    topEdgeInModal,
+                    'oberer Titelrand liegt im Modal, nicht unter dem Header',
+                ).toBe(true);
             });
         });
     }
