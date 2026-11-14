@@ -28,9 +28,9 @@ class SharedInertiaPropsTest extends TestCase
                     'email' => 'erika@example.test',
                 ])
                 ->has('name')
-                ->has('quote.message')
-                ->has('quote.author')
-                ->where('sidebarOpen', true)
+                // Slice 3: `quote` und `sidebarOpen` entfallen (von keinem Vue-Code gelesen).
+                ->missing('quote')
+                ->missing('sidebarOpen')
             );
     }
 
@@ -69,29 +69,16 @@ class SharedInertiaPropsTest extends TestCase
             );
     }
 
-    public function test_sidebar_state_cookie_false_closes_sidebar(): void
+    public function test_shared_prop_keys_are_exactly_known(): void
     {
         $this->actingAsUser();
 
-        $this->withUnencryptedCookie('sidebar_state', 'false')
-            ->get(route('home'))
-            ->assertInertia(fn (Assert $page) => $page->where('sidebarOpen', false));
-    }
+        $props = array_keys($this->get(route('home'))->assertOk()->viewData('page')['props']);
 
-    /**
-     * Ist-Zustand F-17: Session-Flash wird serverseitig gesetzt, aber nicht als
-     * Inertia-Prop geteilt. Sollverhalten siehe
-     * tests/KnownDefects/Backend/CollectionFlashTest.
-     */
-    public function test_flash_is_currently_not_shared_f17(): void
-    {
-        $this->actingAsUser();
+        // Seiteneigene Props von Home (routes/web.php) abziehen; der Rest ist geteilt.
+        $shared = array_values(array_diff($props, ['stats', 'latestRecipes']));
+        sort($shared);
 
-        $this->post(route('collections.store'), ['name' => 'Neu'])
-            ->assertSessionHas('success', 'Sammlung wurde erstellt.');
-
-        $this->get(route('collections.index'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->missing('flash'));
+        $this->assertSame(['auth', 'errors', 'flash', 'name'], $shared);
     }
 }

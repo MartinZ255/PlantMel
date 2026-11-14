@@ -19,10 +19,16 @@ use Tests\TestCase;
  * Logik bleiben die des Frameworks. Der Router loest Middleware ueber den
  * Container auf, deshalb greift die Instanz-Bindung. Die Positiv-Kontrolle mit
  * gueltigem Token belegt, dass kein Scheintest vorliegt.
+ *
+ * Slice 3 (F-68): Ein abgelehnter Nicht-JSON-Request (Status 419) wird in
+ * bootstrap/app.php in einen Redirect zurueck mit Flash-`error` umgewandelt
+ * (Inertia-Empfehlung); JSON-Requests behalten 419.
  */
 class CsrfProtectionTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const EXPIRED = 'Die Sitzung ist abgelaufen. Bitte versuche es erneut.';
 
     protected function setUp(): void
     {
@@ -73,8 +79,11 @@ class CsrfProtectionTest extends TestCase
             'recipes' => DB::table('recipes')->count(),
         ];
 
-        $this->call($method, route($name), ['name' => 'CSRF', 'email' => 'csrf@example.com'])
-            ->assertStatus(419);
+        $this->from(route('landing'))
+            ->call($method, route($name), ['name' => 'CSRF', 'email' => 'csrf@example.com'])
+            ->assertRedirect(route('landing'))
+            ->assertSessionHas('error', self::EXPIRED)
+            ->assertSessionMissing('success');
 
         $this->assertSame($before, [
             'users' => DB::table('users')->count(),
@@ -90,9 +99,21 @@ class CsrfProtectionTest extends TestCase
 
         $this->withSession(['_token' => 'richtiges-token'])
             ->post(route('collections.store'), ['_token' => 'falsches-token', 'name' => 'CSRF'])
-            ->assertStatus(419);
+            ->assertRedirect()
+            ->assertSessionHas('error', self::EXPIRED);
 
         $this->assertDatabaseCount('collections', 0);
+    }
+
+    public function test_json_request_without_token_keeps_status_419(): void
+    {
+        $this->actingAsHost();
+
+        $this->postJson(route('categories.store'), ['name' => 'CSRF'])
+            ->assertStatus(419)
+            ->assertJsonStructure(['message']);
+
+        $this->assertDatabaseCount('categories', 0);
     }
 
     public function test_valid_csrf_token_in_body_is_accepted(): void

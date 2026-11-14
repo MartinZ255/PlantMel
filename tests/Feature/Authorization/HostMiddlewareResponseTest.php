@@ -2,17 +2,19 @@
 
 namespace Tests\Feature\Authorization;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Recipe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
- * Charakterisierung: Antwort von EnsureUserIsHost (app/Http/Middleware/EnsureUserIsHost.php:18-20)
- * fuer angemeldete Nicht-Hosts, Ist-Zustand.
+ * Antwort von EnsureUserIsHost (app/Http/Middleware/EnsureUserIsHost.php)
+ * fuer angemeldete Nicht-Hosts.
  *
- * bootstrap/app.php registriert keinen eigenen Exception-Renderer: Inertia-Requests
- * bekommen deshalb die HTML-Fehlerseite von Laravel (keine Inertia-Antwort, kein
- * Modal), JSON-Requests die Standard-JSON-Fehlerstruktur.
+ * Seit Slice 3 (F-68) rendert bootstrap/app.php (withExceptions) fuer
+ * Nicht-JSON-Requests die Inertia-Seite `Error` mit der Meldung der Exception;
+ * JSON-Requests behalten die Standard-JSON-Fehlerstruktur.
  */
 class HostMiddlewareResponseTest extends TestCase
 {
@@ -20,7 +22,7 @@ class HostMiddlewareResponseTest extends TestCase
 
     private const MESSAGE = 'Nur Hosts dürfen diese Aktion ausführen.';
 
-    public function test_inertia_request_of_non_host_gets_plain_html_403(): void
+    public function test_inertia_request_of_non_host_gets_inertia_error_page_403(): void
     {
         $this->actingAsUser();
         $recipe = Recipe::factory()->create();
@@ -29,14 +31,15 @@ class HostMiddlewareResponseTest extends TestCase
             'X-Inertia' => 'true',
             // Passende Asset-Version mitsenden: Sonst antwortet Inertia mit 409
             // (Versionskonflikt), sobald ein gebautes Manifest existiert.
-            'X-Inertia-Version' => (string) app(\App\Http\Middleware\HandleInertiaRequests::class)->version(request()),
+            'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
             'X-Requested-With' => 'XMLHttpRequest',
         ])->get(route('recipes.edit', $recipe));
 
         $response->assertForbidden();
-        $response->assertHeaderMissing('X-Inertia');
-        $this->assertStringContainsString('text/html', (string) $response->headers->get('Content-Type'));
-        $response->assertSee(self::MESSAGE);
+        $response->assertHeader('X-Inertia', 'true');
+        $response->assertJsonPath('component', 'Error');
+        $response->assertJsonPath('props.status', 403);
+        $response->assertJsonPath('props.message', self::MESSAGE);
     }
 
     public function test_json_request_of_non_host_gets_json_403_with_message(): void
@@ -50,13 +53,17 @@ class HostMiddlewareResponseTest extends TestCase
         $this->assertDatabaseCount('categories', 0);
     }
 
-    public function test_plain_browser_request_of_non_host_gets_html_403(): void
+    public function test_plain_browser_request_of_non_host_gets_error_page_403(): void
     {
         $this->actingAsUser();
 
         $response = $this->get(route('recipes.create'));
 
         $response->assertForbidden();
-        $response->assertSee(self::MESSAGE);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Error')
+            ->where('status', 403)
+            ->where('message', self::MESSAGE)
+        );
     }
 }

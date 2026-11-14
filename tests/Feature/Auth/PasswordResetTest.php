@@ -25,7 +25,9 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post(route('password.email'), ['email' => $user->email]);
+        $this->post(route('password.email'), ['email' => $user->email])
+            // F-42: deutscher Status aus lang/de/passwords.php
+            ->assertSessionHas('status', 'Wir haben dir einen Link zum Zurücksetzen des Passworts geschickt.');
 
         Notification::assertSentTo($user, ResetPassword::class);
     }
@@ -63,9 +65,11 @@ class PasswordResetTest extends TestCase
                 'password_confirmation' => 'password',
             ]);
 
+            // E1: Nach dem Zuruecksetzen geht es zum Login (Fortify-Default bei views = true).
             $response
                 ->assertSessionHasNoErrors()
-                ->assertRedirect(route('login'));
+                ->assertRedirect(route('login'))
+                ->assertSessionHas('status', 'Dein Passwort wurde zurückgesetzt.');
 
             return true;
         });
@@ -82,6 +86,8 @@ class PasswordResetTest extends TestCase
             'password_confirmation' => 'newpassword123',
         ]);
 
-        $response->assertSessionHasErrors('email');
+        $response->assertSessionHasErrors([
+            'email' => 'Dieser Link zum Zurücksetzen des Passworts ist ungültig.',
+        ]);
     }
 }

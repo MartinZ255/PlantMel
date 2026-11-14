@@ -4,6 +4,7 @@ namespace Tests\Feature\Settings;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -34,7 +35,8 @@ class ProfileUpdateTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('profile.edit'));
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHas('success', 'Profil gespeichert.');
 
         $user->refresh();
 
@@ -61,6 +63,28 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
+    public function test_profile_update_success_is_shared_as_flash_prop_f17(): void
+    {
+        $this->actingAsUser();
+
+        $this->patch(route('profile.update'), [
+            'name' => 'Neuer Name',
+            'email' => 'neu@example.com',
+        ])->assertRedirect(route('profile.edit'));
+
+        $this->get(route('profile.edit'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('settings/Profile')
+                ->where('flash.success', 'Profil gespeichert.')
+                ->where('flash.error', null)
+            );
+
+        // Flash gilt nur fuer die naechste Seite.
+        $this->get(route('profile.edit'))
+            ->assertInertia(fn (Assert $page) => $page->where('flash.success', null));
+    }
+
     public function test_user_can_delete_their_account()
     {
         $user = User::factory()->create();
@@ -71,9 +95,10 @@ class ProfileUpdateTest extends TestCase
                 'password' => 'password',
             ]);
 
+        // E1: Konto-Loeschung endet auf der oeffentlichen Landing-Seite.
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('landing'));
+            ->assertRedirect(route('landing', absolute: false));
 
         $this->assertGuest();
         $this->assertNull($user->fresh());

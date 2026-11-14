@@ -31,7 +31,6 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
-        $this->configureRedirects();
     }
 
     /**
@@ -69,33 +68,21 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::registerView(fn () => Inertia::render('auth/Register'));
 
-        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
-
         Fortify::confirmPasswordView(fn () => Inertia::render('auth/ConfirmPassword'));
     }
 
     /**
      * Configure rate limiting.
+     *
+     * Redirect-Ziele (E1) stehen in config/fortify.php (`home`, `redirects`).
+     * Fortify::redirects() ist nur ein Getter und setzt nichts.
      */
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('two-factor', function (Request $request) {
-            return Limit::perMinute(5)->by($request->session()->get('login.id'));
-        });
-
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
         });
-    }
-
-    private function configureRedirects(): void
-    {
-        // Nach erfolgreichem Login
-        Fortify::redirects('login', '/');
-
-        // Nach erfolgreicher Registrierung
-        Fortify::redirects('register', '/');
     }
 }

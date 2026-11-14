@@ -73,7 +73,8 @@ class CatalogPagesTest extends TestCase
         $props = array_keys($this->get(route('myIngredients'))->assertOk()->viewData('page')['props']);
         sort($props);
         // Geteilte Props aus HandleInertiaRequests + `ingredients`
-        $this->assertSame(['auth', 'errors', 'ingredients', 'name', 'quote', 'sidebarOpen'], $props);
+        // Slice 3: `flash` neu (F-17), `quote` und `sidebarOpen` entfallen.
+        $this->assertSame(['auth', 'errors', 'flash', 'ingredients', 'name'], $props);
     }
 
     public function test_my_ingredients_requires_login(): void
