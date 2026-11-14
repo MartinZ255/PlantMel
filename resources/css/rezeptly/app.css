@@ -1043,11 +1043,9 @@ body.drawer-scroll-lock {
     position: relative;
 }
 
+/* Slice 3 (F-31): Aktionen im Fluss neben bzw. unter dem Titel (.recipe-head),
+   nicht mehr absolut über dem Titel */
 .recipe-actions {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-
     display: flex;
     flex-direction: column;   /* <- macht sie untereinander */
     align-items: flex-end;    /* rechtsbündig */
@@ -1100,7 +1098,7 @@ body.drawer-scroll-lock {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 50;
+    z-index: var(--z-modal-backdrop);
 }
 
 /* Modal-Box */
@@ -1904,9 +1902,10 @@ body.drawer-scroll-lock {
 
 /* Meta-Infos: Zeiten, Portionen, Schwierigkeit */
 
+/* Slice 3 (F-31): Spalten passen sich der Zahl der Karten an (heute 2) */
 .meta-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
     gap: 0.75rem;
 }
 
@@ -1948,7 +1947,9 @@ body.drawer-scroll-lock {
     padding: 0.25rem 0.7rem;
     border-radius: var(--radius-pill);
     font-size: 0.78rem;
-    white-space: nowrap;
+    /* Slice 3 (F-32): lange Tags umbrechen statt abschneiden */
+    white-space: normal;
+    max-width: 100%;
 }
 
 .pill-soft {
@@ -2676,7 +2677,8 @@ body.drawer-scroll-lock {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 40;
+    /* Slice 3 (F-30): über Header (1100), Sidebar (1000) und User-Menü (1200) */
+    z-index: var(--z-modal-backdrop);
 }
 
 .modal {
@@ -2685,6 +2687,13 @@ body.drawer-scroll-lock {
     padding: 1.5rem;
     max-width: 400px;
     width: 100%;
+    position: relative;
+    z-index: var(--z-modal);
+    /* kleine Viewports: Dialog scrollt in sich, nicht der Hintergrund */
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .modal__title {
@@ -2745,6 +2754,299 @@ body.drawer-scroll-lock {
 
 .modal__confirm-delete:hover {
     filter: brightness(0.92);
+}
+
+/* ======================================
+   Slice 3 – Formulare, Rezeptseiten, Modals
+   (F-06, F-24, F-30, F-31, F-32, F-39, F-44, F-56, F-74)
+   Nur Inhaltsbereiche; keine Regeln für App-Shell/Header/Sidebar.
+====================================== */
+
+/* Modal-Ebenen. Shell-Werte (nicht hier definiert): Sidebar-Backdrop 900,
+   Sidebar 1000, Header 1100, User-Menü 1200. Modals liegen darüber. */
+:root {
+    --z-modal-backdrop: 1300;
+    --z-modal: 1310;
+}
+
+.modal:focus {
+    outline: none;
+}
+
+.modal__success {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--herb-strong);
+}
+
+.modal__empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.modal__link {
+    color: var(--herb-strong);
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+.modal fieldset.modal__list {
+    border: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+.modal a.primary-pill-button,
+.form-actions a.secondary-pill-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.modal .primary-pill-button:disabled,
+.modal .secondary-pill-button:disabled,
+.recipe-form .primary-pill-button:disabled,
+.recipe-form .secondary-pill-button:disabled,
+.tiktok-import .primary-pill-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Rezeptdetail-Kopf (F-31): Titel und Aktionen in einer umbrechenden Zeile */
+.recipe-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+}
+
+.recipe-head .title {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.recipe-head .recipe-actions {
+    flex: 0 1 auto;
+    align-items: stretch;
+    margin-bottom: 0;
+}
+
+.recipe-head .recipe-actions .recipe-button {
+    justify-content: center;
+}
+
+/* ohne Bild: Inhalt über die volle Breite statt in der schmalen Bildspalte */
+.header--no-image .header-content {
+    grid-column: 1 / -1;
+}
+
+/* Textumbruch langer Wörter in Inhalten (F-32; lang="de" für Silbentrennung) */
+.title,
+.description,
+.section-header__title,
+.recipe-card__title,
+.recipe-card__tag,
+.pill,
+.ingredient-amount,
+.ingredient-name,
+.ingredient-alternatives,
+.step-text,
+.note-item,
+.rating-dimension-name,
+.modal__title,
+.modal__list-item span,
+.tag-chip {
+    overflow-wrap: anywhere;
+    hyphens: auto;
+}
+
+.ingredient-row,
+.ingredient-main-and-alts,
+.step-item > .step-text,
+.recipe-card__body {
+    min-width: 0;
+}
+
+.ingredient-main-and-alts {
+    flex: 1 1 auto;
+}
+
+/* Rezeptformular: Pflichtfelder, Fehler, Zusammenfassung (F-06/F-74) */
+.form-field__required {
+    color: var(--danger);
+    margin-left: 0.15rem;
+}
+
+.recipe-form__required-hint {
+    margin: -0.25rem 0 0.25rem;
+    font-size: 0.78rem;
+    color: var(--text-soft);
+}
+
+.form-field__input[aria-invalid='true'],
+.form-field__textarea[aria-invalid='true'],
+.chips-input__input[aria-invalid='true'] {
+    border-color: var(--danger);
+}
+
+.form-field__input[aria-invalid='true']:focus,
+.form-field__textarea[aria-invalid='true']:focus,
+.chips-input__input[aria-invalid='true']:focus {
+    box-shadow: 0 0 0 2px var(--danger-soft);
+}
+
+.form-field__error {
+    overflow-wrap: anywhere;
+}
+
+.form-error-summary {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    color: var(--text-main);
+}
+
+.form-error-summary:focus {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+.form-error-summary__title {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--danger);
+}
+
+.form-error-summary__list {
+    margin: 0;
+    padding-left: 1.1rem;
+    list-style: disc;
+    font-size: 0.85rem;
+}
+
+.form-error-summary__link {
+    color: var(--danger);
+    text-decoration: underline;
+    overflow-wrap: anywhere;
+}
+
+.ingredients-builder__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ingredients-builder__errors {
+    padding-left: 2rem;
+}
+
+.steps-builder__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.recipe-form__image-preview {
+    margin: 0 0 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.recipe-form__image-preview-img {
+    width: 100%;
+    max-width: 240px;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--line-soft);
+}
+
+.form-actions__confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.form-actions__confirm-text {
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+
+.form-actions__confirm-reset,
+.form-actions__confirm-reset:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+/* TikTok-Import (F-24) */
+.tiktok-import__status:empty {
+    display: none;
+}
+
+.tiktok-import__confirm {
+    padding: 0.75rem;
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.tiktok-import__confirm-text {
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+}
+
+.tiktok-import__confirm-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Rezeptliste: Leerzustand (F-44) */
+.recipes-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 1rem 0.25rem;
+}
+
+.recipes-empty__text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-soft);
+}
+
+@media (max-width: 900px) {
+    .steps-builder__field {
+        grid-area: text;
+    }
+
+    .ingredients-builder__errors {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 720px) {
+    .form-actions__confirm {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .recipe-head .recipe-actions {
+        flex: 1 1 100%;
+    }
 }
 
 /* ======================================

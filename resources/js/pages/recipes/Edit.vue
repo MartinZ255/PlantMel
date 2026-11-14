@@ -1,8 +1,8 @@
 <template>
-    <AppLayout page-title="Rezept bearbeiten">
+    <AppLayout :page-title="`${recipe.name} bearbeiten`">
         <section class="content-section">
             <div class="section-header">
-                <div class="section-header__title">Rezept bearbeiten</div>
+                <h1 class="section-header__title">Rezept bearbeiten</h1>
                 <div class="section-header__meta">
                     Änderungen werden nach dem Speichern übernommen
                 </div>
@@ -16,6 +16,8 @@
                 :recipe="recipe"
                 :submit-route="route('recipes.update', recipe.id)"
                 submit-method="post"
+                :cancel-href="route('recipes.show', recipe.id)"
+                :current-image="recipe.image ?? null"
             />
         </section>
     </AppLayout>
@@ -61,6 +63,9 @@ interface RecipeFormInput {
     steps: string[];
     notes: string | null;
     ratings: Record<number, number | null>;
+    // F-56: aktuelles Bild für die Vorschau – liefert `RecipeController::edit`
+    // derzeit noch nicht; ohne den Wert entfällt die Vorschau einfach.
+    image?: string | null;
 }
 
 defineProps<{

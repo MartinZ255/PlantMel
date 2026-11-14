@@ -1,105 +1,112 @@
 <template>
-    <div v-if="show" class="modal-backdrop">
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ingredient-edit-title"
-        >
-            <h2 id="ingredient-edit-title" class="modal__title">
-                Zutat bearbeiten
-            </h2>
-
-            <div class="form-field">
-                <label class="form-field__label" for="ingredient-name">
-                    Name der Zutat
-                </label>
-                <input
-                    id="ingredient-name"
-                    v-model="localName"
-                    type="text"
-                    class="form-field__input"
-                    aria-describedby="ingredient-name-hint"
-                    :disabled="isBusy || !!confirmMessage"
-                />
-                <p id="ingredient-name-hint" class="form-field__hint">
-                    Umbenennen und Löschen gelten für alle Rezepte mit dieser
-                    Zutat.
-                </p>
-                <p v-if="saveError" class="form-field__error" role="alert">
-                    {{ saveError }}
-                </p>
-            </div>
-
-            <p v-if="deleteError" class="modal__alert" role="alert">
-                {{ deleteError }}
-            </p>
-
-            <!-- ADR-002: Bestätigung mit der Meldung des Servers (Name + Anzahl) -->
+    <!-- F-30: außerhalb von #app und vom Rezeptformular (Enter sendet es nicht ab) -->
+    <Teleport to="body">
+        <div v-if="show" class="modal-backdrop">
             <div
-                v-if="confirmMessage"
-                class="modal__confirm"
-                role="group"
-                aria-labelledby="ingredient-confirm-text"
+                ref="dialogEl"
+                class="modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="ingredient-edit-title"
+                tabindex="-1"
             >
-                <p id="ingredient-confirm-text" class="modal__confirm-text">
-                    {{ confirmMessage }}
+                <h2 id="ingredient-edit-title" class="modal__title">
+                    Zutat bearbeiten
+                </h2>
+
+                <div class="form-field">
+                    <label class="form-field__label" for="ingredient-name">
+                        Name der Zutat
+                    </label>
+                    <input
+                        id="ingredient-name"
+                        ref="nameInput"
+                        v-model="localName"
+                        type="text"
+                        class="form-field__input"
+                        aria-describedby="ingredient-name-hint"
+                        :disabled="isBusy || !!confirmMessage"
+                    />
+                    <p id="ingredient-name-hint" class="form-field__hint">
+                        Umbenennen und Löschen gelten für alle Rezepte mit
+                        dieser Zutat.
+                    </p>
+                    <p v-if="saveError" class="form-field__error" role="alert">
+                        {{ saveError }}
+                    </p>
+                </div>
+
+                <p v-if="deleteError" class="modal__alert" role="alert">
+                    {{ deleteError }}
                 </p>
-                <div class="modal__confirm-actions">
+
+                <!-- ADR-002: Bestätigung mit der Meldung des Servers (Name + Anzahl) -->
+                <div
+                    v-if="confirmMessage"
+                    class="modal__confirm"
+                    role="group"
+                    aria-labelledby="ingredient-confirm-text"
+                >
+                    <p id="ingredient-confirm-text" class="modal__confirm-text">
+                        {{ confirmMessage }}
+                    </p>
+                    <div class="modal__confirm-actions">
+                        <button
+                            ref="confirmCancelButton"
+                            type="button"
+                            class="secondary-pill-button"
+                            :disabled="isBusy"
+                            @click="cancelConfirm"
+                        >
+                            Abbrechen
+                        </button>
+                        <button
+                            type="button"
+                            class="primary-pill-button modal__confirm-delete"
+                            :disabled="isBusy"
+                            @click="deleteIngredient(true)"
+                        >
+                            Endgültig löschen
+                        </button>
+                    </div>
+                </div>
+
+                <div v-else class="modal__actions">
                     <button
-                        ref="confirmCancelButton"
                         type="button"
                         class="secondary-pill-button"
+                        @click="emit('close')"
                         :disabled="isBusy"
-                        @click="cancelConfirm"
                     >
                         Abbrechen
                     </button>
+
+                    <button
+                        ref="deleteButton"
+                        type="button"
+                        class="secondary-pill-button modal__delete"
+                        @click="deleteIngredient(false)"
+                        :disabled="isBusy"
+                    >
+                        Löschen
+                    </button>
+
                     <button
                         type="button"
-                        class="primary-pill-button modal__confirm-delete"
-                        :disabled="isBusy"
-                        @click="deleteIngredient(true)"
+                        class="primary-pill-button"
+                        @click="onSave"
+                        :disabled="isBusy || !localName.trim()"
                     >
-                        Endgültig löschen
+                        Speichern
                     </button>
                 </div>
             </div>
-
-            <div v-else class="modal__actions">
-                <button
-                    type="button"
-                    class="secondary-pill-button"
-                    @click="emit('close')"
-                    :disabled="isBusy"
-                >
-                    Abbrechen
-                </button>
-
-                <button
-                    ref="deleteButton"
-                    type="button"
-                    class="secondary-pill-button modal__delete"
-                    @click="deleteIngredient(false)"
-                    :disabled="isBusy"
-                >
-                    Löschen
-                </button>
-
-                <button
-                    type="button"
-                    class="primary-pill-button"
-                    @click="onSave"
-                    :disabled="isBusy || !localName.trim()"
-                >
-                    Speichern
-                </button>
-            </div>
         </div>
-    </div>
+    </Teleport>
 </template>
 
 <script setup lang="ts">
+import { useModal } from '@/composables/useModal';
 import axios from 'axios';
 import { computed, nextTick, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
@@ -134,6 +141,19 @@ const confirmCancelButton = ref<HTMLButtonElement | null>(null);
 const deleteButton = ref<HTMLButtonElement | null>(null);
 
 const isBusy = computed(() => loadingSave.value || loadingDelete.value);
+
+const dialogEl = ref<HTMLElement | null>(null);
+const nameInput = ref<HTMLInputElement | null>(null);
+
+// F-30: Escape schließt (nicht während eines laufenden Requests)
+useModal({
+    open: () => props.show,
+    dialog: dialogEl,
+    initialFocus: nameInput,
+    onClose: () => {
+        if (!isBusy.value) emit('close');
+    },
+});
 
 const resetState = () => {
     localName.value = props.ingredient.name;
