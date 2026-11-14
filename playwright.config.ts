@@ -77,7 +77,7 @@ export default defineConfig({
         {
             // behobene Befunde (aus known-defects.spec.ts verschoben, ab Slice 1a)
             name: 'regression',
-            testMatch: /regression\.spec\.ts/,
+            testMatch: /regression.*\.spec\.ts/,
             dependencies: ['setup'],
             use: { ...chromium, viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
         },
