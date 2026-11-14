@@ -109,8 +109,11 @@ const deleteRecipe = () => {
                     </a>
                 </div>
 
-                <!-- Header: Bild + Metadaten -->
-                <header class="header">
+                <!-- Header: Bild + Metadaten (F-31: ohne Bild volle Breite) -->
+                <header
+                    class="header"
+                    :class="{ 'header--no-image': !recipe.image }"
+                >
                     <div class="image-wrapper" v-if="recipe.image">
                         <img
                             :src="recipe.image"
@@ -119,40 +122,42 @@ const deleteRecipe = () => {
                         />
                     </div>
 
-                    <!-- Header-Content mit Button oben rechts -->
                     <div class="header-content recipe-container">
-                        <!-- NEU: Button-Container oben rechts -->
-                        <div class="recipe-actions">
-                            <button
-                                type="button"
-                                class="recipe-button"
-                                @click="openCollectionModal"
-                            >
-                                Zur Sammlung hinzufügen
-                            </button>
+                        <!-- F-31: Titel und Aktionen in einer umbrechenden Kopfzeile (im Fluss) -->
+                        <div class="recipe-head">
+                            <h1 class="title">
+                                {{ recipe.name }}
+                            </h1>
 
-                            <button
-                                v-if="isHost"
-                                type="button"
-                                class="recipe-button recipe-button--secondary"
-                                @click="openRecipeEdit"
-                            >
-                                Rezept bearbeiten
-                            </button>
+                            <div class="recipe-actions">
+                                <button
+                                    type="button"
+                                    class="recipe-button"
+                                    aria-haspopup="dialog"
+                                    @click="openCollectionModal"
+                                >
+                                    Zur Sammlung hinzufügen
+                                </button>
 
-                            <button
-                                v-if="isHost"
-                                type="button"
-                                class="recipe-button recipe-button--secondary"
-                                @click="deleteRecipe"
-                            >
-                                Rezept löschen
-                            </button>
+                                <button
+                                    v-if="isHost"
+                                    type="button"
+                                    class="recipe-button recipe-button--secondary"
+                                    @click="openRecipeEdit"
+                                >
+                                    Rezept bearbeiten
+                                </button>
+
+                                <button
+                                    v-if="isHost"
+                                    type="button"
+                                    class="recipe-button recipe-button--secondary"
+                                    @click="deleteRecipe"
+                                >
+                                    Rezept löschen
+                                </button>
+                            </div>
                         </div>
-
-                        <h1 class="title">
-                            {{ recipe.name }}
-                        </h1>
                         <p class="description" v-if="recipe.description">
                             {{ recipe.description }}
                         </p>
@@ -286,7 +291,8 @@ const deleteRecipe = () => {
                     </section>
                 </header>
 
-                <main class="content">
+                <!-- kein zweites <main>: AppLayout stellt das Haupt-Landmark -->
+                <div class="content">
                     <!-- Zutaten -->
                     <section class="section" v-if="recipe.ingredients?.length">
                         <h2 class="section-title">Zutaten</h2>
@@ -341,10 +347,10 @@ const deleteRecipe = () => {
                         </ol>
                     </section>
 
-                    <!-- Notizen -->
-                    <section class="section">
-                        <h3 class="section-description">Notizen & Tipps</h3>
-                        <div class="card" v-if="recipe.notes?.length">
+                    <!-- Notizen (nur, wenn vorhanden) -->
+                    <section class="section" v-if="recipe.notes?.length">
+                        <h2 class="section-description">Notizen & Tipps</h2>
+                        <div class="card">
                             <ul class="notes">
                                 <li
                                     v-for="(note, index) in recipe.notes"
@@ -356,7 +362,7 @@ const deleteRecipe = () => {
                             </ul>
                         </div>
                     </section>
-                </main>
+                </div>
             </div>
         </div>
 

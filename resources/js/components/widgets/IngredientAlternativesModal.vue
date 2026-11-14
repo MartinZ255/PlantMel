@@ -1,149 +1,157 @@
 <template>
-    <div v-if="show" class="modal-backdrop">
-        <div
-            class="modal alternatives-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="alternatives-modal-title"
-        >
-            <h2 id="alternatives-modal-title" class="modal__title">
-                Alternativen für: {{ ingredient?.name || 'Zutat' }}
-            </h2>
+    <!-- F-30: außerhalb von #app und vom Rezeptformular (Enter sendet es nicht ab) -->
+    <Teleport to="body">
+        <div v-if="show" class="modal-backdrop">
+            <div
+                ref="dialogEl"
+                class="modal alternatives-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="alternatives-modal-title"
+                tabindex="-1"
+            >
+                <h2 id="alternatives-modal-title" class="modal__title">
+                    Alternativen für: {{ ingredient?.name || 'Zutat' }}
+                </h2>
 
-            <p class="modal__hint">
-                Wähle links Zutaten aus, die als Alternativen für diese
-                Rezeptzutat gelten sollen.
-            </p>
-            <!-- F-13: Das Modal speichert nichts selbst; gespeichert wird mit dem Formular -->
-            <p class="modal__hint alternatives-modal__save-hint">
-                Wird mit dem Rezept gespeichert. „Übernehmen“ merkt die Auswahl
-                vor, „Abbrechen“ verwirft die Änderungen in diesem Fenster.
-            </p>
+                <p class="modal__hint">
+                    Wähle links Zutaten aus, die als Alternativen für diese
+                    Rezeptzutat gelten sollen.
+                </p>
+                <!-- F-13: Das Modal speichert nichts selbst; gespeichert wird mit dem Formular -->
+                <p class="modal__hint alternatives-modal__save-hint">
+                    Wird mit dem Rezept gespeichert. „Übernehmen“ merkt die
+                    Auswahl vor, „Abbrechen“ verwirft die Änderungen in diesem
+                    Fenster.
+                </p>
 
-            <!-- Falls gar keine Zutat ausgewählt ist -->
-            <div v-if="!ingredient" class="modal__warning">
-                Bitte zuerst eine Zutat in der Zeile eingeben/auswählen.
-            </div>
+                <!-- Falls gar keine Zutat ausgewählt ist -->
+                <div v-if="!ingredient" class="modal__warning">
+                    Bitte zuerst eine Zutat in der Zeile eingeben/auswählen.
+                </div>
 
-            <!-- Hauptlayout: arbeitet immer auf einem Entwurf -->
-            <div v-else class="alternatives-layout">
-                <!-- Linke Seite: alle Zutaten mit Suche -->
-                <div class="alternatives-panel">
-                    <div class="form-field">
-                        <label class="form-field__label" for="alt-search"
-                            >Zutat suchen</label
-                        >
-                        <input
-                            id="alt-search"
-                            v-model="searchTerm"
-                            type="text"
-                            class="form-field__input"
-                            placeholder="z. B. Vollkornpasta"
-                        />
+                <!-- Hauptlayout: arbeitet immer auf einem Entwurf -->
+                <div v-else class="alternatives-layout">
+                    <!-- Linke Seite: alle Zutaten mit Suche -->
+                    <div class="alternatives-panel">
+                        <div class="form-field">
+                            <label class="form-field__label" for="alt-search"
+                                >Zutat suchen</label
+                            >
+                            <input
+                                id="alt-search"
+                                ref="searchInput"
+                                v-model="searchTerm"
+                                type="text"
+                                class="form-field__input"
+                                placeholder="z. B. Vollkornpasta"
+                            />
+                        </div>
+
+                        <div class="alternatives-list">
+                            <button
+                                v-for="ing in filteredAvailableIngredients"
+                                :key="ing.id"
+                                type="button"
+                                class="alternatives-list__item"
+                                :class="{
+                                    'alternatives-list__item--selected':
+                                        selectedAvailableId === ing.id,
+                                }"
+                                @click="selectedAvailableId = ing.id"
+                            >
+                                {{ ing.name }}
+                            </button>
+
+                            <div
+                                v-if="filteredAvailableIngredients.length === 0"
+                                class="alternatives-list__empty"
+                            >
+                                Keine passenden Zutaten gefunden.
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="alternatives-list">
+                    <!-- Mitte: Add/Remove -->
+                    <div class="alternatives-panel alternatives-panel--middle">
                         <button
-                            v-for="ing in filteredAvailableIngredients"
-                            :key="ing.id"
                             type="button"
-                            class="alternatives-list__item"
-                            :class="{
-                                'alternatives-list__item--selected':
-                                    selectedAvailableId === ing.id,
-                            }"
-                            @click="selectedAvailableId = ing.id"
+                            class="primary-pill-button alternatives-panel__btn"
+                            aria-label="Als Alternative hinzufügen"
+                            @click="addAlternative"
+                            :disabled="!canAdd"
                         >
-                            {{ ing.name }}
+                            &gt;&gt;
                         </button>
-
-                        <div
-                            v-if="filteredAvailableIngredients.length === 0"
-                            class="alternatives-list__empty"
+                        <button
+                            type="button"
+                            class="secondary-pill-button alternatives-panel__btn"
+                            aria-label="Alternative entfernen"
+                            @click="removeAlternative"
+                            :disabled="!canRemove"
                         >
-                            Keine passenden Zutaten gefunden.
+                            &lt;&lt;
+                        </button>
+                    </div>
+
+                    <!-- Rechte Seite: ausgewählte Alternativen -->
+                    <div class="alternatives-panel">
+                        <div class="form-field">
+                            <div class="form-field__label">
+                                Ausgewählte Alternativen
+                                <span class="inline-badge">Entwurf</span>
+                            </div>
+                        </div>
+
+                        <div class="alternatives-list">
+                            <button
+                                v-for="alt in rightItems"
+                                :key="alt.id"
+                                type="button"
+                                class="alternatives-list__item"
+                                :class="{
+                                    'alternatives-list__item--selected':
+                                        selectedAlternativeId === alt.id,
+                                }"
+                                @click="selectedAlternativeId = alt.id"
+                            >
+                                {{ alt.alternative.name }}
+                            </button>
+
+                            <div
+                                v-if="rightItems.length === 0"
+                                class="alternatives-list__empty"
+                            >
+                                Noch keine Alternativzutaten hinterlegt.
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mitte: Add/Remove -->
-                <div class="alternatives-panel alternatives-panel--middle">
+                <div class="modal__actions">
                     <button
                         type="button"
-                        class="primary-pill-button alternatives-panel__btn"
-                        aria-label="Als Alternative hinzufügen"
-                        @click="addAlternative"
-                        :disabled="!canAdd"
+                        class="secondary-pill-button"
+                        @click="cancel"
                     >
-                        &gt;&gt;
+                        Abbrechen
                     </button>
                     <button
+                        v-if="ingredient"
                         type="button"
-                        class="secondary-pill-button alternatives-panel__btn"
-                        aria-label="Alternative entfernen"
-                        @click="removeAlternative"
-                        :disabled="!canRemove"
+                        class="primary-pill-button"
+                        @click="apply"
                     >
-                        &lt;&lt;
+                        Übernehmen
                     </button>
                 </div>
-
-                <!-- Rechte Seite: ausgewählte Alternativen -->
-                <div class="alternatives-panel">
-                    <div class="form-field">
-                        <div class="form-field__label">
-                            Ausgewählte Alternativen
-                            <span class="inline-badge">Entwurf</span>
-                        </div>
-                    </div>
-
-                    <div class="alternatives-list">
-                        <button
-                            v-for="alt in rightItems"
-                            :key="alt.id"
-                            type="button"
-                            class="alternatives-list__item"
-                            :class="{
-                                'alternatives-list__item--selected':
-                                    selectedAlternativeId === alt.id,
-                            }"
-                            @click="selectedAlternativeId = alt.id"
-                        >
-                            {{ alt.alternative.name }}
-                        </button>
-
-                        <div
-                            v-if="rightItems.length === 0"
-                            class="alternatives-list__empty"
-                        >
-                            Noch keine Alternativzutaten hinterlegt.
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal__actions">
-                <button
-                    type="button"
-                    class="secondary-pill-button"
-                    @click="cancel"
-                >
-                    Abbrechen
-                </button>
-                <button
-                    v-if="ingredient"
-                    type="button"
-                    class="primary-pill-button"
-                    @click="apply"
-                >
-                    Übernehmen
-                </button>
             </div>
         </div>
-    </div>
+    </Teleport>
 </template>
 
 <script setup lang="ts">
+import { useModal } from '@/composables/useModal';
 import { computed, ref, watch } from 'vue';
 
 /**
@@ -206,6 +214,17 @@ watch(
     },
     { immediate: true },
 );
+
+const dialogEl = ref<HTMLElement | null>(null);
+const searchInput = ref<HTMLInputElement | null>(null);
+
+// F-30: Escape verhält sich wie „Abbrechen“ (Entwurf der Sitzung verwerfen)
+useModal({
+    open: () => props.show,
+    dialog: dialogEl,
+    initialFocus: searchInput,
+    onClose: () => cancel(),
+});
 
 // Verfügbare Zutaten für die linke Liste berechnen
 const filteredAvailableIngredients = computed(() => {
@@ -277,7 +296,8 @@ const cancel = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 40;
+    /* F-30: gemeinsame Modal-Ebene über Header und Sidebar */
+    z-index: var(--z-modal-backdrop, 1300);
 }
 
 .modal.alternatives-modal {
@@ -289,6 +309,7 @@ const cancel = () => {
     max-width: 860px;
     width: 100%;
     max-height: 90vh;
+    max-height: 90dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden; /* Inhalt wird innerhalb gescrollt */
@@ -400,6 +421,7 @@ const cancel = () => {
 
     .modal.alternatives-modal {
         max-height: 92vh;
+        max-height: 92dvh;
         padding: 1rem;
     }
 

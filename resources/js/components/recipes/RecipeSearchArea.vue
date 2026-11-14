@@ -3,12 +3,17 @@
         <div class="search-area">
             <!-- Suchzeile + Zutaten-Filter -->
             <div class="search-row">
+                <!-- F-44: echtes Label, Suche entprellt und nur bei Textänderung -->
+                <label for="recipe-search" class="sr-only">
+                    Rezepte nach Namen durchsuchen
+                </label>
                 <input
+                    id="recipe-search"
                     class="search-row__input"
                     type="text"
-                    placeholder="Rezptname eingeben..."
+                    placeholder="Rezeptname eingeben …"
                     v-model="searchTerm"
-                    @keyup="emitFilters"
+                    @keydown.enter.prevent="flushSearch"
                 />
                 <button
                     class="search-row__filter-button"
@@ -29,7 +34,9 @@
                     </div>
 
                     <div class="filter-panel__field">
-                        <label for="includeIngredients">enthaltene Zutaten</label>
+                        <label for="includeIngredients"
+                            >enthaltene Zutaten</label
+                        >
                         <input
                             id="includeIngredients"
                             class="filter-panel__input"
@@ -51,17 +58,19 @@
                     </div>
 
                     <div class="filter-panel__field">
-                        <span class="filter-panel__subtitle">häufig genutzte Zutaten:</span>
-                        <div class="filter-panel__chips">
-                        <button
-                            v-for="chip in frequentIngredients"
-                            :key="chip"
-                            type="button"
-                            class="filter-panel__chip"
-                            @click.stop="appendIngredient(chip)"
+                        <span class="filter-panel__subtitle"
+                            >häufig genutzte Zutaten:</span
                         >
-                            {{ chip }}
-                        </button>
+                        <div class="filter-panel__chips">
+                            <button
+                                v-for="chip in frequentIngredients"
+                                :key="chip"
+                                type="button"
+                                class="filter-panel__chip"
+                                @click.stop="appendIngredient(chip)"
+                            >
+                                {{ chip }}
+                            </button>
                         </div>
                     </div>
 
@@ -127,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 interface TagStat {
     key: string;
@@ -143,20 +152,23 @@ interface Filters {
 }
 
 interface Props {
-    tags: string[];        // ['alle', 'Dessert', 'Low Carb', ...]
-    tagStats: TagStat[];   // Stats für Panel (scharf, schnell, glutenfrei, ...)
+    tags: string[]; // ['alle', 'Dessert', 'Low Carb', ...]
+    tagStats: TagStat[]; // Stats für Panel (scharf, schnell, glutenfrei, ...)
     initialFilters?: Filters;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-    (e: 'update:filters', payload: {
-        search: string;
-        includeIngredients: string[];
-        excludeIngredients: string[];
-        tags: string[];
-    }): void;
+    (
+        e: 'update:filters',
+        payload: {
+            search: string;
+            includeIngredients: string[];
+            excludeIngredients: string[];
+            tags: string[];
+        },
+    ): void;
 }>();
 
 // State aus Initial-Filtern vorbelegen
@@ -164,10 +176,10 @@ const searchTerm = ref(props.initialFilters?.search ?? '');
 const activeTags = ref<string[]>(props.initialFilters?.tags ?? []);
 
 const includeIngredients = ref(
-    (props.initialFilters?.includeIngredients ?? []).join(', ')
+    (props.initialFilters?.includeIngredients ?? []).join(', '),
 );
 const excludeIngredients = ref(
-    (props.initialFilters?.excludeIngredients ?? []).join(', ')
+    (props.initialFilters?.excludeIngredients ?? []).join(', '),
 );
 
 const showIngredientFilter = ref(false);
@@ -176,9 +188,7 @@ const showTagPanel = ref(false);
 const frequentIngredients = ['Tomaten', 'Knoblauch', 'Zwiebeln', 'Paprika'];
 
 const visibleTags = computed(() =>
-    props.tags
-        .filter((t) => t !== '...')
-        .map((t) => ({ key: t, label: t }))
+    props.tags.filter((t) => t !== '...').map((t) => ({ key: t, label: t })),
 );
 
 const extraTagStats = computed(() => props.tagStats);
@@ -222,7 +232,48 @@ const toggleTag = (key: string) => {
     emitFilters();
 };
 
+// Zuletzt gesendeter Suchtext: nur echte Änderungen lösen eine Anfrage aus
+let lastSearch = (props.initialFilters?.search ?? '').trim();
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+const SEARCH_DEBOUNCE_MS = 300;
+
+const clearSearchTimer = () => {
+    if (searchTimer) {
+        clearTimeout(searchTimer);
+        searchTimer = null;
+    }
+};
+
+const flushSearch = () => {
+    clearSearchTimer();
+    if (searchTerm.value.trim() === lastSearch) return;
+    emitFilters();
+};
+
+watch(searchTerm, () => {
+    clearSearchTimer();
+    searchTimer = setTimeout(flushSearch, SEARCH_DEBOUNCE_MS);
+});
+
+onBeforeUnmount(clearSearchTimer);
+
+/** Alle Filter leeren und neu laden (Leerzustand „Filter zurücksetzen“). */
+const reset = () => {
+    clearSearchTimer();
+    searchTerm.value = '';
+    activeTags.value = [];
+    includeIngredients.value = '';
+    excludeIngredients.value = '';
+    // Der Watcher auf searchTerm plant danach zwar noch einmal, sendet aber
+    // nichts, weil sich der Text gegenüber lastSearch nicht mehr ändert
+    emitFilters();
+};
+
+defineExpose({ reset });
+
 const emitFilters = () => {
+    clearSearchTimer();
+    lastSearch = searchTerm.value.trim();
     emit('update:filters', {
         search: searchTerm.value.trim(),
         includeIngredients: parseIngredientList(includeIngredients.value),
