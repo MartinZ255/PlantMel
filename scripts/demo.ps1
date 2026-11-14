@@ -29,6 +29,8 @@ $env:APP_DEBUG = 'true'
 # Fester, NICHT geheimer Schluessel nur fuer die lokale Testinstanz (wie in tests/e2e/support/env.ts).
 $env:APP_KEY = 'base64:evN0XK+wwv/q3ZFyU3Ekx8Hi3OQtaVvoQNy735gHvnQ='
 $env:APP_URL = "http://127.0.0.1:$Port"
+$env:APP_LOCALE = 'de'
+$env:APP_FALLBACK_LOCALE = 'en'
 $env:DB_CONNECTION = 'sqlite'
 $env:DB_DATABASE = $db
 $env:SESSION_DRIVER = 'file'
