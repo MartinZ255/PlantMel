@@ -1,4 +1,3 @@
-import { BASE_URL } from './support/env';
 import {
     authFile,
     DATA,
@@ -7,7 +6,7 @@ import {
     settle,
     test,
 } from './support/fixtures';
-import { freshLogin, hitTest } from './support/helpers';
+import { hitTest } from './support/helpers';
 import { writeRaw } from './support/raw';
 
 /**
@@ -18,10 +17,10 @@ import { writeRaw } from './support/raw';
  * Test als "unexpectedly passed" fehl und die Markierung muss entfernt werden.
  * Beobachtete Messwerte werden zusaetzlich als Rohdaten abgelegt (kind = "defects").
  * Behobene Befunde wandern nach tests/e2e/regression.spec.ts (seit Slice 1a: F-01 bis F-04,
- * seit Slice 2: F-07).
+ * seit Slice 2: F-07) bzw. tests/e2e/regression-shell.spec.ts (Slice 3: F-05, F-17, F-21a/b,
+ * F-29, F-42a/b; die F-20-Tests entfielen mit Entscheidung E4 und wurden dort ersetzt).
  *
- * Datenveraenderungen: nur F-17 legt eine Sammlung fuer user2 an (nicht in der Baseline genutzt).
- * F-04 nutzt eine eigene Anmeldung.
+ * Datenveraenderungen: keine.
  */
 
 const MOBILE_390 = {
@@ -49,135 +48,6 @@ function intersects(
 
 // ---------------------------------------------------------------------------------------------
 test.describe('Gast', () => {
-    test('F-21a Gast klickt Logo und bleibt auf einer oeffentlichen Seite', async ({
-        page,
-    }) => {
-        test.fail(
-            true,
-            'F-21: Logo verlinkt route("home") (auth) => Redirect auf /login',
-        );
-        await page.goto('/rezepte');
-        await settle(page);
-        await page.locator('.app-header__logo').click();
-        await page.waitForLoadState('load');
-        const landed = new URL(page.url()).pathname;
-        writeRaw('defects', 'F-21a', { landed });
-        expect(landed).not.toBe('/login');
-    });
-
-    test.describe('mobil 390', () => {
-        test.use(MOBILE_390);
-
-        test('F-05 Such-Untermenue: Rezeptsuche/Zutatensuche sichtbar und klickbar', async ({
-            page,
-        }) => {
-            // Zweite Ursache (unsichtbares User-Dropdown, F-04) ist seit Slice 1a behoben; der Drawer verdeckt die Links weiterhin (Slice 3).
-            test.fail(
-                true,
-                'F-05: Untermenue liegt ausserhalb der Sidebar hinter dem Drawer',
-            );
-            await page.goto('/rezepte');
-            await settle(page);
-            await page.locator('.app-header__icon--menu').click();
-            await page.locator('.sidebar-link--submenu-toggle').click();
-            await page.waitForTimeout(400);
-            const links = page.locator('.sidebar-submenu__item');
-            const results: {
-                name: string;
-                visible: boolean;
-                box: unknown;
-                samples: {
-                    x: number;
-                    y: number;
-                    hit: string;
-                    hitsTarget: boolean;
-                }[];
-            }[] = [];
-            for (const name of ['Rezeptsuche', 'Zutatensuche']) {
-                const link = links.filter({ hasText: name });
-                const visible = await link.isVisible();
-                const box = await link.boundingBox();
-                // elementFromPoint an 10 %, 50 % und 90 % der Linkbreite
-                const samples = await link.evaluate((el) => {
-                    const r = el.getBoundingClientRect();
-                    return [0.1, 0.5, 0.9].map((f) => {
-                        const x = Math.round(r.left + r.width * f);
-                        const y = Math.round(r.top + r.height / 2);
-                        const h = document.elementFromPoint(x, y);
-                        return {
-                            x,
-                            y,
-                            hit: h
-                                ? `${h.tagName.toLowerCase()}.${String(h.className).trim().split(/\s+/).join('.')}`
-                                : 'null',
-                            hitsTarget: !!h && (h === el || el.contains(h)),
-                        };
-                    });
-                });
-                results.push({ name, visible, box, samples });
-            }
-            await page.screenshot({
-                path: test.info().outputPath('F-05-mobil-390.png'),
-            });
-            writeRaw('defects', 'F-05', { results });
-            for (const r of results) {
-                expect(r.visible, `${r.name} sichtbar`).toBe(true);
-                // Seit F-04 (Slice 1a) trifft der rechte Messpunkt den Link; links und Mitte verdeckt weiterhin der Drawer.
-                // Sollverhalten ist ein vollstaendig bedienbarer Link, daher muessen alle Messpunkte treffen.
-                expect(
-                    r.samples.every((s) => s.hitsTarget),
-                    `${r.name} erhaelt an allen Messpunkten den Klick`,
-                ).toBe(true);
-            }
-        });
-
-        test('F-29 Backdrop sichtbar, Tippen neben den Drawer schliesst ihn', async ({
-            page,
-        }) => {
-            test.fail(
-                true,
-                'F-29: .sidebar-backdrop { display: none !important }',
-            );
-            await page.goto('/rezepte');
-            await settle(page);
-            await page.locator('.app-header__icon--menu').click();
-            await page.waitForTimeout(400);
-            const backdrop = page.locator('.sidebar-backdrop');
-            const backdropCount = await backdrop.count();
-            const backdropDisplay = backdropCount
-                ? await backdrop.evaluate((el) => getComputedStyle(el).display)
-                : null;
-            const sidebarBox = await page.locator('.sidebar').boundingBox();
-            const x = 375;
-            const y = 500;
-            const hitBefore = await page.evaluate(
-                ([px, py]) => {
-                    const e = document.elementFromPoint(px, py);
-                    return e
-                        ? `${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).join('.')}`
-                        : 'null';
-                },
-                [x, y],
-            );
-            await page.mouse.click(x, y);
-            await page.waitForTimeout(400);
-            const closed = await page
-                .locator('.sidebar')
-                .evaluate((el) => el.classList.contains('sidebar--closed'));
-            writeRaw('defects', 'F-29', {
-                backdropCount,
-                backdropDisplay,
-                sidebarBox,
-                clickPoint: { x, y },
-                hitBefore,
-                closedAfterClick: closed,
-                url: page.url(),
-            });
-            expect(backdropDisplay, 'Backdrop wird angezeigt').not.toBe('none');
-            expect(closed, 'Drawer nach Tippen daneben geschlossen').toBe(true);
-        });
-    });
-
     test.describe('mobil 320', () => {
         test.use(MOBILE_320);
 
@@ -221,169 +91,6 @@ test.describe('Gast', () => {
             ).toBe(0);
             expect(layout.clippedH1, 'h1 nicht abgeschnitten').toBe(false);
         });
-    });
-});
-
-// ---------------------------------------------------------------------------------------------
-test.describe('Nutzer', () => {
-    test.use({ storageState: authFile('user') });
-
-    test('F-20 /settings/appearance rendert ohne Fehler', async ({
-        page,
-        diag,
-    }) => {
-        test.fail(true, 'F-20: Vue-Seite settings/Appearance fehlt');
-        const res = await page.goto('/settings/appearance');
-        await settle(page);
-        writeRaw('defects', 'F-20a', {
-            status: res?.status(),
-            pageErrors: diag.pageErrors,
-            title: await page.title(),
-        });
-        expect(res?.status()).toBe(200);
-        expect(diag.pageErrors).toEqual([]);
-    });
-
-    test('F-20 /settings/two-factor rendert nach Passwortbestaetigung ohne Fehler', async ({
-        page,
-        diag,
-    }) => {
-        test.fail(true, 'F-20: Vue-Seite settings/TwoFactor fehlt');
-        const first = await page.goto('/settings/two-factor');
-        await settle(page);
-        const redirectedTo = new URL(page.url()).pathname;
-        let confirmStatus: number | null = null;
-        if (redirectedTo === '/user/confirm-password') {
-            await page.locator('#password').fill(DATA.password);
-            const [confirm] = await Promise.all([
-                page.waitForResponse(
-                    (r) =>
-                        r.request().method() === 'POST' &&
-                        new URL(r.url()).pathname === '/user/confirm-password',
-                    { timeout: 15_000 },
-                ),
-                page
-                    .locator('form button[type="submit"], form button')
-                    .first()
-                    .click(),
-            ]);
-            confirmStatus = confirm.status();
-            await page.waitForTimeout(1000);
-        }
-        const res = await page.goto('/settings/two-factor');
-        await settle(page);
-        writeRaw('defects', 'F-20b', {
-            firstStatus: first?.status(),
-            redirectedTo,
-            confirmStatus,
-            status: res?.status(),
-            finalPath: new URL(page.url()).pathname,
-            pageErrors: diag.pageErrors,
-        });
-        expect(res?.status()).toBe(200);
-        expect(new URL(page.url()).pathname).toBe('/settings/two-factor');
-        expect(diag.pageErrors).toEqual([]);
-    });
-
-    test('F-42 html[lang] ist "de"', async ({ page }) => {
-        test.fail(true, 'F-42: config/app.php locale-Default "en"');
-        await page.goto('/home');
-        const lang = await page.locator('html').getAttribute('lang');
-        writeRaw('defects', 'F-42a', { lang });
-        expect(lang).toBe('de');
-    });
-
-    test('F-42 jede Seite hat genau ein h1 und einen eigenen Titel', async ({
-        page,
-    }) => {
-        test.fail(true, 'F-42: fehlende h1 und Head-Titel');
-        const paths = [
-            '/',
-            '/rezepte',
-            `/rezept/${DATA.recipes.withImage.id}`,
-            '/zutatensuche',
-            '/home',
-            '/sammlungen',
-            '/sammlungen/erstellen',
-            `/sammlung/${DATA.collections.filled.id}`,
-            '/settings',
-            '/settings/profile',
-            '/settings/password',
-        ];
-        const rows: { path: string; title: string; h1: number }[] = [];
-        for (const p of paths) {
-            await page.goto(p);
-            await settle(page);
-            rows.push({
-                path: p,
-                title: await page.title(),
-                h1: await page.locator('h1').count(),
-            });
-        }
-        writeRaw('defects', 'F-42b', { rows });
-        const titles = rows.map((r) => r.title);
-        expect(
-            rows.filter((r) => r.h1 !== 1),
-            'Seiten ohne genau ein h1',
-        ).toEqual([]);
-        expect(
-            titles.filter((t) => t === 'Laravel'),
-            'Seiten mit Fallback-Titel',
-        ).toEqual([]);
-        expect(new Set(titles).size, 'Titel eindeutig').toBe(titles.length);
-    });
-});
-
-test.describe('Nutzer 2 (eigene Daten/Session)', () => {
-    test('F-17 Sammlung anlegen zeigt sichtbare Erfolgsmeldung', async ({
-        browser,
-    }) => {
-        test.fail(true, 'F-17: Flash-Meldungen werden nicht geteilt/angezeigt');
-        const context = await browser.newContext({
-            baseURL: BASE_URL,
-            storageState: authFile('user2'),
-            viewport: { width: 1440, height: 900 },
-        });
-        await context.route(
-            (url) => url.origin !== BASE_URL,
-            (route) => route.abort('blockedbyclient'),
-        );
-        const page = await context.newPage();
-        await page.goto('/sammlungen/erstellen');
-        await settle(page);
-        await page.locator('#collection-name').fill('E2E Testsammlung');
-        await Promise.all([
-            page.waitForURL('**/sammlungen'),
-            page.locator('form button[type="submit"]').click(),
-        ]);
-        await settle(page);
-        const listed = await page.getByText('E2E Testsammlung').count();
-        const successVisible = await page
-            .getByText('Sammlung wurde erstellt')
-            .isVisible()
-            .catch(() => false);
-        await page.screenshot({
-            path: test.info().outputPath('F-17-nach-anlegen.png'),
-        });
-        writeRaw('defects', 'F-17', {
-            landed: new URL(page.url()).pathname,
-            listed,
-            successVisible,
-        });
-        await context.close();
-        expect(listed, 'Sammlung wurde angelegt').toBeGreaterThan(0);
-        expect(successVisible, 'Erfolgsmeldung sichtbar').toBe(true);
-    });
-
-    test('F-21b nach dem Login landet man auf /home', async ({ browser }) => {
-        test.fail(true, 'F-21: fortify.home = "/"');
-        const { context, landedOn } = await freshLogin(
-            browser,
-            DATA.users.user.email,
-        );
-        writeRaw('defects', 'F-21b', { landedOn });
-        await context.close();
-        expect(landedOn).toBe('/home');
     });
 });
 

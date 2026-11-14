@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/components/layout/AppLayout.vue';
 import RecipeCollectionBoard from '@/components/recipes/RecipeCollectionBoard.vue';
+import type { AppPageProps } from '@/types';
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { route } from 'ziggy-js';
@@ -17,17 +18,24 @@ interface LatestRecipe {
     image: string | null;
 }
 
-const page = usePage<{
-    stats?: HomeStats;
-    latestRecipes?: LatestRecipe[];
-}>();
+const page = usePage<
+    AppPageProps<{
+        stats?: HomeStats;
+        latestRecipes?: LatestRecipe[];
+    }>
+>();
 
-const stats = computed<HomeStats>(() => page.props.stats ?? {
-    totalRecipes: 0,
-    totalCollections: 0,
-});
+const stats = computed<HomeStats>(
+    () =>
+        page.props.stats ?? {
+            totalRecipes: 0,
+            totalCollections: 0,
+        },
+);
 
-const latestRecipes = computed<LatestRecipe[]>(() => page.props.latestRecipes ?? []);
+const latestRecipes = computed<LatestRecipe[]>(
+    () => page.props.latestRecipes ?? [],
+);
 
 const highlightCollections = computed(() => [
     {
@@ -48,24 +56,21 @@ const highlightCollections = computed(() => [
         <!-- Intro / Hero -->
         <section class="content-section">
             <div class="section-header">
-                <div class="section-header__title">
+                <h1 class="section-header__title">
                     Willkommen in deiner Rezeptwelt 🌿
-                </div>
+                </h1>
                 <div class="section-header__meta">
                     Sammle, strukturiere und entdecke deine Lieblingsrezepte.
                 </div>
             </div>
             <p>
-                Auf PlantMel kannst du Rezepte speichern, nach Zutaten filtern, Sammlungen
-                für verschiedene Anlässe anlegen und neue Ideen entdecken. Nutze die Suche,
-                um schnell etwas Passendes zu finden – oder stöbere einfach durch deine
-                Sammlungen.
+                Auf PlantMel kannst du Rezepte speichern, nach Zutaten filtern,
+                Sammlungen für verschiedene Anlässe anlegen und neue Ideen
+                entdecken. Nutze die Suche, um schnell etwas Passendes zu finden
+                – oder stöbere einfach durch deine Sammlungen.
             </p>
             <div class="section-header__actions">
-                <a
-                    :href="route('recipes.index')"
-                    class="primary-pill-button"
-                >
+                <a :href="route('recipes.index')" class="primary-pill-button">
                     Rezepte entdecken
                 </a>
                 <a
@@ -84,14 +89,11 @@ const highlightCollections = computed(() => [
         />
 
         <!-- Letzte Rezepte -->
-        <section
-            v-if="latestRecipes.length"
-            class="content-section"
-        >
+        <section v-if="latestRecipes.length" class="content-section">
             <div class="section-header">
-                <div class="section-header__title">
+                <h2 class="section-header__title">
                     Zuletzt hinzugefügte Rezepte
-                </div>
+                </h2>
                 <div class="section-header__meta">
                     {{ latestRecipes.length }} aktuelle Einträge
                 </div>
@@ -116,7 +118,7 @@ const highlightCollections = computed(() => [
                                 :src="recipe.image"
                                 :alt="recipe.name"
                                 class="image"
-                            >
+                            />
                         </div>
                         <div class="recipe-card__body">
                             <h3 class="recipe-card__title">

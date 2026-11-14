@@ -10,7 +10,7 @@
         <!-- Grid aus „Zutat-Karten“ -->
         <section class="content-section">
             <div class="section-header">
-                <div class="section-header__title">Zutaten</div>
+                <h1 class="section-header__title">Zutaten</h1>
                 <div class="section-header__meta">
                     {{ ingredientCards.length }} Ergebnisse
                 </div>

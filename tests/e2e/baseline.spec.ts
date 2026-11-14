@@ -1,5 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
-import { authFile, DATA, expect, measureLayout, settle, test } from './support/fixtures';
+import {
+    authFile,
+    DATA,
+    expect,
+    measureLayout,
+    settle,
+    test,
+} from './support/fixtures';
 import { writeRaw } from './support/raw';
 
 /**
@@ -25,6 +32,8 @@ const pagesByRole: Record<'guest' | 'user' | 'host', PageSpec[]> = {
         { slug: 'login', path: '/login' },
         { slug: 'register', path: '/register' },
         { slug: 'forgot-password', path: '/forgot-password' },
+        // Slice 3 (F-68): Inertia-Fehlerseite 404
+        { slug: 'fehlerseite-404', path: '/gibt-es-nicht' },
     ],
     user: [
         { slug: 'home', path: '/home' },
@@ -36,12 +45,13 @@ const pagesByRole: Record<'guest' | 'user' | 'host', PageSpec[]> = {
         { slug: 'settings', path: '/settings' },
         { slug: 'settings-profile', path: '/settings/profile' },
         { slug: 'settings-password', path: '/settings/password' },
-        { slug: 'settings-appearance', path: '/settings/appearance' },
-        { slug: 'settings-two-factor', path: '/settings/two-factor' },
     ],
     host: [
         { slug: 'rezept-erstellen', path: '/rezepte/erstellen' },
-        { slug: 'rezept-bearbeiten', path: `/rezept/${R.withImage.id}/bearbeiten` },
+        {
+            slug: 'rezept-bearbeiten',
+            path: `/rezept/${R.withImage.id}/bearbeiten`,
+        },
         { slug: 'rezept-host-langer-titel', path: `/rezept/${R.longTitle.id}` },
     ],
 };
@@ -54,9 +64,14 @@ for (const role of ['guest', 'user', 'host'] as const) {
         if (role !== 'guest') test.use({ storageState: authFile(role) });
 
         for (const spec of pagesByRole[role]) {
-            test(`${role} ${spec.slug} (${spec.path})`, async ({ page, diag }, testInfo) => {
+            test(`${role} ${spec.slug} (${spec.path})`, async ({
+                page,
+                diag,
+            }, testInfo) => {
                 const project = testInfo.project.name;
-                const response = await page.goto(spec.path, { waitUntil: 'domcontentloaded' });
+                const response = await page.goto(spec.path, {
+                    waitUntil: 'domcontentloaded',
+                });
                 expect(response, 'Server antwortet').not.toBeNull();
                 await settle(page);
 
@@ -67,7 +82,8 @@ for (const role of ['guest', 'user', 'host'] as const) {
                     docScrollHeight: document.documentElement.scrollHeight,
                     bodyScrollHeight: document.body.scrollHeight,
                     innerHeight: window.innerHeight,
-                    inertiaMounted: !!document.querySelector('#app')?.children.length,
+                    inertiaMounted:
+                        !!document.querySelector('#app')?.children.length,
                 }));
 
                 let axe: Record<string, number> | null = null;
@@ -75,13 +91,20 @@ for (const role of ['guest', 'user', 'host'] as const) {
                     const results = await new AxeBuilder({ page }).analyze();
                     axe = Object.fromEntries(
                         results.violations
-                            .map((v) => [`${v.id} (${v.impact ?? 'n/a'})`, v.nodes.length] as const)
+                            .map(
+                                (v) =>
+                                    [
+                                        `${v.id} (${v.impact ?? 'n/a'})`,
+                                        v.nodes.length,
+                                    ] as const,
+                            )
                             .sort((a, b) => a[0].localeCompare(b[0])),
                     );
                 }
 
                 // 5xx-Seiten (Debug-Fehlerseite mit lokalen Pfaden/Zeiten) werden nicht als Bild abgelegt.
-                const snapshotArg = status < 500 ? `${role}-${spec.slug}.png` : null;
+                const snapshotArg =
+                    status < 500 ? `${role}-${spec.slug}.png` : null;
                 const screenshot = snapshotArg
                     ? `tests/e2e/baseline.spec.ts-snapshots/${role}-${spec.slug}-${project}-${process.platform}.png`
                     : null;
@@ -111,13 +134,22 @@ for (const role of ['guest', 'user', 'host'] as const) {
                     // Dokument. `fullPage` wuerde dann nur den Viewport abbilden. Deshalb wird der
                     // Viewport fuer das Bild auf die Inhaltshoehe vergroessert (max. MAX_SHOT_HEIGHT).
                     const viewport = page.viewportSize()!;
-                    const contentHeight = Math.max(heights.docScrollHeight, heights.bodyScrollHeight, viewport.height);
+                    const contentHeight = Math.max(
+                        heights.docScrollHeight,
+                        heights.bodyScrollHeight,
+                        viewport.height,
+                    );
                     const shotHeight = Math.min(contentHeight, MAX_SHOT_HEIGHT);
                     if (shotHeight !== viewport.height) {
-                        await page.setViewportSize({ width: viewport.width, height: shotHeight });
+                        await page.setViewportSize({
+                            width: viewport.width,
+                            height: shotHeight,
+                        });
                         await settle(page);
                     }
-                    await expect(page).toHaveScreenshot(snapshotArg, { fullPage: true });
+                    await expect(page).toHaveScreenshot(snapshotArg, {
+                        fullPage: true,
+                    });
                 }
             });
         }

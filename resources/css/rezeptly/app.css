@@ -229,10 +229,17 @@ body {
     display: flex;
     flex-direction: column;
     gap: 24px;
-    overflow: hidden;
+    /* F-05: Das Such-Untermenue liegt in der Sidebar und ragt auf dem Desktop
+       rechts heraus; deshalb nicht abschneiden. min-width: 0 haelt die
+       geschlossene Sidebar in der 0-px-Spalte. z-index wie zuvor das Untermenue. */
+    overflow: visible;
+    min-width: 0;
+    position: relative;
+    z-index: 10;
     transition:
         transform var(--transition-fast),
-        opacity var(--transition-fast);
+        opacity var(--transition-fast),
+        visibility 0s linear 0s;
     opacity: 1;
     transform: translateX(0);
 }
@@ -347,12 +354,36 @@ body {
     opacity: 1;
 }
 
+/* Aktiver Menuepunkt (aria-current="page") */
+.sidebar-collection-pill.sidebar-link--active {
+    background: #ffffff;
+    border-color: var(--herb);
+    box-shadow: inset 0 0 0 1px var(--herb);
+    font-weight: 600;
+}
+
+/* Hinweis fuer Gaeste: Eintrag fuehrt zur Anmeldung (F-21) */
+.sidebar-login-hint {
+    margin-left: 4px;
+    font-size: 11px;
+    color: var(--text-soft);
+}
+
 /* SIDEBAR-UNTERMENÜ (Rezeptsuche/Zutatensuche) */
 
+/* Wrapper aus Ausloeser + Untermenue: Bezugspunkt fuer die Desktop-Position */
+.sidebar-search {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
 .sidebar-submenu {
+    /* Desktop: rechts neben der Sidebar auf Hoehe des Ausloesers
+       (100 % Wrapper + 20 px Innenabstand + 1 px Rand der Sidebar) */
     position: absolute;
-    left: 260px;
-    top: 80px;
+    left: calc(100% + 21px);
+    top: 0;
     background: #ffffff;
     border-radius: 14px;
     box-shadow: var(--shadow-soft);
@@ -361,17 +392,24 @@ body {
     font-size: 14px;
     z-index: 10;
     opacity: 0;
+    visibility: hidden;
     transform: translateY(-6px) scale(0.98);
     pointer-events: none;
     transition:
         opacity var(--transition-fast),
-        transform var(--transition-fast);
+        transform var(--transition-fast),
+        visibility 0s linear 0.15s;
 }
 
 .sidebar-submenu.is-open {
     opacity: 1;
+    visibility: visible;
     transform: translateY(0) scale(1);
     pointer-events: auto;
+    transition:
+        opacity var(--transition-fast),
+        transform var(--transition-fast),
+        visibility 0s linear 0s;
 }
 
 .sidebar-submenu__item {
@@ -387,10 +425,112 @@ body {
     background: rgba(0, 0, 0, 0.03);
 }
 
+.sidebar-submenu__item--active {
+    background: var(--herb-soft);
+    font-weight: 600;
+}
+
+/* geschlossen: unsichtbar und (mit inert) nicht per Tab erreichbar */
 .sidebar--closed {
     opacity: 0;
+    visibility: hidden;
     transform: translateX(-16px);
     pointer-events: none;
+    transition:
+        transform var(--transition-fast),
+        opacity var(--transition-fast),
+        visibility 0s linear 0.15s;
+}
+
+/* Skip-Link (F-42): erst bei Fokus sichtbar */
+.skip-link {
+    position: fixed;
+    left: 12px;
+    top: 8px;
+    z-index: 1300;
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    background: #ffffff;
+    color: var(--text-main);
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--herb);
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+#main-content:focus {
+    outline: none;
+}
+
+/* Scroll-Sperre bei offenem Drawer (<body> ist der Scroll-Container) */
+body.drawer-scroll-lock {
+    overflow: hidden;
+}
+
+/* Flash-Meldungen (F-17), App-Shell und Auth-Seiten */
+.flash-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px 10px 16px;
+    border-radius: 14px;
+    border: 1px solid;
+    font-size: 14px;
+    line-height: 1.45;
+    box-shadow: var(--shadow-soft);
+}
+
+.flash-message--success {
+    background: #f5fbf3;
+    color: #365a33;
+    border-color: rgba(125, 168, 121, 0.55);
+}
+
+.flash-message--error {
+    background: #fbeeec;
+    color: #8f3535;
+    border-color: rgba(185, 84, 84, 0.45);
+}
+
+.flash-message__text {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding-top: 4px;
+    overflow-wrap: anywhere;
+}
+
+.flash-message__close {
+    flex-shrink: 0;
+    min-width: 32px;
+    min-height: 32px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.flash-message__close:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* Fehlerseite (Error.vue) */
+.error-page__message {
+    margin: 0 0 16px;
+}
+
+.error-page__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 /* CONTENT-AREA RECHTS */
@@ -2616,11 +2756,42 @@ body {
 .auth-container {
     min-height: 100vh;
     display: flex;
+    /* F-35: Logo und Statusmeldung stehen ueber statt neben dem Formular */
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 2rem 1.5rem;
     background: radial-gradient(circle, #FBEDE7 0, #FFFDF6 80%);
     color: var(--text-main);
+}
+
+.auth-container > .status-message,
+.auth-container > .flash-message {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 0 1rem;
+}
+
+/* Logo/Link zurueck zur Startseite auf allen Auth-Seiten (F-35/F-69) */
+.auth-brand {
+    display: inline-block;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    font-size: 18px;
+    text-transform: uppercase;
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.auth-brand:hover {
+    color: var(--herb-strong);
+}
+
+.auth-brand:focus-visible {
+    outline: 2px solid var(--herb);
+    outline-offset: 4px;
+    border-radius: 6px;
 }
 
 /* Formular-Box */
@@ -2791,8 +2962,9 @@ body {
     color: var(--text-soft);
 }
 
+/* Backdrop nur im Drawer-Modus (<= 900 px), siehe Mobile App-Shell (F-29) */
 .sidebar-backdrop {
-    display: none !important;
+    display: none;
 }
 /* Responsive Anpassungen */
 
@@ -2867,11 +3039,27 @@ body {
 
 @media (max-width: 900px) {
 
+    /* F-69: Header-Hoehe zentral (10 px Innenabstand oben/unten + 32 px Icon) */
+    .app-shell {
+        --app-header-height: 52px;
+    }
+
+    /* Header bleibt wie bisher nicht fixiert (scrollt mit); die Drawer-Oberkante
+       wird beim Oeffnen an die sichtbare Header-Unterkante gesetzt (--drawer-top) */
     .app-header {
         padding: 10px 14px;
         gap: 12px;
         position: relative;
         z-index: 1100;
+        height: var(--app-header-height);
+    }
+
+    /* langer Seitentitel darf den Header nicht hoeher machen */
+    .app-header__title {
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
     }
 
     .app-main {
@@ -2882,8 +3070,9 @@ body {
         padding: 14px 14px 18px;
     }
 
-    /* Backdrop nur auf Mobile und nur wenn Element gerendert */
+    /* Backdrop nur auf Mobile und nur wenn Element gerendert (F-29) */
     .sidebar-backdrop {
+        display: block;
         position: fixed;
         inset: 0;
         background: rgba(0,0,0,0.35);
@@ -2894,8 +3083,9 @@ body {
     .sidebar {
         position: fixed;
         left: 0;
-        top: 50px;                 /* unter Header (passt zu 32px icon + padding) */
-        height: calc(100vh - 50px);
+        top: var(--drawer-top, var(--app-header-height));
+        height: calc(100vh - var(--drawer-top, var(--app-header-height)));
+        height: calc(100dvh - var(--drawer-top, var(--app-header-height)));
         width: min(86vw, 320px);
         z-index: 1000;
         opacity: 1;
@@ -2964,6 +3154,13 @@ body {
         pointer-events: none;
     }
 
+}
+
+@media (max-width: 480px) {
+    /* Header-Icons sind hier 40 px hoch (siehe unten): 10 + 40 + 10 */
+    .app-shell {
+        --app-header-height: 60px;
+    }
 }
 
 @media (max-width: 720px) {

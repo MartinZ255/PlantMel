@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import AppLayout from '@/components/layout/AppLayout.vue';
-import { useForm, Head } from '@inertiajs/vue3';
-import { route } from 'ziggy-js';
-import { usePage } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { route } from 'ziggy-js';
 
-const props = defineProps<{
+defineProps<{
     mustVerifyEmail: boolean;
     status?: string | null;
 }>();
 
-const page = usePage();
-const user = computed(() => (page.props as any).auth?.user);
+const page = usePage<AppPageProps>();
+const user = computed(() => page.props.auth?.user ?? null);
 
 const form = useForm({
     name: '',
@@ -33,7 +33,11 @@ const submit = () => {
 };
 
 const deleteAccount = () => {
-    if (confirm('Bist du sicher, dass du dein Konto löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    if (
+        confirm(
+            'Bist du sicher, dass du dein Konto löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.',
+        )
+    ) {
         deleteForm.delete(route('profile.destroy'));
     }
 };
@@ -41,35 +45,22 @@ const deleteAccount = () => {
 
 <template>
     <AppLayout page-title="Profil bearbeiten">
-        <Head title="Profil bearbeiten" />
-
         <section class="content-section">
             <div class="section-header">
-                <div class="section-header__title">
-                    Profil bearbeiten
-                </div>
+                <h1 class="section-header__title">Profil bearbeiten</h1>
                 <div class="section-header__meta">
                     Aktualisiere deine persönlichen Informationen
                 </div>
             </div>
 
-            <p
-                v-if="status"
-                class="status-message"
-            >
+            <p v-if="status" class="status-message">
                 {{ status }}
             </p>
 
-            <form
-                @submit.prevent="submit"
-                class="recipe-form"
-            >
+            <form @submit.prevent="submit" class="recipe-form">
                 <div class="recipe-form__section">
                     <div class="form-field">
-                        <label
-                            for="name"
-                            class="form-field__label"
-                        >
+                        <label for="name" class="form-field__label">
                             Name
                         </label>
                         <input
@@ -79,20 +70,14 @@ const deleteAccount = () => {
                             class="form-field__input"
                             required
                             autocomplete="name"
-                        >
-                        <p
-                            v-if="form.errors.name"
-                            class="form-field__error"
-                        >
+                        />
+                        <p v-if="form.errors.name" class="form-field__error">
                             {{ form.errors.name }}
                         </p>
                     </div>
 
                     <div class="form-field">
-                        <label
-                            for="email"
-                            class="form-field__label"
-                        >
+                        <label for="email" class="form-field__label">
                             E-Mail-Adresse
                         </label>
                         <input
@@ -102,15 +87,15 @@ const deleteAccount = () => {
                             class="form-field__input"
                             required
                             autocomplete="email"
-                        >
-                        <p
-                            v-if="form.errors.email"
-                            class="form-field__error"
-                        >
+                        />
+                        <p v-if="form.errors.email" class="form-field__error">
                             {{ form.errors.email }}
                         </p>
                         <p
-                            v-if="mustVerifyEmail && user?.email_verified_at === null"
+                            v-if="
+                                mustVerifyEmail &&
+                                user?.email_verified_at === null
+                            "
                             class="form-field__hint"
                         >
                             Deine E-Mail-Adresse ist noch nicht verifiziert.
@@ -118,7 +103,8 @@ const deleteAccount = () => {
                                 :href="route('verification.notice')"
                                 class="underline-text"
                             >
-                                Klicke hier, um eine Verifizierungs-E-Mail zu erhalten.
+                                Klicke hier, um eine Verifizierungs-E-Mail zu
+                                erhalten.
                             </a>
                         </p>
                     </div>
@@ -149,29 +135,22 @@ const deleteAccount = () => {
         <!-- Konto löschen -->
         <section class="content-section">
             <div class="section-header">
-                <div class="section-header__title">
-                    Konto löschen
-                </div>
+                <h2 class="section-header__title">Konto löschen</h2>
                 <div class="section-header__meta">
                     Diese Aktion kann nicht rückgängig gemacht werden
                 </div>
             </div>
 
             <p>
-                Wenn du dein Konto löschst, werden alle deine Daten unwiderruflich
-                entfernt. Bitte stelle sicher, dass du wirklich fortfahren möchtest.
+                Wenn du dein Konto löschst, werden alle deine Daten
+                unwiderruflich entfernt. Bitte stelle sicher, dass du wirklich
+                fortfahren möchtest.
             </p>
 
-            <form
-                @submit.prevent="deleteAccount"
-                class="recipe-form"
-            >
+            <form @submit.prevent="deleteAccount" class="recipe-form">
                 <div class="recipe-form__section">
                     <div class="form-field">
-                        <label
-                            for="password"
-                            class="form-field__label"
-                        >
+                        <label for="password" class="form-field__label">
                             Passwort zur Bestätigung
                         </label>
                         <input
@@ -181,7 +160,7 @@ const deleteAccount = () => {
                             class="form-field__input"
                             required
                             autocomplete="current-password"
-                        >
+                        />
                         <p
                             v-if="deleteForm.errors.password"
                             class="form-field__error"
@@ -197,7 +176,7 @@ const deleteAccount = () => {
                         <button
                             type="submit"
                             class="primary-pill-button"
-                            style="background: #b95454; border-color: #b95454;"
+                            style="background: #b95454; border-color: #b95454"
                             :disabled="deleteForm.processing"
                         >
                             Konto löschen
@@ -208,4 +187,3 @@ const deleteAccount = () => {
         </section>
     </AppLayout>
 </template>
-

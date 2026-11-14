@@ -1,7 +1,7 @@
 <template>
     <section class="content-section content-section--transparent">
         <div class="section-header">
-            <div class="section-header__title">Sammlungen</div>
+            <h2 class="section-header__title">Sammlungen</h2>
             <div class="section-header__meta">
                 • {{ total }} gespeicherte Rezepte
             </div>

@@ -3,7 +3,7 @@
         <section class="content-section">
             <div class="section-header">
                 <div>
-                    <div class="section-header__title">Meine Sammlungen</div>
+                    <h1 class="section-header__title">Meine Sammlungen</h1>
                     <div class="section-header__subtitle">
                         Gruppiere deine Lieblingsrezepte in thematischen Listen.
                     </div>
@@ -31,10 +31,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { router } from '@inertiajs/vue3';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import CollectionCard from '@/components/recipes/CollectionCard.vue';
+import { router } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { route } from 'ziggy-js';
 
 interface Collection {
     id: number | string;
@@ -54,7 +55,6 @@ const createCollection = () => {
 };
 
 const openCollection = (id: Collection['id']) => {
-    router.visit(route('collections.show', id))
+    router.visit(route('collections.show', id));
 };
 </script>
-

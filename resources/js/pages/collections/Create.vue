@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/components/layout/AppLayout.vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
+import { route } from 'ziggy-js';
 
 const form = useForm({
     name: '',
@@ -18,16 +19,14 @@ const cancel = () => {
 
 <template>
     <AppLayout page-title="Neue Sammlung">
-        <Head title="Neue Sammlung anlegen" />
-
         <div class="page">
             <div class="layout">
                 <section class="content-section">
                     <div class="section-header">
                         <div>
-                            <div class="section-header__title">
+                            <h1 class="section-header__title">
                                 Neue Sammlung anlegen
-                            </div>
+                            </h1>
                             <div class="section-header__meta">
                                 Erstelle eine Sammlung, um deine Rezepte in
                                 thematischen Listen zu organisieren.
@@ -44,7 +43,9 @@ const cancel = () => {
                     </div>
 
                     <form class="recipe-form" @submit.prevent="submit">
-                        <div class="recipe-form__section recipe-form__section--wide">
+                        <div
+                            class="recipe-form__section recipe-form__section--wide"
+                        >
                             <h2 class="recipe-form__section-title">
                                 Basis-Informationen
                             </h2>
@@ -69,7 +70,10 @@ const cancel = () => {
                                     placeholder="z. B. Sonntagskuchen, Mealprep unter der Woche"
                                     required
                                 />
-                                <p v-if="form.errors.name" class="form-field__error">
+                                <p
+                                    v-if="form.errors.name"
+                                    class="form-field__error"
+                                >
                                     {{ form.errors.name }}
                                 </p>
                             </div>
