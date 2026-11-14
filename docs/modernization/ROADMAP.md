@@ -1,8 +1,8 @@
 # Roadmap / Backlog
 
-Stand: 2026-11-13 · Branch `fix/slice-2-datenverlust` · **Slice 0, 1 und 2 abgeschlossen; Slice 3 wartet auf Freigabe.**
+Stand: 2026-11-14 · Branch `fix/slice-3-navigation-formulare` · **Slice 0 bis 3 abgeschlossen; Slice 4 wartet auf Entscheidungen.**
 
-Grundlage: `FINDINGS.md` (F-01 bis F-79; Abschnitt 11 Testlauf und Browser, Abschnitte 12 und 13 Stand nach Slice 1 und 2), `FEATURE-MATRIX.md` (Stand Audit), `SLICE-0-BERICHT.md`, `SLICE-1-BERICHT.md`, `SLICE-2-BERICHT.md`, `DECISIONS.md`.
+Grundlage: `FINDINGS.md` (F-01 bis F-85; Abschnitt 11 Testlauf und Browser, Abschnitte 12 bis 14 Stand nach Slice 1 bis 3), `FEATURE-MATRIX.md` (Stand Audit), `SLICE-0-BERICHT.md`, `SLICE-1-BERICHT.md`, `SLICE-2-BERICHT.md`, `SLICE-3-BERICHT.md`, `DECISIONS.md`.
 
 **Prioritäten:** P0 Datenverlust/Sicherheitsvorfall/kompletter Ausfall; P1 Kernfunktion kaputt; P2 merkliche UX-/Darstellungsprobleme; P3 Politur/optional.
 
@@ -84,7 +84,11 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 - **Dateien:** `RecipeController.php`, `IngredientController.php`, `CategoryController.php`, `RecipeForm.vue`, `TagEditModal.vue`, `IngredientEditModal.vue`, `IngredientAlternativesModal.vue`, `collections/Show.vue`, ggf. eine additive Migration.
 - **Vorbedingung für jede Migration:** F-11 (Schema-Abgleich der Produktion) und E10 – nur mit gesonderter Freigabe.
 
-### Slice 3 – Navigation, mobile Darstellung, Formulare · **nächster Schritt, Freigabe nötig**
+### Slice 3 – Navigation, mobile Darstellung, Formulare · **abgeschlossen (lokal)**
+
+Ergebnis: reguläre Suite 509 grün, bekannte Defekte 7 → 4, Browser 212 grün (1 erwarteter Defekt: F-38), ESLint und `vue-tsc` 0. Erledigt: F-05, F-06, F-17, F-20 (durch Entscheidung), F-21, F-24, F-29, F-30, F-31, F-32, F-39, F-42, F-55, F-68, F-69, F-74; teilweise F-34, F-35, F-40, F-41, F-44, F-56, F-62, F-70. Details: `SLICE-3-BERICHT.md`.
+
+Ursprünglicher Plan (zur Nachvollziehbarkeit):
 
 | Befund | Änderung |
 |---|---|
@@ -97,7 +101,7 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 | F-42, F-68 | `lang="de"`, Seitentitel, `h1`, deutsche Validierungstexte, Inertia-Fehlerseite |
 | F-24 | Import: Zeitlimit und Abbrechen im Client (Server-Teil erledigt) |
 
-### Slice 4 – Konto und Recht (braucht Entscheidungen)
+### Slice 4 – Konto und Recht · **nächster Schritt, braucht Entscheidungen E2 und E9**
 
 - F-08 (E2), F-10 (E9), F-48, F-60
 - „Meine Zutaten“ als echtes Feature (eigene Zutaten speichern): eigenes Paket mit Datenmodell und Migration, nach Klärung des gewünschten Umfangs
@@ -130,14 +134,14 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 
 | # | Frage | Empfehlung | Blockiert |
 |---|---|---|---|
-| E1 | Ziel nach Login/Registrierung: `/home` oder `/`? Der Code setzt heute bewusst `/`. | `/home` | Slice 3 |
+| E1 | Ziel nach Login/Registrierung | **entschieden und umgesetzt:** `/home` | – |
 | E2 | E-Mail-Verifizierung durchsetzen oder entfernen? | durchsetzen, nach Prüfung der Bestandskonten | Slice 4 |
 | E3 | „Meine Zutaten“ bauen oder entfernen? | **entschieden:** bleibt, wird später ausgebaut | – |
-| E4 | 2FA und Darstellung: wiederherstellen oder deaktivieren? | 2FA wiederherstellen, Darstellung deaktivieren | Slice 3 |
+| E4 | 2FA und Darstellung | **entschieden und umgesetzt:** keine 2FA, nur helle Darstellung | – |
 | E5 | `sort_order`: Migration oder nach Name sortieren? | **umgesetzt:** nach Name (Empfehlung, nicht widersprochen) | – |
 | E6 | API-Routen entfernen oder reparieren? | **entschieden:** entfernt | – |
 | E7 | Mehrere Hosts geplant? | bei einem Host: dokumentieren | Gate D |
-| E8 | Nutzerbewertungen/Kommentare bauen oder Landing-Text anpassen? | Text anpassen | Slice 3 |
+| E8 | Nutzerbewertungen/Kommentare bauen oder Landing-Text anpassen? | **entschieden und umgesetzt:** Text angepasst | – |
 | E9 | Impressum/Datenschutz: wer liefert die Inhalte? | Betreiber | Slice 4 |
 | E10 | Welche Datenbank läuft in Produktion? | – | F-11, F-12 |
 | E11 | Security-Header in Laravel oder in Nginx? | **entschieden:** Laravel-Middleware; Wirkung auf dem VPS noch zu prüfen | – |
@@ -155,4 +159,4 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 
 ## Nächste empfohlene Aufgabe
 
-Freigabe von **Slice 3** (Navigation, mobile Darstellung, Formulare), dazu E1 (Ziel nach Login), E4 (2FA/Darstellung) und E8 (Landing-Text). Parallel sinnvoll: lesende Prüfung des VPS (PHP-Version, ausgecheckter Stand, Schema) – nur mit ausdrücklicher Freigabe für genau diese Befehle.
+**Slice 4 – Konto und Recht**, sobald E2 (E-Mail-Verifizierung: durchsetzen mit Bestandskonten als verifiziert markieren, oder abschalten) und E9 (Inhalte für Impressum und Datenschutz) geklärt sind. Danach Gate C (konsistentes Redesign) und – wenn lokal alles fertig ist – die VPS-Prüfung und das Release (Gate E). Parallel sinnvoll: lesende Prüfung des VPS (PHP-Version, ausgecheckter Stand, Schema) – nur mit ausdrücklicher Freigabe für genau diese Befehle.

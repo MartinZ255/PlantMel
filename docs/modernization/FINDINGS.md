@@ -329,3 +329,45 @@ Branch `fix/slice-2-datenverlust` (lokal). Belege: reguläre Suite 465 Tests gr�
 | F-77 | P3 | Toter Code: Endpunkte und Controller `ingredientAlternatives.*` (vom Frontend nicht mehr genutzt), `RecipeController::create()` (Route nutzt eine Closure), ungenutzter Parameter in `TikTokRecipeImporter::normalize`. `RecipeImportFactory` erzeugt weiter `result.source`. | in Gate D entfernen |
 | F-78 | P3 | Fehlerbehandlung für axios-Aufrufe ist in drei Modal-Dateien dupliziert. | gemeinsamer Helfer bei den Bausteinen in Gate C |
 | F-79 | P3 | Altbestand: bereits zerfallene Schritte und verwaiste Bilddateien werden nicht nachträglich bereinigt. | bei Bedarf einmaliges Aufräum-Command, nur mit Freigabe und Backup |
+
+## 14. Nachtrag Slice 3 (2026-11-14): behobene Befunde
+
+Branch `fix/slice-3-navigation-formulare` (lokal). Belege: reguläre Suite 509 Tests grün, Browser 212 Tests grün (zweimal, mit Screenshot-Vergleich); Details in `SLICE-3-BERICHT.md`.
+
+| ID | Status | Was geändert wurde | Regressionstest |
+|---|---|---|---|
+| F-05 | behoben | Such-Untermenü mobil innerhalb der Sidebar, `aria-expanded` | `regression-shell.spec.ts` |
+| F-06 | behoben | Fehler an jedem Feld, Zusammenfassung mit Fokus, leere Zeilen werden gefiltert | `regression-forms.spec.ts` |
+| F-17 | behoben | `flash` geteilt und in der App-Shell angezeigt; Profil/Passwort melden Erfolg | `CollectionFlashTest`, E2E |
+| F-20 | erledigt durch Entscheidung | 2FA und Darstellung entfernt (E4); beide URLs liefern 404 | `TwoFactorDisabledTest`, `AppearanceRemovedTest`, E2E |
+| F-21 | behoben | Login → `/home` (E1); Gäste-Links auf öffentliche Seiten | Auth-Tests, E2E |
+| F-24 | behoben (Client-Teil) | Zeitlimit 16 Minuten, Abbrechen, Toleranz für Netzwerkfehler, Server-Meldungen sichtbar | E2E |
+| F-29 | behoben | Backdrop, Escape, Scroll-Sperre | E2E |
+| F-30 | behoben | Modals über der Shell, Scroll-Sperre, Escape, Fokus, `role="dialog"` | E2E |
+| F-31 | behoben | Rezeptkopf als umbrechende Kopfzeile | E2E (768/1024/1440) |
+| F-32 | behoben | Umbruch langer Wörter in Inhaltsbereichen | E2E (320/390/1024) |
+| F-34 | teilweise | Dark Mode abgeschaltet (E4); zwei Token-Systeme und ungelayertes CSS bleiben → Gate C | – |
+| F-35 | teilweise | Weg zurück, Statusmeldung oben, 16-px-Eingaben, `autocomplete`. Zwei Designsysteme bleiben → Gate C | E2E |
+| F-39 | behoben (Rest) | Gast-Hinweis, Link „Neue Sammlung“, deaktivierter Button, Fehleranzeige. Offen: Mitgliedschaft anzeigen (Daten fehlen) | E2E |
+| F-40 | teilweise | Modals mit Dialog-Semantik; Drawer ohne Fokusfalle → Gate C | E2E |
+| F-41 | teilweise | Rezeptformular: Labels, `aria-invalid`/`aria-describedby`, Pflichtfelder | E2E |
+| F-42 | behoben | `lang="de"`, deutsche Texte, Titel, ein `h1`, Skip-Link, Landmarken | `GermanTranslationsTest`, E2E |
+| F-44 | teilweise | Leerzustand, entprellte Suche, Trefferzahl als Status. Filter-Chips und Pagination → Gate C/D | E2E |
+| F-55 | behoben | Landing-Text (E8) | E2E |
+| F-56 | teilweise | Abbrechen, Rückfrage beim Zurücksetzen. Vorschau des gespeicherten Bilds fehlt (Backend liefert es nicht) | E2E |
+| F-62 | teilweise | `.env.example` mit `APP_NAME`, `APP_LOCALE=de`, `GEMINI_API_KEY` | – |
+| F-68 | behoben | Inertia-Fehlerseite für 403/404/429/500/503, 419 als Redirect mit Hinweis | `ErrorPagesTest`, E2E |
+| F-69 | behoben | Header-Höhe als Variable, kein Versatz; Auth-Seiten mit Weg zurück | E2E |
+| F-70 | teilweise | ESLint 0, `vue-tsc` 0 (beide in CI wieder blockierend). Prettier 5 Dateien, Pint 40 Dateien | CI |
+| F-74 | behoben | auch im Rezeptformular | E2E |
+
+### Neue Punkte aus Slice 3
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-80 | P2 | `APP_LOCALE` in der `.env` hat Vorrang vor dem neuen Default `de`. Die lokale `.env` des Auftraggebers steht offenbar auf `en`; auf dem VPS unbekannt. | Beim Release `APP_LOCALE=de` setzen (Prüfliste) |
+| F-81 | P3 | Bei unbekannten URLs läuft keine Session: Angemeldete sehen auf der 404-Seite die Gast-Navigation. | `Route::fallback` in `routes/web.php` |
+| F-82 | P3 | `RecipeController::edit` liefert keine Bild-URL; die Vorschau im Formular ist vorbereitet. | eine Zeile im Backend |
+| F-83 | P3 | Login-Sperre zeigt die Fehlerseite 429 statt einer Formularmeldung. | Throttle-Antwort für Login als Redirect mit Fehler |
+| F-84 | P3 | Pint meldet nach dem Versionssprung (Slice 1) 40 Dateien, überwiegend unveränderte Altdateien. | in Gate D einmalig formatieren (eigener Commit) |
+| F-85 | P3 | Rezeptdetail ab 1024 px: Die Bildkarte wird auf die Höhe der Textkarte gestreckt, unter dem Bild bleibt eine leere Fläche. | Gate C |
