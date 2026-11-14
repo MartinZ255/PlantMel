@@ -34,6 +34,7 @@ Route::get('/zutatensuche', [IngredientController::class, 'index'])
 
 
 // Authentifizierte, verifizierte Benutzer (Sammlungen etc.)
+// 'verified' wirkt nur bei plantmel.require_email_verification = true (F-08/E2).
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/home', function (Request $request) {
         $user = $request->user();
@@ -101,7 +102,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Host-spezifische Aktionen (Rezepte, Kategorien, Zutaten, Alternativen)
-Route::middleware(['auth', 'is_host'])->group(function () {
+// 'verified' wirkt nur bei plantmel.require_email_verification = true (F-08/E2).
+Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
 
     // Rezepte anlegen / bearbeiten / löschen
     Route::get('/rezepte/erstellen', function (Request $request) {

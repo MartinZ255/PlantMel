@@ -13,6 +13,17 @@ class EmailVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * F-08/E2 (Slice 4): Diese Starter-Tests pruefen den Ablauf bei
+     * EINGESCHALTETER Verifizierung. Default (AUS): EmailVerificationDisabledTest.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['plantmel.require_email_verification' => true]);
+    }
+
     public function test_email_verification_screen_can_be_rendered()
     {
         $user = User::factory()->unverified()->create();

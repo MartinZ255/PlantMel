@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, MustVerifyEmailTrait, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -53,6 +56,48 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
             'is_host'                 => 'boolean',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | E-Mail-Verifizierung (F-08, E2)
+    |--------------------------------------------------------------------------
+    |
+    | Abschaltbar per `plantmel.require_email_verification` (Default: aus).
+    | Laravel und Fortify werten die Verifizierung ausschliesslich ueber diese
+    | beiden Methoden aus:
+    | - Middleware `verified` (EnsureEmailIsVerified) und der Listener
+    |   SendEmailVerificationNotification (Event Registered) fragen
+    |   hasVerifiedEmail();
+    | - Fortify (verification.notice/.send/.verify) fragt hasVerifiedEmail()
+    |   bzw. ruft sendEmailVerificationNotification() auf.
+    | Bei AUS gilt jedes Konto als verifiziert und es wird nie eine
+    | Verifizierungsmail verschickt. Die Spalte email_verified_at bleibt davon
+    | unberuehrt (wird bei AUS nur nicht ausgewertet).
+    |
+    */
+
+    public static function emailVerificationRequired(): bool
+    {
+        return (bool) config('plantmel.require_email_verification', false);
+    }
+
+    public function hasVerifiedEmail(): bool
+    {
+        if (! static::emailVerificationRequired()) {
+            return true;
+        }
+
+        return ! is_null($this->email_verified_at);
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        if (! static::emailVerificationRequired()) {
+            return;
+        }
+
+        $this->notify(new VerifyEmail);
     }
 
     /*

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +19,9 @@ class ProfileController extends Controller
     public function edit(Request $request): Response
     {
         return Inertia::render('settings/Profile', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            // F-08/E2: nur bei eingeschalteter Verifizierung. User implementiert
+            // MustVerifyEmail immer, deshalb zaehlt der Schalter, nicht das Interface.
+            'mustVerifyEmail' => User::emailVerificationRequired(),
             'status' => $request->session()->get('status'),
         ]);
     }
@@ -29,13 +31,27 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $user->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        $emailChanged = $user->isDirty('email');
+
+        if ($emailChanged) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        $user->save();
+
+        // F-08/E2: neue Adresse bestaetigen lassen. Bei abgeschalteter
+        // Verifizierung ist sendEmailVerificationNotification() wirkungslos.
+        if ($emailChanged && User::emailVerificationRequired()) {
+            $user->sendEmailVerificationNotification();
+
+            return to_route('profile.edit')->with(
+                'success',
+                'Profil gespeichert. Bitte bestätige deine neue E-Mail-Adresse über den Link, den wir dir geschickt haben.'
+            );
+        }
 
         return to_route('profile.edit')->with('success', 'Profil gespeichert.');
     }
