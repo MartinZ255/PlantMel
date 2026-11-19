@@ -1,6 +1,6 @@
 # Roadmap / Backlog
 
-Stand: 2026-11-14 · Branch `fix/slice-3-navigation-formulare` · **Slice 0 bis 3 abgeschlossen; Slice 4 wartet auf Entscheidungen.**
+Stand: 2026-11-19 · Branch `fix/slice-4-konto-recht-import` · **Gate B (Slice 0 bis 4) abgeschlossen; Gate C wartet auf Freigabe.**
 
 Grundlage: `FINDINGS.md` (F-01 bis F-85; Abschnitt 11 Testlauf und Browser, Abschnitte 12 bis 14 Stand nach Slice 1 bis 3), `FEATURE-MATRIX.md` (Stand Audit), `SLICE-0-BERICHT.md`, `SLICE-1-BERICHT.md`, `SLICE-2-BERICHT.md`, `SLICE-3-BERICHT.md`, `DECISIONS.md`.
 
@@ -101,10 +101,18 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 | F-42, F-68 | `lang="de"`, Seitentitel, `h1`, deutsche Validierungstexte, Inertia-Fehlerseite |
 | F-24 | Import: Zeitlimit und Abbrechen im Client (Server-Teil erledigt) |
 
-### Slice 4 – Konto und Recht · **nächster Schritt, braucht Entscheidungen E2 und E9**
+### Slice 4 – Konto, Recht und Import-Fortschritt · **abgeschlossen (lokal)**
 
-- F-08 (E2), F-10 (E9), F-48, F-60
-- „Meine Zutaten“ als echtes Feature (eigene Zutaten speichern): eigenes Paket mit Datenmodell und Migration, nach Klärung des gewünschten Umfangs
+Ergebnis: reguläre Suite 562 grün, bekannte Defekte 4 → 1 (F-23), Browser 244 grün. Erledigt: F-08 (abschaltbar, Standard aus), F-10 (Vorlagen), F-24 (Fortschrittsanzeige), F-58 (Schrift selbst gehostet); teilweise F-36, F-48, F-62. Details: `SLICE-4-BERICHT.md`.
+
+**Vor dem Release vom Betreiber zu erledigen:** Rechtstexte ausfüllen und prüfen (`RECHTSTEXTE.md`); optional Mailversand einrichten (`MAIL-SETUP.md`).
+
+**Aus Slice 4 offen:** F-60 (Passwortregeln, Registrierungs-Throttle), F-86 (synchroner Mailversand), F-87 (Löschfrist für Importe).
+
+### Feature-Pakete (nach Gate C, jeweils eigene Freigabe)
+
+- **„Meine Zutaten“** als echtes Feature (eigene Zutaten speichern): eigenes Paket mit Datenmodell und Migration, nach Klärung des Umfangs (E12)
+- **Weitere Import-Quellen** (E13): zuerst Rezept-Websites über schema.org-Daten, später ggf. Instagram; Bewertung in `SLICE-4-BERICHT.md`, Abschnitt 8
 
 ## Gate C – Konsistentes Redesign (nach Gate B)
 
@@ -135,17 +143,18 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 | # | Frage | Empfehlung | Blockiert |
 |---|---|---|---|
 | E1 | Ziel nach Login/Registrierung | **entschieden und umgesetzt:** `/home` | – |
-| E2 | E-Mail-Verifizierung durchsetzen oder entfernen? | durchsetzen, nach Prüfung der Bestandskonten | Slice 4 |
+| E2 | E-Mail-Verifizierung | **entschieden und umgesetzt:** gebaut, Schalter standardmäßig aus; Einschalten erst mit kostenlosem Mailversand auf dem Server | – |
 | E3 | „Meine Zutaten“ bauen oder entfernen? | **entschieden:** bleibt, wird später ausgebaut | – |
 | E4 | 2FA und Darstellung | **entschieden und umgesetzt:** keine 2FA, nur helle Darstellung | – |
 | E5 | `sort_order`: Migration oder nach Name sortieren? | **umgesetzt:** nach Name (Empfehlung, nicht widersprochen) | – |
 | E6 | API-Routen entfernen oder reparieren? | **entschieden:** entfernt | – |
 | E7 | Mehrere Hosts geplant? | bei einem Host: dokumentieren | Gate D |
 | E8 | Nutzerbewertungen/Kommentare bauen oder Landing-Text anpassen? | **entschieden und umgesetzt:** Text angepasst | – |
-| E9 | Impressum/Datenschutz: wer liefert die Inhalte? | Betreiber | Slice 4 |
+| E9 | Impressum/Datenschutz | **entschieden:** Vorlagen erstellt, Betreiber füllt sie vor dem Release aus | Release |
 | E10 | Welche Datenbank läuft in Produktion? | – | F-11, F-12 |
 | E11 | Security-Header in Laravel oder in Nginx? | **entschieden:** Laravel-Middleware; Wirkung auf dem VPS noch zu prüfen | – |
 | E12 | Umfang von „Meine Zutaten“: nur Liste vorhandener Zutaten, oder auch Mengen/Haltbarkeit und „Was kann ich kochen?“ | zuerst nur die Liste | Feature-Paket |
+| E13 | Weitere Import-Quellen | Rezept-Websites zuerst, Instagram später | Feature-Paket |
 
 ## Verbleibende Risiken
 
@@ -159,4 +168,4 @@ Ursprünglicher Plan (zur Nachvollziehbarkeit):
 
 ## Nächste empfohlene Aufgabe
 
-**Slice 4 – Konto und Recht**, sobald E2 (E-Mail-Verifizierung: durchsetzen mit Bestandskonten als verifiziert markieren, oder abschalten) und E9 (Inhalte für Impressum und Datenschutz) geklärt sind. Danach Gate C (konsistentes Redesign) und – wenn lokal alles fertig ist – die VPS-Prüfung und das Release (Gate E). Parallel sinnvoll: lesende Prüfung des VPS (PHP-Version, ausgecheckter Stand, Schema) – nur mit ausdrücklicher Freigabe für genau diese Befehle.
+**Gate C – konsistentes Redesign** (Design-Tokens, gemeinsame Bausteine, Tastatur-Alternative fürs Umsortieren, Kontrast, Fokus im Drawer) auf Basis der aktuellen Screenshot-Baseline. Parallel: Rechtstexte durch den Betreiber. Wenn lokal alles fertig ist: lesende VPS-Prüfung und Release (Gate E), jeweils mit ausdrücklicher Freigabe.

@@ -371,3 +371,25 @@ Branch `fix/slice-3-navigation-formulare` (lokal). Belege: reguläre Suite 509 T
 | F-83 | P3 | Login-Sperre zeigt die Fehlerseite 429 statt einer Formularmeldung. | Throttle-Antwort für Login als Redirect mit Fehler |
 | F-84 | P3 | Pint meldet nach dem Versionssprung (Slice 1) 40 Dateien, überwiegend unveränderte Altdateien. | in Gate D einmalig formatieren (eigener Commit) |
 | F-85 | P3 | Rezeptdetail ab 1024 px: Die Bildkarte wird auf die Höhe der Textkarte gestreckt, unter dem Bild bleibt eine leere Fläche. | Gate C |
+
+## 15. Nachtrag Slice 4 (2026-11-19): behobene Befunde
+
+Branch `fix/slice-4-konto-recht-import` (lokal). Belege: reguläre Suite 562 Tests grün, Browser 244 Tests grün; Details in `SLICE-4-BERICHT.md`.
+
+| ID | Status | Was geändert wurde | Regressionstest |
+|---|---|---|---|
+| F-08 | behoben (abschaltbar) | `User` implementiert `MustVerifyEmail`; Schalter `REQUIRE_EMAIL_VERIFICATION` (Standard aus); `verified` auch auf Host-Routen; Command `users:mark-verified` | `EmailVerificationEnforcementTest`, `EmailVerificationDisabledTest`, `MarkUsersVerifiedCommandTest` |
+| F-10 | Vorlagen erstellt | `/impressum`, `/datenschutz` mit Platzhaltern und Entwurfshinweis; Footer und Registrierungshinweis. Inhalt muss der Betreiber ausfüllen und prüfen | `LegalPagesTest`, `regression-legal.spec.ts` |
+| F-24 | behoben | Fortschrittsanzeige mit Schritten, Uhr, Warte-Hinweis, „Erneut versuchen“; Server liefert `started`, `created_at`, `updated_at` | `ImportProgressStatusTest`, E2E |
+| F-36 | teilweise | Zutaten-Autocomplete schließt bei Blur und Escape. Offen: Griffgröße, Auto-Scroll beim Ziehen | E2E (F-30 Zutat bearbeiten) |
+| F-48 | teilweise | Datenschutz-Vorlage beschreibt die Übermittlung an Google; Vertrag, Drittlandgrundlage und Löschfrist als `[PRÜFEN]` | – |
+| F-58 | behoben | Schrift selbst gehostet; keine Anfrage mehr an fonts.bunny.net; CSP nur `'self'`. `@routes` legt weiterhin alle Routen offen | `LegalPagesTest`, `SecurityHeadersTest`, E2E |
+| F-62 | teilweise | `.env.example` um `REQUIRE_EMAIL_VERIFICATION` ergänzt; `LEGAL_*`-Schlüssel in `RECHTSTEXTE.md` | – |
+
+### Neue Punkte aus Slice 4
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-86 | P2 | Bestätigungsmails werden synchron verschickt: Ist der Mailversand bei eingeschalteter Verifizierung kaputt, scheitert die Registrierung. | Mailversand vor dem Einschalten testen (`MAIL-SETUP.md`); optional Versand über die Queue |
+| F-87 | P2 | `recipe_imports` hat keine Löschfrist (Datenschutz-Vorlage P6). | Aufbewahrungsregel festlegen, dann `model:prune` |
+| F-88 | P3 | Nach jedem Update ist `npm ci` vor `npm run build` nötig, sonst bleiben neue Asset-Pakete ungebündelt (beim Merge selbst passiert). | in das Deployment-Runbook aufnehmen |
