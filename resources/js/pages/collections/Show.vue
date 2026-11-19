@@ -1,101 +1,232 @@
 <template>
-    <AppLayout :page-title="collection.name">
-        <section class="content-section">
-            <header class="collection-hero">
-                <div class="collection-hero__text">
-                    <h1 class="collection-hero__title">
-                        {{ collection.name }}
-                    </h1>
+    <AppLayout :page-title="collection.name" bleed>
+        <!-- ============================================================
+             Kopf: Waldgrün mit Körnung, Fraunces-Titel, Eckdaten-Kiesel
+             ============================================================ -->
+        <header
+            class="relative overflow-hidden bg-forest grain-light on-forest"
+        >
+            <BlobBackdrop tone="forest" />
+            <LeafOrnament
+                variant="sprig"
+                class="pointer-events-none absolute -top-6 right-[8%] h-36 animate-sway text-forest-soft [--float-rotate:-18deg] sm:h-48"
+            />
+            <LeafOrnament
+                variant="eucalyptus"
+                class="pointer-events-none absolute -bottom-10 left-[44%] hidden h-44 rotate-[68deg] text-forest-soft lg:block"
+            />
 
-                    <p
-                        v-if="collection.description"
-                        class="collection-hero__description"
-                    >
-                        {{ collection.description }}
-                    </p>
+            <div
+                class="relative mx-auto w-full max-w-(--content-max) px-4 pt-6 pb-4 sm:px-6 lg:px-8 lg:pt-10 lg:pb-6"
+            >
+                <Link
+                    :href="route('collections.index')"
+                    class="mb-5 inline-flex min-h-10 items-center gap-1.5 rounded-pebble px-2 text-sm font-semibold text-on-forest-muted hover:bg-forest-soft hover:text-on-forest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                    <ArrowLeft class="size-4" aria-hidden="true" />
+                    Alle Sammlungen
+                </Link>
 
-                    <div class="collection-hero__meta">
-                        <span>{{ recipes.length }} Rezepte</span>
-                        <span v-if="collection.updatedAt">
-                            · Aktualisiert: {{ collection.updatedAt }}
-                        </span>
+                <div
+                    class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
+                >
+                    <div class="min-w-0 lg:max-w-3xl">
+                        <p
+                            class="mb-3 inline-flex items-center gap-2 text-sm font-semibold tracking-[0.14em] text-matcha uppercase"
+                        >
+                            <LeafOrnament variant="sprout" class="size-4" />
+                            Sammlung
+                        </p>
+                        <h1
+                            class="font-display-wonk text-[clamp(2.25rem,8vw,4.5rem)] leading-[1.02] font-semibold text-balance text-wrap-anywhere text-on-forest"
+                        >
+                            {{ collection.name }}
+                        </h1>
+                        <p
+                            v-if="collection.description"
+                            class="mt-4 max-w-2xl text-lg text-wrap-anywhere text-on-forest-muted sm:text-xl"
+                        >
+                            {{ collection.description }}
+                        </p>
+
+                        <dl
+                            class="mt-6 flex flex-wrap gap-3"
+                            aria-label="Eckdaten"
+                        >
+                            <div
+                                class="rounded-[1.4rem_1.1rem_1.5rem_1.2rem] bg-forest-deep/55 px-4 py-3 ring-1 ring-forest-soft backdrop-blur-sm"
+                            >
+                                <dt
+                                    class="flex items-center gap-1.5 text-sm text-on-forest-muted"
+                                >
+                                    <BookOpen
+                                        class="size-4"
+                                        aria-hidden="true"
+                                    />
+                                    Rezepte
+                                </dt>
+                                <dd
+                                    class="mt-0.5 font-display text-2xl font-semibold text-on-forest"
+                                >
+                                    {{ recipes.length }}
+                                </dd>
+                            </div>
+                            <div
+                                v-if="collection.updatedAt"
+                                class="rounded-[1.1rem_1.5rem_1.2rem_1.4rem] bg-forest-deep/55 px-4 py-3 ring-1 ring-forest-soft backdrop-blur-sm"
+                            >
+                                <dt
+                                    class="flex items-center gap-1.5 text-sm text-on-forest-muted"
+                                >
+                                    <Clock class="size-4" aria-hidden="true" />
+                                    Aktualisiert
+                                </dt>
+                                <dd
+                                    class="mt-0.5 font-display text-2xl font-semibold text-on-forest"
+                                >
+                                    {{ collection.updatedAt }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Aktionen: umbrechend, nie über dem Titel -->
+                    <div class="flex flex-wrap gap-2.5 lg:justify-end">
+                        <!-- ohne Rezepte gibt es nichts zu entfernen; im Modus bleibt
+                             der Knopf, damit der Fokus nach dem letzten Entfernen landet -->
+                        <button
+                            v-if="recipes.length || isEditMode"
+                            ref="editModeButton"
+                            type="button"
+                            class="inline-flex min-h-11 items-center justify-center gap-2 pebble-morph border-[1.5px] px-5 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                            :class="
+                                isEditMode
+                                    ? 'border-matcha bg-matcha text-forest hover:bg-matcha-hover'
+                                    : 'border-on-forest-muted text-on-forest hover:border-on-forest hover:bg-forest-soft'
+                            "
+                            :aria-pressed="isEditMode"
+                            @click="toggleEditMode"
+                        >
+                            <Check
+                                v-if="isEditMode"
+                                class="size-4"
+                                aria-hidden="true"
+                            />
+                            <ListX v-else class="size-4" aria-hidden="true" />
+                            {{
+                                isEditMode
+                                    ? 'Bearbeitungsmodus beenden'
+                                    : 'Rezepte entfernen'
+                            }}
+                        </button>
+
+                        <Button
+                            variant="ghost"
+                            class="text-danger-on-forest hover:bg-forest-soft active:bg-forest-deep"
+                            aria-haspopup="dialog"
+                            @click="isDeleteOpen = true"
+                        >
+                            <Trash2 class="size-4" aria-hidden="true" />
+                            Sammlung löschen
+                        </Button>
                     </div>
                 </div>
+            </div>
+            <WaveDivider :variant="2" class="text-canvas" />
+        </header>
 
-                <div class="collection-hero__actions">
-                    <button
-                        ref="editModeButton"
-                        type="button"
-                        class="secondary-pill-button"
-                        :class="{ 'secondary-pill-button--active': isEditMode }"
-                        :aria-pressed="isEditMode"
-                        @click="toggleEditMode"
-                    >
-                        {{
-                            isEditMode
-                                ? 'Bearbeitungsmodus beenden'
-                                : 'Rezepte entfernen'
-                        }}
-                    </button>
-
-                    <button
-                        type="button"
-                        class="secondary-pill-button"
-                        @click="deleteCollection"
-                    >
-                        Sammlung löschen
-                    </button>
-                </div>
-            </header>
+        <section
+            class="mx-auto w-full max-w-(--content-max) px-4 pt-6 pb-16 sm:px-6 lg:px-8"
+            aria-labelledby="collection-recipes-title"
+        >
+            <h2
+                id="collection-recipes-title"
+                class="mb-6 font-display-wonk text-3xl font-semibold text-ink sm:text-4xl"
+            >
+                Rezepte in dieser
+                <span class="accent-word text-primary">Sammlung</span>
+            </h2>
 
             <!-- F-39: Modus klar erkennbar; entfernt wird nur über den Button mit Rückfrage -->
-            <p v-if="isEditMode" class="collection-remove-hint" role="status">
-                Bearbeitungsmodus: Wähle bei einem Rezept „Aus Sammlung
-                entfernen“ und bestätige. Das Rezept selbst bleibt erhalten und
-                kann jederzeit wieder hinzugefügt werden.
+            <p
+                v-if="isEditMode"
+                class="collection-remove-hint mb-8 flex items-start gap-3 rounded-[1.4rem_1.1rem_1.5rem_1.2rem] border-[1.5px] border-dashed border-danger bg-danger-surface px-4 py-3 text-ink"
+                role="status"
+            >
+                <Info
+                    class="mt-0.5 size-5 shrink-0 text-danger"
+                    aria-hidden="true"
+                />
+                <span>
+                    Bearbeitungsmodus: Wähle bei einem Rezept „Aus Sammlung
+                    entfernen“ und bestätige. Das Rezept selbst bleibt erhalten
+                    und kann jederzeit wieder hinzugefügt werden.
+                </span>
             </p>
 
-            <div class="recipes-grid">
-                <div
-                    v-for="recipe in recipes"
+            <EmptyState
+                v-if="!recipes.length"
+                :icon="BookmarkPlus"
+                title="Diese Sammlung ist noch leer"
+                description="Öffne ein Rezept und wähle „Zur Sammlung hinzufügen“, um es hier abzulegen."
+                :heading-level="3"
+            >
+                <template #actions>
+                    <Button :href="route('recipes.index')">
+                        Rezepte entdecken
+                    </Button>
+                </template>
+            </EmptyState>
+
+            <ul
+                v-else
+                class="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-10"
+                aria-labelledby="collection-recipes-title"
+            >
+                <li
+                    v-for="(recipe, i) in recipes"
                     :key="recipe.id"
-                    class="collection-recipe-item"
-                    :class="{ 'collection-recipe-item--edit-mode': isEditMode }"
+                    class="collection-recipe-item flex min-w-0 flex-col gap-3 sm:max-lg:even:mt-12 lg:[&:nth-child(3n+2)]:mt-16"
+                    :class="
+                        isEditMode && 'rounded-[2rem_1.5rem_2.25rem_1.75rem]'
+                    "
                 >
                     <RecipeDetailCard
                         :recipe="recipe"
+                        :shape="(i % 6) + 1"
                         :disable-link="isEditMode"
                     />
 
-                    <div v-if="isEditMode" class="collection-remove">
+                    <div v-if="isEditMode" class="flex flex-col gap-2 px-1">
                         <div
                             v-if="confirmingRecipeId === recipe.id"
-                            class="collection-remove__confirm"
+                            class="flex flex-wrap items-center gap-2 rounded-[1.2rem_1rem_1.3rem_0.9rem] bg-danger-surface p-2.5"
                             role="group"
                             :aria-labelledby="`collection-remove-question-${recipe.id}`"
                         >
                             <p
                                 :id="`collection-remove-question-${recipe.id}`"
-                                class="collection-remove__question"
+                                class="mr-auto pl-1.5 text-sm font-semibold text-danger"
                             >
                                 Wirklich entfernen?
                             </p>
-                            <div class="collection-remove__actions">
-                                <button
-                                    type="button"
-                                    class="secondary-pill-button collection-remove__yes"
+                            <div class="flex flex-wrap gap-2">
+                                <Button
+                                    variant="danger"
+                                    size="sm"
                                     :aria-label="`Ja, „${recipe.name}“ aus der Sammlung entfernen`"
                                     :disabled="removingRecipeId !== null"
+                                    :loading="removingRecipeId === recipe.id"
                                     @click="removeRecipe(recipe.id)"
                                 >
                                     Ja
-                                </button>
+                                </Button>
                                 <button
                                     :ref="
                                         (el) => setCancelButton(recipe.id, el)
                                     "
                                     type="button"
-                                    class="secondary-pill-button"
+                                    class="inline-flex min-h-9 items-center justify-center pebble-morph bg-surface px-4 text-sm font-semibold text-ink hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
                                     :aria-label="`Abbrechen, „${recipe.name}“ behalten`"
                                     :disabled="removingRecipeId !== null"
                                     @click="cancelRemove(recipe.id)"
@@ -109,11 +240,12 @@
                             v-else
                             :ref="(el) => setRemoveButton(recipe.id, el)"
                             type="button"
-                            class="secondary-pill-button collection-remove__button"
+                            class="inline-flex min-h-11 items-center gap-2 self-start pebble-morph border-[1.5px] border-danger bg-surface px-4 text-sm font-semibold text-danger hover:bg-danger-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
                             :aria-label="`Aus Sammlung entfernen: ${recipe.name}`"
                             :disabled="removingRecipeId !== null"
                             @click="askRemove(recipe.id)"
                         >
+                            <X class="size-4" aria-hidden="true" />
                             Aus Sammlung entfernen
                         </button>
 
@@ -122,22 +254,66 @@
                                 removeError &&
                                 removeError.recipeId === recipe.id
                             "
-                            class="collection-remove__error"
+                            class="text-sm font-medium text-danger"
                             role="alert"
                         >
                             {{ removeError.message }}
                         </p>
                     </div>
-                </div>
-            </div>
+                </li>
+            </ul>
         </section>
+
+        <!-- Löschen mit Rückfrage (Dialog statt confirm()) -->
+        <Dialog
+            :open="isDeleteOpen"
+            title="Sammlung löschen?"
+            :description="`„${collection.name}“ wird dauerhaft gelöscht. Die Rezepte selbst bleiben erhalten. Diese Aktion kann nicht rückgängig gemacht werden.`"
+            size="sm"
+            @close="closeDelete"
+        >
+            <template #footer>
+                <Button
+                    variant="ghost"
+                    :disabled="deleting"
+                    @click="closeDelete"
+                >
+                    Abbrechen
+                </Button>
+                <Button
+                    variant="danger"
+                    :loading="deleting"
+                    @click="deleteCollection"
+                >
+                    <Trash2 class="size-4" aria-hidden="true" />
+                    Endgültig löschen
+                </Button>
+            </template>
+        </Dialog>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/components/layout/AppLayout.vue';
 import RecipeDetailCard from '@/components/recipes/RecipeDetailCard.vue';
-import { router } from '@inertiajs/vue3';
+import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
+import Button from '@/components/ui/Button.vue';
+import Dialog from '@/components/ui/Dialog.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import WaveDivider from '@/components/ui/WaveDivider.vue';
+import { Link, router } from '@inertiajs/vue3';
+import {
+    ArrowLeft,
+    BookmarkPlus,
+    BookOpen,
+    Check,
+    Clock,
+    Info,
+    ListX,
+    Trash2,
+    X,
+} from 'lucide-vue-next';
 import { computed, nextTick, ref } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -265,116 +441,23 @@ const removeRecipe = (recipeId: number) => {
     );
 };
 
-const deleteCollection = () => {
-    if (
-        !confirm(
-            'Möchtest du diese Sammlung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-        )
-    ) {
-        return;
-    }
+// --- Sammlung löschen: Rückfrage im Dialog (vorher window.confirm) -------------
+const isDeleteOpen = ref(false);
+const deleting = ref(false);
 
+const closeDelete = () => {
+    if (!deleting.value) isDeleteOpen.value = false;
+};
+
+const deleteCollection = () => {
+    if (deleting.value) return;
+    deleting.value = true;
     router.delete(route('collections.delete', collection.value.id), {
         preserveScroll: true,
+        onFinish: () => {
+            deleting.value = false;
+            isDeleteOpen.value = false;
+        },
     });
 };
 </script>
-
-<style scoped>
-.collection-hero {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px; /* optional, Abstand zwischen Text und Buttons */
-}
-
-/* Buttons rechts im Header untereinander anordnen */
-.collection-hero__actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px; /* Abstand zwischen den Buttons */
-    align-items: flex-end;
-}
-
-.collection-recipe-item {
-    /* nur semantischer Wrapper */
-}
-
-/* Edit-Modus: Karte selbst ist inaktiv, entfernt wird nur über den Button (F-39) */
-.collection-recipe-item--edit-mode {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.collection-remove-hint {
-    margin: 0 0 16px;
-    padding: 10px 14px;
-    border: 1px dashed var(--danger);
-    border-radius: 12px;
-    font-size: 0.9rem;
-    color: var(--text-main);
-}
-
-.collection-remove {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.collection-remove__button {
-    align-self: flex-start;
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
-.collection-remove__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-}
-
-.collection-remove__question {
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--danger);
-}
-
-.collection-remove__actions {
-    display: flex;
-    gap: 8px;
-}
-
-.collection-remove__yes {
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
-.collection-remove__error {
-    margin: 0;
-    font-size: 0.85rem;
-    color: var(--danger);
-}
-
-/* Markierung des Buttons im Edit-Modus */
-.secondary-pill-button--active {
-    border-color: var(--danger);
-    color: var(--danger);
-    border-radius: 18px;
-}
-
-@media (max-width: 720px) {
-    /* Hero auf Mobile stapeln: Text oben, Buttons in voller Breite darunter */
-    .collection-hero {
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .collection-hero__actions {
-        width: 100%;
-        align-items: stretch;
-    }
-}
-</style>

@@ -884,21 +884,31 @@ test.describe('Nutzer 2 (eigene Daten/Session)', () => {
         await expect(flashSuccess(page)).toHaveCount(0);
 
         // Aufraeumen ueber die Oberflaeche: Loeschen zeigt ebenfalls eine Meldung
+        // Gate C2: Kachel per Titel-Link; Loeschen fragt im Dialog statt per confirm()
         await page
-            .locator('.collection-card', { hasText: 'E2E Shell-Sammlung' })
+            .getByRole('link', { name: 'E2E Shell-Sammlung', exact: true })
             .click();
         await page.waitForURL(/\/sammlung\/\d+$/);
         await settle(page);
-        page.once('dialog', (d) => d.accept());
+        await page.getByRole('button', { name: 'Sammlung löschen' }).click();
+        const confirmDialog = page.getByRole('dialog', {
+            name: 'Sammlung löschen?',
+        });
+        await expect(confirmDialog).toBeVisible();
         await Promise.all([
             page.waitForURL('**/sammlungen'),
-            page.getByRole('button', { name: 'Sammlung löschen' }).click(),
+            confirmDialog
+                .getByRole('button', { name: 'Endgültig löschen' })
+                .click(),
         ]);
         await expect(flashSuccess(page)).toHaveText(
             /Sammlung wurde gelöscht\./,
         );
         await expect(
-            page.locator('.collection-card', { hasText: 'E2E Shell-Sammlung' }),
+            page.getByRole('link', {
+                name: 'E2E Shell-Sammlung',
+                exact: true,
+            }),
         ).toHaveCount(0);
 
         // naechster Seitenwechsel: Meldung weg
