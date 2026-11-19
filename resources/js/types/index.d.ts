@@ -1,13 +1,13 @@
 import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { LucideIcon } from 'lucide-vue-next';
 
-/** Geteilter Nutzer aus HandleInertiaRequests::share (nur id, name, email). */
+/** Geteilter Nutzer aus HandleInertiaRequests::share. */
 export interface SharedUser {
     id: number;
     name: string;
     email: string;
-    /** wird derzeit NICHT geteilt (Profil-Hinweis zur Verifizierung erscheint daher nie, vgl. F-08) */
-    email_verified_at?: string | null;
+    /** ISO-8601 (UTC) oder null; seit Slice 4 immer vorhanden (F-08). */
+    email_verified_at: string | null;
 }
 
 export interface SharedCollection {
