@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppFooter from '@/components/layout/AppFooter.vue';
 import type { AppPageProps } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -93,6 +94,12 @@ const submit = () => {
                 </div>
             </div>
 
+            <!-- Slice 4 (F-10): Informationspflicht, keine Einwilligung (keine Checkbox) -->
+            <p class="auth-privacy-note">
+                Mit der Registrierung gilt unsere
+                <a :href="route('legal.privacy')">Datenschutzerklärung</a>.
+            </p>
+
             <button type="submit" :disabled="form.processing">
                 Konto erstellen
             </button>
@@ -101,5 +108,7 @@ const submit = () => {
                 <a :href="route('login')"> Bereits registriert? Zum Login </a>
             </div>
         </form>
+
+        <AppFooter variant="auth" />
     </div>
 </template>

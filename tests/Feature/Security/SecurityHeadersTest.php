@@ -147,7 +147,10 @@ class SecurityHeadersTest extends TestCase
         $policy = (string) $response->headers->get('Content-Security-Policy-Report-Only');
         $this->assertStringContainsString("default-src 'self'", $policy);
         $this->assertStringContainsString("object-src 'none'", $policy);
-        $this->assertStringContainsString('https://fonts.bunny.net', $policy);
+        // F-58 (Slice 4): Schrift selbst gehostet, kein Drittanbieter mehr in der Policy
+        $this->assertStringNotContainsString('fonts.bunny.net', $policy);
+        $this->assertStringContainsString("font-src 'self'", $policy);
+        $this->assertStringContainsString("style-src 'self'", $policy);
         // Report-Only ignoriert frame-ancestors; die Direktive gehoert in den erzwungenen Header.
         $this->assertStringNotContainsString('frame-ancestors', $policy);
         $this->assertStringNotContainsString('report-uri', $policy);

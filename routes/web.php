@@ -32,6 +32,39 @@ Route::get('/rezept/{recipe}', [RecipeController::class, 'show'])
 Route::get('/zutatensuche', [IngredientController::class, 'index'])
     ->name('IngredientSearch');
 
+// Rechtstexte (Slice 4, F-10): Vorlagen mit Betreiberangaben aus config/legal.php.
+// `filled` ist false, solange ein Pflichtwert leer ist oder einen Platzhalter "[" enthält.
+$legalProps = static function (): array {
+    $legal = (array) config('legal');
+    $optional = ['operator_phone', 'content_responsible_name', 'content_responsible_address'];
+    $filled = true;
+
+    foreach ($legal as $key => $value) {
+        $value = is_string($value) ? trim($value) : $value;
+        $legal[$key] = $value === '' ? null : $value;
+
+        if ($legal[$key] === null ? ! in_array($key, $optional, true) : str_contains((string) $legal[$key], '[')) {
+            $filled = false;
+        }
+    }
+
+    return [...$legal, 'filled' => $filled];
+};
+
+Route::get('/impressum', fn () => Inertia::render('legal/Impressum', [
+    'legal' => $legalProps(),
+]))->name('legal.imprint');
+
+Route::get('/datenschutz', fn () => Inertia::render('legal/Datenschutz', [
+    'legal' => $legalProps(),
+    // Technische Angaben für den Abschnitt "Cookies" (aus config/session.php)
+    'session' => [
+        'cookie' => (string) config('session.cookie'),
+        'lifetime_minutes' => (int) config('session.lifetime'),
+        'database' => config('session.driver') === 'database',
+    ],
+]))->name('legal.privacy');
+
 
 // Authentifizierte, verifizierte Benutzer (Sammlungen etc.)
 Route::middleware(['auth', 'verified'])->group(function () {

@@ -14,7 +14,7 @@ Regressionstest: `tests/Feature/Security/SecurityHeadersTest.php`.
 | `X-Content-Type-Options` | `nosniff` | kein MIME-Sniffing (wichtig bei Uploads unter `/storage`) |
 | `X-Frame-Options` | `DENY` | Clickjacking-Schutz für ältere Browser; die App bettet sich nirgends selbst ein (kein `<iframe>` in `resources/`) |
 | `Content-Security-Policy` (erzwungen) | `frame-ancestors 'none'` | moderner Clickjacking-Schutz; muss erzwungen sein, weil Browser `frame-ancestors` in Report-Only ignorieren |
-| `Content-Security-Policy-Report-Only` | `default-src 'self'; script-src 'self'; style-src 'self' https://fonts.bunny.net; font-src 'self' https://fonts.bunny.net; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'` | Ziel-Policy, nur beobachtend (siehe unten) |
+| `Content-Security-Policy-Report-Only` | `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'` | Ziel-Policy, nur beobachtend (siehe unten) |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | fremde Seiten sehen nur den Ursprung, keine Pfade/Query |
 | `Permissions-Policy` | `accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=()` | die App nutzt keine dieser Funktionen (Grep in `resources/` ohne Treffer) |
 | `Strict-Transport-Security` | `max-age=15552000` (180 Tage) | nur wenn der Request laut Laravel über HTTPS kam (`$request->isSecure()`) |
@@ -45,8 +45,14 @@ und als Host `/rezepte/erstellen` – auf allen vier Seiten dieselben 4 Verstö�
 | 3 | `script-src-elem` | Ausgabe von `@routes` (Ziggy) | Inline-Script mit der Routenliste |
 | 4 | `style-src-elem` | `build/assets/app-*.js` | Inertia-Fortschrittsbalken (`@inertiajs/core` 2.2.7, `injectCSS`) fügt ein `<style>` ein |
 
-Die Schrift von `fonts.bunny.net` ist in der Policy erlaubt (heutiger Bedarf); sie wurde im Test
-nicht geladen (fremde Hosts blockiert). Bilder unter `/storage` erzeugten keinen Verstoß.
+Bilder unter `/storage` erzeugten keinen Verstoß.
+
+**Seit Slice 4 (F-58, 2026-11):** Die Schrift Instrument Sans wird selbst gehostet (npm-Paket
+`@fontsource/instrument-sans` 5.3.0, OFL-1.1; `@font-face` in `resources/css/app.css`, Vite legt
+die woff2-Dateien unter `/build/assets/` ab). `https://fonts.bunny.net` ist aus `style-src` und
+`font-src` entfernt; beide stehen auf `'self'`. Der Browser-Test `tests/e2e/regression-legal.spec.ts`
+belegt, dass die Schrift von `/build/` geladen wird und kein Request an einen fremden Host geht.
+Die vier oben gemessenen Verstöße (Inline-Script/-Style) bestehen unverändert (F-75).
 
 ## Schritte zum Scharfschalten
 
@@ -56,7 +62,7 @@ nicht geladen (fremde Hosts blockiert). Bilder unter `/storage` erzeugten keinen
    `@routes(nonce: Vite::cspNonce())`.
 3. Inertia-Fortschrittsbalken: in `resources/js/app.ts` `progress: { includeCSS: false, … }` und die
    NProgress-Styles in die eigene CSS-Datei übernehmen (oder Nonce/Hash, falls die Inertia-Version das unterstützt).
-4. F-58: Schrift selbst hosten, danach `https://fonts.bunny.net` aus `style-src`/`font-src` entfernen.
+4. ~~F-58: Schrift selbst hosten, danach `https://fonts.bunny.net` aus `style-src`/`font-src` entfernen.~~ Erledigt in Slice 4.
 5. Einige Tage Report-Only in Staging/Produktion beobachten (Konsole, ggf. später `report-to`-Endpunkt).
 6. Erst dann die Policy als `Content-Security-Policy` erzwingen (inkl. `frame-ancestors 'none'`).
 

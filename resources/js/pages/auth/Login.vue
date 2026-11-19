@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppFooter from '@/components/layout/AppFooter.vue';
 import type { AppPageProps } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -94,5 +95,7 @@ const submit = () => {
                 </Link>
             </div>
         </form>
+
+        <AppFooter variant="auth" />
     </div>
 </template>

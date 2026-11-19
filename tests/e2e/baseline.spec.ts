@@ -34,6 +34,9 @@ const pagesByRole: Record<'guest' | 'user' | 'host', PageSpec[]> = {
         { slug: 'forgot-password', path: '/forgot-password' },
         // Slice 3 (F-68): Inertia-Fehlerseite 404
         { slug: 'fehlerseite-404', path: '/gibt-es-nicht' },
+        // Slice 4 (F-10): Rechtstexte (Vorlagen mit Entwurf-Hinweis)
+        { slug: 'impressum', path: '/impressum' },
+        { slug: 'datenschutz', path: '/datenschutz' },
     ],
     user: [
         { slug: 'home', path: '/home' },

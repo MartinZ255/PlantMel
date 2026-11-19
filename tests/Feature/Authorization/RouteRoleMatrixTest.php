@@ -105,6 +105,9 @@ class RouteRoleMatrixTest extends TestCase
         'recipes.index' => ['GET', 200],
         'recipes.show' => ['GET', 200],
         'IngredientSearch' => ['GET', 200],
+        // Slice 4 (F-10): Rechtstexte
+        'legal.imprint' => ['GET', 200],
+        'legal.privacy' => ['GET', 200],
     ];
 
     /**

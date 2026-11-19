@@ -40,17 +40,16 @@ class SecurityHeaders
     public const ENFORCED_CSP = "frame-ancestors 'none'";
 
     /**
-     * Ziel-Policy, zunaechst nur beobachtend. fonts.bunny.net ist der heutige
-     * Bedarf (app.blade.php) und entfaellt, sobald die Schrift selbst gehostet
-     * wird (F-58).
+     * Ziel-Policy, zunaechst nur beobachtend. Seit Slice 4 (F-58) wird die
+     * Schrift selbst gehostet; style-src und font-src brauchen nur 'self'.
      *
      * @var array<string, string>
      */
     public const REPORT_ONLY_CSP = [
         'default-src' => "'self'",
         'script-src' => "'self'",
-        'style-src' => "'self' https://fonts.bunny.net",
-        'font-src' => "'self' https://fonts.bunny.net",
+        'style-src' => "'self'",
+        'font-src' => "'self'",
         'img-src' => "'self' data: blob:",
         'connect-src' => "'self'",
         'object-src' => "'none'",

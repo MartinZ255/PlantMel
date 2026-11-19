@@ -292,10 +292,13 @@
                 <slot />
             </main>
         </div>
+
+        <AppFooter />
     </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '@/components/layout/AppFooter.vue';
 import SidebarSearchSubmenu from '@/components/widgets/SidebarSearchSubmenu.vue';
 import type { AppPageProps, Flash } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
