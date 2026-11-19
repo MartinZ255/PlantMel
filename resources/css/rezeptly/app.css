@@ -3797,3 +3797,285 @@ body.drawer-scroll-lock {
         align-items: stretch;
     }
 }
+
+/* Import-Button: Ladezustand während der Startanfrage */
+.tiktok-import__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+/* ======================================
+   Import-Fortschritt (Slice 4)
+====================================== */
+
+/* Ohne laufenden Import: nur Live-Region/Fehler, Layout wie zuvor */
+.import-progress {
+    display: contents;
+}
+
+.import-progress--active {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.import-progress--failed {
+    border-color: var(--danger-soft);
+}
+
+.import-progress__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 0.75rem;
+}
+
+.import-progress__title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.import-progress__time {
+    font-size: 0.8rem;
+    color: var(--text-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Stepper: Desktop waagerecht mit Verbindungslinien */
+.import-progress__steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.import-progress__step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-soft);
+}
+
+/* Linie zum nächsten Schritt */
+.import-progress__step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: calc(50% + 18px);
+    right: calc(-50% + 18px);
+    height: 2px;
+    border-radius: 1px;
+    background: var(--line-soft);
+}
+
+.import-progress__step--done:not(:last-child)::before {
+    background: var(--herb);
+}
+
+.import-progress__marker {
+    position: relative;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--line-soft);
+    background: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-soft);
+}
+
+.import-progress__icon {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.import-progress__label {
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+}
+
+.import-progress__step--done .import-progress__marker {
+    border-color: var(--herb-strong);
+    background: var(--herb-strong);
+    color: #fff;
+}
+
+.import-progress__step--done {
+    color: var(--text-main);
+}
+
+.import-progress__step--active {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.import-progress__step--active .import-progress__marker {
+    border-color: var(--herb-soft);
+    background: var(--sage);
+    color: var(--herb-strong);
+}
+
+/* Dezenter Spinner um den aktuellen Schritt */
+.import-progress__step--active .import-progress__marker::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--herb-strong);
+    animation: import-progress-spin 0.9s linear infinite;
+}
+
+.import-progress__step--failed {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.import-progress__step--failed .import-progress__marker {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: #fff;
+}
+
+/* Unbestimmter Fortschrittsbalken (keine Prozentwerte) */
+.import-progress__bar {
+    position: relative;
+    height: 4px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--sage);
+}
+
+.import-progress__bar-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 35%;
+    border-radius: inherit;
+    background: var(--herb);
+    animation: import-progress-slide 1.6s ease-in-out infinite;
+}
+
+.import-progress__status {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.import-progress--active .import-progress__status {
+    color: var(--text-main);
+}
+
+.import-progress__hint {
+    padding: 0.55rem 0.7rem;
+    border-left: 3px solid var(--star);
+    border-radius: 8px;
+    background: var(--peach);
+    color: var(--text-main);
+}
+
+.import-progress__error {
+    margin: 0;
+}
+
+.import-progress__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.import-progress__button-spinner {
+    flex-shrink: 0;
+    width: 0.85em;
+    height: 0.85em;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #fff;
+    animation: import-progress-spin 0.9s linear infinite;
+}
+
+@keyframes import-progress-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes import-progress-slide {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(290%);
+    }
+}
+
+/* Schmal: Stepper untereinander */
+@media (max-width: 540px) {
+    .import-progress--active {
+        padding: 0.75rem;
+    }
+
+    .import-progress__steps {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.45rem;
+    }
+
+    .import-progress__step {
+        flex-direction: row;
+        text-align: left;
+        gap: 0.6rem;
+    }
+
+    .import-progress__step:not(:last-child)::before {
+        top: calc(28px + 1px);
+        bottom: calc(-0.45rem - 1px);
+        left: 13px;
+        right: auto;
+        width: 2px;
+        height: auto;
+    }
+
+    .import-progress__actions > button {
+        flex: 1 1 auto;
+    }
+}
+
+/* Keine Bewegung bei reduzierter Animation */
+@media (prefers-reduced-motion: reduce) {
+    .import-progress__step--active .import-progress__marker::after,
+    .import-progress__button-spinner {
+        animation: none;
+    }
+
+    .import-progress__bar-fill {
+        animation: none;
+        width: 100%;
+        opacity: 0.45;
+    }
+}

@@ -1112,6 +1112,422 @@ test.describe('Host – TikTok-Import (F-24)', () => {
             DATA.importWithSource.name,
         );
     });
+
+    // -----------------------------------------------------------------------------------------
+    // Slice 4 – Fortschrittsanzeige (ImportProgress)
+    // -----------------------------------------------------------------------------------------
+    const STEPS = [
+        'Gestartet',
+        'Video wird geladen',
+        'Rezept wird erkannt',
+        'Fertig',
+    ] as const;
+    type StepState = 'done' | 'active' | 'failed' | 'todo';
+
+    const stepper = (page: Page) =>
+        page.getByRole('list', { name: 'Import-Fortschritt' });
+
+    /** Prüft Zustand aller Schritte und dass genau der erwartete `aria-current="step"` trägt. */
+    async function expectSteps(
+        page: Page,
+        current: (typeof STEPS)[number],
+        currentState: StepState,
+    ) {
+        const items = stepper(page).getByRole('listitem');
+        await expect(items).toHaveCount(4);
+        const currentIndex = STEPS.indexOf(current);
+        await expect(
+            stepper(page).locator('[aria-current="step"]'),
+            `aria-current auf "${current}"`,
+        ).toContainText(current, { timeout: 8000 });
+        await expect(stepper(page).locator('[aria-current]')).toHaveCount(1);
+        for (const [i, label] of STEPS.entries()) {
+            const expected: StepState =
+                i < currentIndex
+                    ? 'done'
+                    : i === currentIndex
+                      ? currentState
+                      : 'todo';
+            await expect(items.nth(i), `${label}: ${expected}`).toHaveClass(
+                new RegExp(`import-progress__step--${expected}\\b`),
+            );
+        }
+    }
+
+    const statusRegion = (page: Page) =>
+        page.locator('.tiktok-import [role="status"]');
+
+    for (const variant of [
+        { name: '1440', use: {} },
+        { name: '390', use: MOBILE_390 },
+    ] as const) {
+        test.describe(`Fortschritt ${variant.name} px`, () => {
+            test.use(variant.use);
+
+            test(`F-24 Stepper durchlaeuft pending -> downloading -> analyzing -> done (${variant.name})`, async ({
+                page,
+            }) => {
+                test.setTimeout(60_000);
+                let state = 'pending';
+                const log = await mockImport(page, {
+                    store: {
+                        status: 200,
+                        body: { id: DATA.importWithSource.id },
+                    },
+                    show: () => ({
+                        status: 200,
+                        body: { id: DATA.importWithSource.id, status: state },
+                    }),
+                });
+                await start(page);
+                await expectSteps(page, 'Gestartet', 'active');
+                await expect(statusRegion(page)).toContainText('angenommen');
+                await expect(
+                    page.locator('.import-progress__bar'),
+                    'unbestimmter Balken',
+                ).toBeVisible();
+                await expect(
+                    page.locator('.import-progress__bar [aria-valuenow]'),
+                    'keine Prozentwerte',
+                ).toHaveCount(0);
+                await expect
+                    .poll(() => log.show, { timeout: 8000 })
+                    .toBeGreaterThan(0);
+
+                state = 'downloading';
+                await expectSteps(page, 'Video wird geladen', 'active');
+                await expect(statusRegion(page)).toContainText(
+                    'Video wird geladen',
+                );
+
+                state = 'analyzing';
+                await expectSteps(page, 'Rezept wird erkannt', 'active');
+                await expect(statusRegion(page)).toContainText(
+                    'einige Minuten',
+                );
+
+                state = 'done';
+                await expectSteps(page, 'Fertig', 'done');
+                await expect(statusRegion(page)).toContainText('Fertig');
+                await expect(
+                    page.getByRole('button', { name: 'Abbrechen' }),
+                ).toHaveCount(0);
+                // danach wie bisher: Formular wird aus dem Import befuellt
+                await page.waitForURL(/import=/, { timeout: 8000 });
+                await settle(page);
+                await expect(page.locator('#name')).toHaveValue(
+                    DATA.importWithSource.name,
+                );
+            });
+
+            test(`F-24 "failed" waehrend downloading markiert den Schritt; "Erneut versuchen" sendet neuen POST (${variant.name})`, async ({
+                page,
+            }) => {
+                test.setTimeout(60_000);
+                let state: 'downloading' | 'failed' = 'downloading';
+                const mode = {
+                    store: { status: 200, body: { id: 999 } as unknown },
+                    show: () => ({
+                        status: 200,
+                        body: {
+                            id: 999,
+                            status: state,
+                            error:
+                                state === 'failed'
+                                    ? 'E2E Video nicht ladbar'
+                                    : null,
+                        },
+                    }),
+                };
+                const log = await mockImport(page, mode);
+                await start(page);
+                await expectSteps(page, 'Video wird geladen', 'active');
+                state = 'failed';
+                await expectSteps(page, 'Video wird geladen', 'failed');
+                await expect(
+                    page.locator('.tiktok-import [role="alert"]'),
+                ).toHaveText('E2E Video nicht ladbar');
+                await expect(page.locator('.import-progress__bar')).toHaveCount(
+                    0,
+                );
+                expect(log.store).toBe(1);
+
+                // Erneut versuchen: neuer POST mit demselben Link; Server lehnt mit Limit ab
+                mode.store = {
+                    status: 429,
+                    body: { message: 'E2E Limit erreicht' },
+                };
+                const post = page.waitForRequest(
+                    (r) =>
+                        r.method() === 'POST' &&
+                        new URL(r.url()).pathname === '/rezept-import',
+                );
+                await page
+                    .getByRole('button', { name: 'Erneut versuchen' })
+                    .click();
+                const body = (await post).postDataJSON() as { url: string };
+                expect(body.url).toBe(URL_OK);
+                await expect.poll(() => log.store).toBe(2);
+                await expect(
+                    page.locator('.tiktok-import [role="alert"]'),
+                ).toHaveText('E2E Limit erreicht');
+                await expectSteps(page, 'Gestartet', 'failed');
+
+                // dritter Versuch wird angenommen -> laeuft wieder
+                mode.store = { status: 200, body: { id: 999 } };
+                state = 'downloading';
+                await page
+                    .getByRole('button', { name: 'Erneut versuchen' })
+                    .click();
+                await expect.poll(() => log.store).toBe(3);
+                await expect(
+                    page.locator('.tiktok-import [role="alert"]'),
+                ).toHaveCount(0);
+                await expect(
+                    page.getByRole('button', { name: 'Abbrechen' }),
+                ).toBeFocused();
+                await expectSteps(page, 'Video wird geladen', 'active');
+            });
+        });
+    }
+
+    test('F-24 Warte-Hinweis erscheint erst, wenn "pending" laenger als 30 s dauert (Clock)', async ({
+        page,
+    }) => {
+        await page.clock.install({ time: new Date('2026-01-15T10:00:00Z') });
+        // zunaechst ohne das optionale Feld `started` (aelterer Server)
+        let started: boolean | null = null;
+        const log = await mockImport(page, {
+            store: { status: 200, body: { id: 999 } },
+            show: () => ({
+                status: 200,
+                body:
+                    started === null
+                        ? { id: 999, status: 'pending' }
+                        : { id: 999, status: 'pending', started },
+            }),
+        });
+        await start(page);
+        await expectSteps(page, 'Gestartet', 'active');
+        const hint = page.locator('.import-progress__hint');
+        await page.clock.fastForward('00:20');
+        await expect.poll(() => log.show).toBeGreaterThan(0);
+        await expect(hint).toHaveCount(0);
+        await expect(page.locator('.import-progress__time')).toContainText(
+            /seit 0:2\d/,
+        );
+        await page.clock.fastForward('00:15');
+        await expect(hint).toBeVisible();
+        await expect(hint).toContainText('Queue-Worker');
+        // Hinweis wird ueber die Live-Region angesagt
+        await expect(statusRegion(page)).toContainText(
+            'wartet auf die Verarbeitung',
+        );
+
+        // meldet der Server started: true, verschwindet der Hinweis
+        started = true;
+        const before = log.show;
+        await page.clock.fastForward('00:04');
+        await expect.poll(() => log.show).toBeGreaterThan(before);
+        await expect(hint).toHaveCount(0);
+    });
+
+    test('F-24 Live-Region aendert sich nur bei Schrittwechsel, nicht mit der Uhr (Clock)', async ({
+        page,
+    }) => {
+        await page.clock.install({ time: new Date('2026-01-15T10:00:00Z') });
+        let state = 'pending';
+        const log = await mockImport(page, {
+            store: { status: 200, body: { id: 999 } },
+            show: () => ({ status: 200, body: { id: 999, status: state } }),
+        });
+        await page.goto('/rezepte/erstellen');
+        await settle(page);
+        await page.evaluate(() => {
+            const el = document.querySelector(
+                '.tiktok-import [role="status"]',
+            )!;
+            const w = window as unknown as { __live: string[] };
+            w.__live = [];
+            new MutationObserver(() => {
+                const text = (el.textContent ?? '').trim();
+                if (text && w.__live[w.__live.length - 1] !== text)
+                    w.__live.push(text);
+            }).observe(el, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+            });
+        });
+        await page.getByLabel('Rezept aus TikTok importieren').fill(URL_OK);
+        await page.getByRole('button', { name: 'Importieren' }).click();
+        await expectSteps(page, 'Gestartet', 'active');
+        const time = page.locator('.import-progress__time');
+        const t0 = await time.textContent();
+        await page.clock.runFor('00:10');
+        await expect.poll(() => log.show).toBeGreaterThan(0);
+        await expect(time).not.toHaveText(t0 ?? '');
+
+        state = 'downloading';
+        await page.clock.runFor('00:04');
+        await expectSteps(page, 'Video wird geladen', 'active');
+        await page.clock.runFor('00:10');
+
+        const live = await page.evaluate(
+            () => (window as unknown as { __live: string[] }).__live,
+        );
+        // hoechstens: "wird gestartet", "angenommen", "Video wird geladen"
+        expect(live.length, live.join(' | ')).toBeLessThanOrEqual(3);
+        expect(live[live.length - 1]).toContain('Video wird geladen');
+        for (const text of live) expect(text).not.toMatch(/\d:\d\d/);
+    });
+
+    test('F-24 Fortschritt bei 320 px ohne horizontalen Overflow, Schritte untereinander', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 320, height: 720 });
+        let state = 'downloading';
+        await mockImport(page, {
+            store: { status: 200, body: { id: 999 } },
+            show: () => ({
+                status: 200,
+                body: {
+                    id: 999,
+                    status: state,
+                    error: state === 'failed' ? 'E2E Fehler' : null,
+                },
+            }),
+        });
+        await start(page);
+        await expectSteps(page, 'Video wird geladen', 'active');
+        const noOverflow = () =>
+            page.evaluate(
+                () =>
+                    document.documentElement.scrollWidth <= window.innerWidth &&
+                    Array.from(
+                        document.querySelectorAll('.import-progress *'),
+                    ).every(
+                        (el) =>
+                            el.getBoundingClientRect().right <=
+                            window.innerWidth + 1,
+                    ),
+            );
+        expect(await noOverflow(), 'laufend').toBe(true);
+        const ys = await stepper(page)
+            .getByRole('listitem')
+            .evaluateAll((els) =>
+                els.map((e) => e.getBoundingClientRect().top),
+            );
+        for (let i = 1; i < ys.length; i++)
+            expect(ys[i], 'Schritte untereinander').toBeGreaterThan(ys[i - 1]);
+
+        state = 'failed';
+        await expectSteps(page, 'Video wird geladen', 'failed');
+        await expect(
+            page.getByRole('button', { name: 'Erneut versuchen' }),
+        ).toBeVisible();
+        expect(await noOverflow(), 'fehlgeschlagen').toBe(true);
+    });
+
+    test('F-24 Video-Weg: Ruecksprung analyzing -> downloading -> analyzing setzt nichts zurueck', async ({
+        page,
+    }) => {
+        test.setTimeout(60_000);
+        let state = 'downloading';
+        const log = await mockImport(page, {
+            store: { status: 200, body: { id: DATA.importWithSource.id } },
+            // mit den Zusatzfeldern des neuen Backends
+            show: () => ({
+                status: 200,
+                body: {
+                    id: DATA.importWithSource.id,
+                    status: state,
+                    started: state !== 'pending',
+                    created_at: '2026-01-15T10:00:00Z',
+                    updated_at: '2026-01-15T10:00:05Z',
+                },
+            }),
+        });
+        await start(page);
+        await expectSteps(page, 'Video wird geladen', 'active');
+        state = 'analyzing';
+        await expectSteps(page, 'Rezept wird erkannt', 'active');
+
+        // Ruecksprung: Beschreibung reichte nicht, Video wird geladen
+        state = 'downloading';
+        const before = log.show;
+        await expect(statusRegion(page)).toContainText(
+            'Beschreibung reichte nicht',
+            { timeout: 8000 },
+        );
+        expect(log.show).toBeGreaterThan(before);
+        await expectSteps(page, 'Rezept wird erkannt', 'active');
+        await expect(
+            page.locator('.import-progress__step--failed'),
+        ).toHaveCount(0);
+        await expect(page.locator('.tiktok-import [role="alert"]')).toHaveCount(
+            0,
+        );
+
+        state = 'analyzing';
+        await expect(statusRegion(page)).toContainText(
+            'aus dem Video erkannt',
+            { timeout: 8000 },
+        );
+        await expectSteps(page, 'Rezept wird erkannt', 'active');
+
+        state = 'done';
+        await expectSteps(page, 'Fertig', 'done');
+        await page.waitForURL(/import=/, { timeout: 8000 });
+    });
+
+    test('F-24 Stepper bei 1440 px waagerecht', async ({ page }) => {
+        await mockImport(page, {
+            store: { status: 200, body: { id: 999 } },
+            show: () => ({ status: 200, body: { id: 999, status: 'pending' } }),
+        });
+        await start(page);
+        await expectSteps(page, 'Gestartet', 'active');
+        const ys = await stepper(page)
+            .getByRole('listitem')
+            .evaluateAll((els) =>
+                els.map((e) => Math.round(e.getBoundingClientRect().top)),
+            );
+        expect(new Set(ys).size, 'alle Schritte in einer Zeile').toBe(1);
+    });
+
+    for (const reduced of [false, true]) {
+        test(`F-24 Animation ${reduced ? 'aus bei prefers-reduced-motion: reduce' : 'an ohne reduced motion'}`, async ({
+            page,
+        }) => {
+            await page.emulateMedia({
+                reducedMotion: reduced ? 'reduce' : 'no-preference',
+            });
+            await mockImport(page, {
+                store: { status: 200, body: { id: 999 } },
+                show: () => ({
+                    status: 200,
+                    body: { id: 999, status: 'downloading' },
+                }),
+            });
+            await start(page);
+            await expectSteps(page, 'Video wird geladen', 'active');
+            const names = await page.evaluate(() => {
+                const marker = document.querySelector(
+                    '.import-progress__step--active .import-progress__marker',
+                )!;
+                const bar = document.querySelector(
+                    '.import-progress__bar-fill',
+                )!;
+                return [
+                    getComputedStyle(marker, '::after').animationName,
+                    getComputedStyle(bar).animationName,
+                ];
+            });
+            if (reduced) expect(names).toEqual(['none', 'none']);
+            else for (const n of names) expect(n).not.toBe('none');
+        });
+    }
 });
 
 // =============================================================================================
