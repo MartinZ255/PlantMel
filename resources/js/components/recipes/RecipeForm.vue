@@ -423,6 +423,8 @@
                                 v-bind="ingredientNameAttrs(index)"
                                 @focus="openIngredientDropdown(index)"
                                 @input="onIngredientNameInput(index)"
+                                @blur="closeIngredientDropdown"
+                                @keydown.esc="closeIngredientDropdown"
                             />
 
                             <div
