@@ -534,7 +534,8 @@ for (const vp of [
 
                 // Header ist nicht klickbar (Punkt in der Header-Mitte trifft nicht den Header)
                 const headerHit = await page.evaluate(() => {
-                    const h = document.querySelector('.app-header')!;
+                    // Gate C: Kopfzeile der App-Shell (erstes <header>, liegt in #app)
+                    const h = document.querySelector('#app header')!;
                     const r = h.getBoundingClientRect();
                     const x = r.left + 20;
                     const y = Math.max(1, r.top + r.height / 2);
@@ -636,45 +637,55 @@ test.describe('Host – Rezeptdetail-Kopf (F-31)', () => {
                 await expect(
                     page.locator('main main, main main *'),
                 ).toHaveCount(0);
-                const actions = (await page
-                    .locator('.recipe-actions')
-                    .boundingBox())!;
-                const title = (await page.locator('h1.title').boundingBox())!;
-                const content = (await page
-                    .locator('.header-content')
-                    .boundingBox())!;
-                const header = (await page
-                    .locator('header.header')
-                    .boundingBox())!;
-                const buttons = await page
-                    .locator('.recipe-actions .recipe-button')
-                    .evaluateAll((els) =>
-                        els.map((e) => e.getBoundingClientRect().toJSON()),
-                    );
+                // Gate C: Aktionen ueber Rollen (Button/Link) statt .recipe-actions
+                const h1 = page.locator('h1');
+                const title = (await h1.boundingBox())!;
+                const actionLocators = [
+                    page.getByRole('button', { name: 'Zur Sammlung hinzufügen' }),
+                    page.getByRole('link', { name: 'Rezept bearbeiten' }),
+                    page.getByRole('button', { name: 'Rezept löschen' }),
+                ];
+                const buttons: Box[] = [];
+                for (const l of actionLocators) {
+                    await expect(l).toBeVisible();
+                    buttons.push((await l.boundingBox())!);
+                }
                 const titleBox = title;
                 const overlapping = buttons.filter((b) =>
-                    intersects(b as Box, titleBox),
+                    intersects(b, titleBox),
                 );
-                rows.push({ id: r.id, actions, title, content, header });
+                // Eckdaten-Kacheln (Zubereitung, Portionen, Bewertung)
+                const meta = page.getByRole('definition').locator('..');
+                const metaBoxes = await meta.evaluateAll((els) =>
+                    els.map((e) => e.getBoundingClientRect().toJSON()),
+                );
+                rows.push({ id: r.id, title, buttons, metaBoxes });
                 expect(
                     overlapping,
                     `Rezept ${r.id}: Button ueber Titel`,
                 ).toEqual([]);
+                // Aktionen liegen unterhalb des Titels und ueberlappen sich nicht gegenseitig
+                for (const b of buttons)
+                    expect(b.y).toBeGreaterThanOrEqual(title.y + title.height);
+                for (let a = 0; a < buttons.length; a++)
+                    for (let b = a + 1; b < buttons.length; b++)
+                        expect(
+                            intersects(buttons[a], buttons[b]),
+                            `Aktionen ${a}/${b} ueberlappen`,
+                        ).toBe(false);
                 if (r.id === DATA.recipes.withoutImage.id && width > 900) {
-                    // ohne Bild: volle Breite statt schmaler Bildspalte
-                    expect(content.width).toBeGreaterThan(header.width * 0.9);
+                    // ohne Bild: Titel ueber die volle Inhaltsbreite statt schmaler Spalte
+                    const metaWidth =
+                        Math.max(...metaBoxes.map((m) => m.right)) -
+                        Math.min(...metaBoxes.map((m) => m.left));
+                    expect(title.width).toBeGreaterThan(metaWidth * 0.9);
                 }
-                // Meta-Karten fuellen die Zeile (2 Karten => 2 Spalten)
-                const cols = await page.locator('.meta-grid').evaluate(
-                    (el) =>
-                        // auto-fit: kollabierte Spuren erscheinen als 0px
-                        getComputedStyle(el)
-                            .gridTemplateColumns.split(' ')
-                            .filter((v) => parseFloat(v) > 0).length,
-                );
-                expect(cols).toBe(
-                    await page.locator('.meta-grid .meta-card').count(),
-                );
+                // Meta-Kacheln fuellen eine Zeile (gleiche Oberkante, 3 Kacheln)
+                expect(metaBoxes).toHaveLength(3);
+                expect(
+                    new Set(metaBoxes.map((m) => Math.round(m.top))).size,
+                    'Eckdaten in einer Zeile',
+                ).toBe(1);
                 await page.screenshot({
                     path: test
                         .info()
@@ -718,7 +729,7 @@ test.describe('Gast – lange Woerter (F-32)', () => {
                 hasTouch: vp.mobile,
             });
 
-            test(`F-32 langer Titel bricht um, nichts ragt aus .app-content (${vp.width})`, async ({
+            test(`F-32 langer Titel bricht um, nichts ragt aus dem Inhalt (${vp.width})`, async ({
                 page,
             }) => {
                 const result: Record<string, unknown> = {};
@@ -729,7 +740,8 @@ test.describe('Gast – lange Woerter (F-32)', () => {
                     await page.goto(path);
                     await settle(page);
                     const m = await page.evaluate(() => {
-                        const content = document.querySelector('.app-content')!;
+                        const content =
+                            document.getElementById('main-content')!;
                         const cr = content.getBoundingClientRect();
                         const out: string[] = [];
                         for (const el of Array.from(
@@ -750,7 +762,7 @@ test.describe('Gast – lange Woerter (F-32)', () => {
                         }
                         const clipped = Array.from(
                             content.querySelectorAll<HTMLElement>(
-                                'h1, .recipe-card__title, .pill, .recipe-card__tag, .ingredient-name, .step-text',
+                                'h1, h2, h3, p, li, a',
                             ),
                         )
                             .filter((el) => el.scrollWidth > el.clientWidth + 1)
@@ -1564,13 +1576,18 @@ test.describe('Gast – Rezeptliste (F-44)', () => {
         await page.waitForTimeout(600);
         expect(searches).toHaveLength(1);
 
-        await expect(page.locator('.recipes-empty')).toBeVisible();
+        const empty = page.getByRole('heading', {
+            name: 'Keine Rezepte gefunden',
+        });
+        await expect(empty).toBeVisible();
         await expect(status).toHaveText('0 Ergebnisse');
         await page.getByRole('button', { name: 'Filter zurücksetzen' }).click();
-        await expect(page.locator('.recipes-empty')).toHaveCount(0);
+        await expect(empty).toHaveCount(0);
         await expect(status).toHaveText(initial ?? '');
         await expect(input).toHaveValue('');
-        await expect(page.locator('.recipe-card').first()).toBeVisible();
+        await expect(
+            page.getByRole('main').getByRole('article').first(),
+        ).toBeVisible();
         writeRaw('regression', 'F-44', { searches });
     });
 });

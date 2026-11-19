@@ -9,7 +9,7 @@
     --sidebar-top: #E4EFD8;      /* Sidebar: oben helles Salbei ... */
     --sidebar-bottom: #CDE2BE;   /* ... unten satter, hebt sich vom Content ab */
     --pink: var(--rose);         /* Alias: alte Bezeichnung, zeigt auf Rosa */
-    --dark: rgba(60, 52, 38, 0.18); /* sanfter dunkler Ton für Kanten/Schatten */
+    --dark: rgba(60, 52, 38, 0.18);
 
     /* Linien / Schatten */
     --line-soft: rgba(92, 75, 50, 0.12);
@@ -18,7 +18,7 @@
 
     /* Textfarben */
     --text-main: #3C382F;        /* warmes Dunkelgrau */
-    --text-soft: #877D6C;        /* dezentes Sekundärgrau */
+    --text-soft: #877D6C;
 
     /* Akzentfarben – bewusst NICHT --accent genannt, da das
        Tailwind/Shadcn-Theme in app.css diesen Namen bereits belegt
@@ -28,10 +28,10 @@
     --herb-soft: rgba(125, 168, 121, 0.18); /* transparentes Grün für Fokus-Ringe */
     --danger: #B95454;           /* gedecktes Rot für Fehler/Löschen */
     --danger-soft: #F2D3CE;      /* mildes Rosenrot für Warnflächen */
-    --star: #E8B453;             /* warmes Gold für Bewertungssterne */
+    --star: #E8B453;
 
 /* Sonstiges */
-    --radius-lg:   18px;
+    --legacy-radius-lg: 18px; /* Gate C: umbenannt, --radius-lg gehört jetzt dem Tailwind-Theme */
     --radius-pill: 999px;
     --transition-fast: 0.15s ease-out;
     --font-ui: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -53,423 +53,10 @@ body {
     overflow-x: hidden;
 }
 
-body {
-    color: var(--text-main);
-    background: radial-gradient(circle at top, #FBEDE7 0, #FFFDF6 55%);
-}
+/* Gate C: Farbe und Hintergrund von <body> kommen aus resources/css/app.css (@layer base) */
 
 .underline-text {
     text-decoration: underline;
-}
-
-/* APP-SHELL */
-
-.app-shell {
-    min-height: 100vh;
-    display: grid;
-    grid-template-rows: auto 1fr;
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-/* HEADER OBEN */
-
-.app-header {
-    background: linear-gradient(to right, var(--rose), var(--cream) 45%, var(--sage));
-    padding: 10px 24px;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-
-.app-header__logo {
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    font-size: 18px;
-    text-transform: uppercase;
-}
-
-.app-header__title {
-    font-size: 14px;
-    color: var(--text-soft);
-}
-
-.app-header__spacer {
-    margin-left: auto;
-}
-
-.app-header__icons {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.user-menu {
-    position: relative;
-}
-
-.user-menu__dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 8px);
-    min-width: 200px;
-    background: #ffffff;
-    border-radius: 14px;
-    box-shadow: var(--shadow-soft);
-    border: 1px solid var(--line-soft);
-    padding: 6px 0;
-    z-index: 1200;
-    opacity: 0;
-    /* geschlossen: weder sichtbar noch klickbar (F-04); visibility erst nach dem Ausblenden umschalten */
-    visibility: hidden;
-    pointer-events: none;
-    transform: translateY(-6px) scale(0.98);
-    transition:
-        opacity var(--transition-fast),
-        transform var(--transition-fast),
-        box-shadow var(--transition-fast),
-        visibility 0s linear 0.15s;
-}
-
-.user-menu__dropdown.is-open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translateY(0) scale(1);
-    transition:
-        opacity var(--transition-fast),
-        transform var(--transition-fast),
-        box-shadow var(--transition-fast),
-        visibility 0s linear 0s;
-}
-
-.user-menu__item {
-    width: 100%;
-    padding: 8px 14px;
-    font-size: 13px;
-    color: var(--text-main);
-    text-align: left;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    display: block;
-    text-decoration: none;
-}
-
-.user-menu__item:hover {
-    background: rgba(0, 0, 0, 0.03);
-}
-
-.user-menu__item--label {
-    font-size: 12px;
-    color: var(--text-soft);
-    cursor: default;
-}
-
-.user-menu__item--danger {
-    color: var(--danger);
-}
-
-.app-header__icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 12px;
-    border: 1px solid var(--line-soft);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    cursor: pointer;
-    transition:
-        transform var(--transition-fast),
-        box-shadow var(--transition-fast),
-        background var(--transition-fast);
-    background: rgba(255, 255, 255, 0.7);
-}
-
-.user-avatar-icon {
-    width: 18px;
-    height: 18px;
-    stroke: var(--text-main);
-    stroke-width: 1.6;
-    fill: none;
-}
-
-.app-header__icon--menu {
-    margin-right: 8px;
-}
-
-.app-header__icon:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-soft);
-    background: #ffffff;
-}
-
-/* MAIN LAYOUT: SIDEBAR + CONTENT */
-
-.app-main {
-    display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
-    min-height: 0;
-    position: relative; /* für das Sidebar-Untermenü */
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-.app-main--sidebar-closed {
-    grid-template-columns: 0 minmax(0, 1fr);
-}
-
-/* SIDEBAR LINKS */
-
-.sidebar {
-    background: linear-gradient(to bottom, var(--sidebar-top), var(--sidebar-bottom));
-    border-right: 1px solid rgba(60, 80, 45, 0.12);
-    padding: 18px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    /* F-05: Das Such-Untermenue liegt in der Sidebar und ragt auf dem Desktop
-       rechts heraus; deshalb nicht abschneiden. min-width: 0 haelt die
-       geschlossene Sidebar in der 0-px-Spalte. z-index wie zuvor das Untermenue. */
-    overflow: visible;
-    min-width: 0;
-    position: relative;
-    z-index: 10;
-    transition:
-        transform var(--transition-fast),
-        opacity var(--transition-fast),
-        visibility 0s linear 0s;
-    opacity: 1;
-    transform: translateX(0);
-}
-
-.sidebar-section__title {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-soft);
-    margin-bottom: 6px;
-}
-
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 14px;
-}
-
-.sidebar-link {
-    padding: 6px 10px;
-    border-radius: var(--radius-pill);
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid var(--line-soft);
-    text-decoration: none;
-    color: inherit;
-    display: inline-block;
-    cursor: pointer;
-    transition:
-        background var(--transition-fast),
-        transform var(--transition-fast),
-        box-shadow var(--transition-fast),
-        border-color var(--transition-fast);
-}
-
-.sidebar-link--active,
-
-.sidebar-link:hover {
-    background: #ffffff;
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: var(--shadow-soft);
-    transform: translateX(4px);
-}
-
-.sidebar-link--submenu-toggle {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.sidebar-pill-label {
-    flex: 1;
-    text-align: center; /* "Suche" optisch zentrieren, Chevron bleibt rechts */
-}
-
-.sidebar-chevron {
-    display: inline-flex;
-    font-size: 18px; /* größere Pfeile für das Search-Chevron */
-    line-height: 1;
-    transition: transform var(--transition-fast);
-}
-
-.sidebar-link--open .sidebar-chevron {
-    transform: rotate(90deg);
-}
-
-.sidebar-collections {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.sidebar-collection-pill {
-    border-radius: var(--radius-pill);
-    padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid var(--line-soft);
-    font-size: 13px;
-    text-decoration: none;
-    color: inherit;
-    cursor: pointer;
-    text-align: center; /* Text in den Sidebar-Pills zentrieren */
-    transition:
-        background var(--transition-fast),
-        transform var(--transition-fast),
-        box-shadow var(--transition-fast),
-        border-color var(--transition-fast);
-}
-
-.sidebar-collection-pill:hover {
-    background: #ffffff;
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: var(--shadow-soft);
-    transform: translateX(4px);
-}
-
-.sidebar-collection-pill--empty {
-    cursor: default;
-    opacity: 0.7;
-    transform: none;
-}
-
-.sidebar-footer {
-    margin-top: auto;
-    font-size: 13px;
-    color: var(--text-soft);
-    cursor: pointer;
-    opacity: 0.9;
-}
-
-.sidebar-footer:hover {
-    opacity: 1;
-}
-
-/* Aktiver Menuepunkt (aria-current="page") */
-.sidebar-collection-pill.sidebar-link--active {
-    background: #ffffff;
-    border-color: var(--herb);
-    box-shadow: inset 0 0 0 1px var(--herb);
-    font-weight: 600;
-}
-
-/* Hinweis fuer Gaeste: Eintrag fuehrt zur Anmeldung (F-21) */
-.sidebar-login-hint {
-    margin-left: 4px;
-    font-size: 11px;
-    color: var(--text-soft);
-}
-
-/* SIDEBAR-UNTERMENÜ (Rezeptsuche/Zutatensuche) */
-
-/* Wrapper aus Ausloeser + Untermenue: Bezugspunkt fuer die Desktop-Position */
-.sidebar-search {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar-submenu {
-    /* Desktop: rechts neben der Sidebar auf Hoehe des Ausloesers
-       (100 % Wrapper + 20 px Innenabstand + 1 px Rand der Sidebar) */
-    position: absolute;
-    left: calc(100% + 21px);
-    top: 0;
-    background: #ffffff;
-    border-radius: 14px;
-    box-shadow: var(--shadow-soft);
-    padding: 10px 12px;
-    min-width: 150px;
-    font-size: 14px;
-    z-index: 10;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-6px) scale(0.98);
-    pointer-events: none;
-    transition:
-        opacity var(--transition-fast),
-        transform var(--transition-fast),
-        visibility 0s linear 0.15s;
-}
-
-.sidebar-submenu.is-open {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0) scale(1);
-    pointer-events: auto;
-    transition:
-        opacity var(--transition-fast),
-        transform var(--transition-fast),
-        visibility 0s linear 0s;
-}
-
-.sidebar-submenu__item {
-    display: block;
-    width: 100%;
-    padding: 6px 4px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background var(--transition-fast);
-}
-
-.sidebar-submenu__item:hover {
-    background: rgba(0, 0, 0, 0.03);
-}
-
-.sidebar-submenu__item--active {
-    background: var(--herb-soft);
-    font-weight: 600;
-}
-
-/* geschlossen: unsichtbar und (mit inert) nicht per Tab erreichbar */
-.sidebar--closed {
-    opacity: 0;
-    visibility: hidden;
-    transform: translateX(-16px);
-    pointer-events: none;
-    transition:
-        transform var(--transition-fast),
-        opacity var(--transition-fast),
-        visibility 0s linear 0.15s;
-}
-
-/* Skip-Link (F-42): erst bei Fokus sichtbar */
-.skip-link {
-    position: fixed;
-    left: 12px;
-    top: 8px;
-    z-index: 1300;
-    padding: 8px 14px;
-    border-radius: var(--radius-pill);
-    background: #ffffff;
-    color: var(--text-main);
-    font-size: 14px;
-    font-weight: 600;
-    box-shadow: var(--shadow-soft);
-    border: 1px solid var(--herb);
-    transform: translateY(-200%);
-}
-
-.skip-link:focus {
-    transform: translateY(0);
-}
-
-#main-content:focus {
-    outline: none;
-}
-
-/* Scroll-Sperre bei offenem Drawer (<body> ist der Scroll-Container) */
-body.drawer-scroll-lock {
-    overflow: hidden;
 }
 
 /* Flash-Meldungen (F-17), App-Shell und Auth-Seiten */
@@ -534,16 +121,6 @@ body.drawer-scroll-lock {
 }
 
 /* CONTENT-AREA RECHTS */
-
-.app-content {
-    background: linear-gradient(to top left, var(--sand), #FDF7EA);
-    padding: 24px 28px 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    max-width: 100%;
-    overflow-x: hidden;
-}
 
 .content-section {
     background: rgba(255, 255, 255, 0.5);
@@ -696,7 +273,7 @@ body.drawer-scroll-lock {
 
 .filter-panel {
     background: rgba(255, 255, 255, 0.9);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     padding: 10px 12px;
     font-size: 13px;
     box-shadow: var(--shadow-soft);
@@ -814,13 +391,6 @@ body.drawer-scroll-lock {
 
 /* REZEPT-LISTE / DETAIL-WIDGET UNTEN */
 
-.recipes-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(260px, 1.3fr);
-    gap: 16px;
-    align-items: flex-start;
-}
-
 .recipe-list {
     display: flex;
     flex-direction: column;
@@ -875,7 +445,7 @@ body.drawer-scroll-lock {
     display: block;
     width: 100%;
     height: 100%;
-    text-decoration: none; /* optional */
+    text-decoration: none;
 }
 
 /* Sichtbare Box (Cream, Schatten, Padding) */
@@ -890,7 +460,7 @@ body.drawer-scroll-lock {
     flex-direction: column;
     gap: 8px;
     position: relative;           /* wichtig für Overlay ::after */
-    overflow: hidden;             /* saubere Kanten */
+    overflow: hidden;
 }
 
 
@@ -979,7 +549,7 @@ body.drawer-scroll-lock {
 .recipe-card__stars {
     font-size: 16px;
     letter-spacing: 1px;
-    color: rgba(60, 52, 38, 0.22); /* leere Sterne dezent */
+    color: rgba(60, 52, 38, 0.22);
 }
 
 .recipe-card__stars--filled {
@@ -1009,7 +579,7 @@ body.drawer-scroll-lock {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    align-items: flex-end; /* rechts ausrichten */
+    align-items: flex-end;
 }
 
 
@@ -1036,60 +606,6 @@ body.drawer-scroll-lock {
     border: 1px dashed var(--line-soft);
 }
 
-
-
-/* Container, in dem der Button oben rechts sitzen soll */
-.recipe-container {
-    position: relative;
-}
-
-/* Slice 3 (F-31): Aktionen im Fluss neben bzw. unter dem Titel (.recipe-head),
-   nicht mehr absolut über dem Titel */
-.recipe-actions {
-    display: flex;
-    flex-direction: column;   /* <- macht sie untereinander */
-    align-items: flex-end;    /* rechtsbündig */
-    gap: 0.35rem;
-}
-
-/* Button "Zur Sammlung hinzufügen" oben rechts */
-.recipe-button {
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--herb);
-    background: var(--herb);
-    color: #fff;
-
-    padding: 0.4rem 0.9rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-
-    transition:
-        background-color 0.15s ease,
-        border-color 0.15s ease,
-        box-shadow 0.15s ease,
-        transform 0.08s ease-out;
-}
-
-.recipe-button:hover {
-    background: var(--herb-strong);
-    border-color: var(--herb-strong);
-    box-shadow: var(--shadow-soft);
-}
-
-.recipe-button:active {
-    transform: scale(0.97);
-}
-
-.recipe-button--secondary {
-    background: #fff;
-    color: var(--herb);
-}
-
 /* Modal-Hintergrund */
 .modal-backdrop {
     position: fixed;
@@ -1104,7 +620,7 @@ body.drawer-scroll-lock {
 /* Modal-Box */
 .modal {
     background: var(--cream);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     padding: 1.4rem 1.6rem;
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--line-soft);
@@ -1170,7 +686,7 @@ body.drawer-scroll-lock {
 
 .search-area {
     background: linear-gradient(to top right, var(--rose), var(--cream) 70%);
-    border-radius: var(--radius-lg, 18px);
+    border-radius: var(--legacy-radius-lg);
     box-shadow: var(--shadow-soft);
     padding: 1.25rem 1.5rem;
     margin-bottom: 1.75rem;
@@ -1248,7 +764,7 @@ body.drawer-scroll-lock {
     width: min(380px, 100vw - 3rem);
     padding: 1rem 1.1rem;
     background: #fff;
-    border-radius: var(--radius-lg, 18px);
+    border-radius: var(--legacy-radius-lg);
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--line-soft);
     z-index: 20;
@@ -1497,7 +1013,7 @@ body.drawer-scroll-lock {
 
 .ingredient-card {
     background: var(--cream);
-    border-radius: var(--radius-lg, 18px);
+    border-radius: var(--legacy-radius-lg);
     padding: 0.9rem 1rem;
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--line-soft);
@@ -1512,7 +1028,7 @@ body.drawer-scroll-lock {
 
 .ingredient-card {
     background: var(--cream);
-    border-radius: var(--radius-lg, 18px);
+    border-radius: var(--legacy-radius-lg);
     padding: 0.9rem 1rem;
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--line-soft);
@@ -1661,7 +1177,7 @@ body.drawer-scroll-lock {
 
 .collection-card {
     background: var(--cream);
-    border-radius: var(--radius-lg, 18px);
+    border-radius: var(--legacy-radius-lg);
     padding: 0.9rem 1rem;
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--line-soft);
@@ -1764,7 +1280,7 @@ body.drawer-scroll-lock {
     margin-bottom: 1.25rem;
     padding: 1rem 1.2rem;
     background: linear-gradient(to top right, var(--rose), var(--cream) 60%);
-    border-radius: var(--radius-lg, 18px);
+    border-radius: var(--legacy-radius-lg);
     border: 1px solid var(--line-soft);
 }
 
@@ -1832,37 +1348,11 @@ body.drawer-scroll-lock {
     gap: 1.5rem;
 }
 
-/* Breadcrumb oben */
-
-.breadcrumb {
-    margin-bottom: 0.5rem;
-}
-
-.breadcrumb-link {
-    font-size: 0.85rem;
-    color: var(--text-soft);
-    text-decoration: none;
-    transition: color var(--transition-fast), text-decoration var(--transition-fast);
-}
-
-.breadcrumb-link:hover {
-    text-decoration: underline;
-    color: var(--text-main);
-}
-
 /* Header-Bereich: Bild + Meta-Karte */
-
-.header {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-    grid-template-rows: auto auto;
-    gap: 1.5rem;
-    align-items: stretch;
-}
 
 .image-wrapper {
     background: var(--cream);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--line-soft);
@@ -1874,17 +1364,6 @@ body.drawer-scroll-lock {
     max-height: 360px;
     object-fit: cover;
     display: block;
-}
-
-.header-content {
-    padding: 1.3rem 1.5rem;
-    background: var(--cream);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--line-soft);
-    box-shadow: var(--shadow-soft);
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
 }
 
 .title {
@@ -1900,68 +1379,12 @@ body.drawer-scroll-lock {
     color: var(--text-soft);
 }
 
-/* Meta-Infos: Zeiten, Portionen, Schwierigkeit */
-
-/* Slice 3 (F-31): Spalten passen sich der Zahl der Karten an (heute 2) */
-.meta-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-    gap: 0.75rem;
-}
-
-.meta-card {
-    padding: 0.55rem 0.7rem;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid var(--line-soft);
-}
-
-.meta-label {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text-soft);
-    margin-bottom: 0.15rem;
-}
-
-.meta-value {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-main);
-}
-
 /* Tags / Kategorien und sekundäre Tags */
 
 .tags {
     display: flex;
     flex-wrap: wrap;
     gap: 0.45rem;
-}
-
-.tags-secondary {
-    margin-top: -0.2rem;
-}
-
-.pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.7rem;
-    border-radius: var(--radius-pill);
-    font-size: 0.78rem;
-    /* Slice 3 (F-32): lange Tags umbrechen statt abschneiden */
-    white-space: normal;
-    max-width: 100%;
-}
-
-.pill-soft {
-    background: #fff;
-    border: 1px solid var(--line-soft);
-    color: var(--text-main);
-}
-
-.pill-outline {
-    background: transparent;
-    border: 1px dashed var(--line-soft);
-    color: var(--text-soft);
 }
 
 /* Bewertung */
@@ -2008,7 +1431,7 @@ body.drawer-scroll-lock {
 
 .section {
     background: var(--cream);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     padding: 1.4rem 1.5rem 1.25rem;
     border: 1px solid var(--line-soft);
     box-shadow: var(--shadow-soft);
@@ -2034,35 +1457,6 @@ body.drawer-scroll-lock {
     gap: 0.4rem;
 }
 
-.ingredient-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
-}
-
-.ingredient-main-and-alts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.ingredient-amount {
-    min-width: 5rem;
-    font-weight: 500;
-    color: var(--text-main);
-}
-
-.ingredient-name {
-    color: var(--text-soft);
-    font-weight: 500;
-}
-
-.ingredient-alternatives {
-    margin-left: 2rem;
-    font-size: 0.9rem;
-    color: #6b7280;
-}
-
 /* Zubereitungsschritte */
 
 .steps {
@@ -2072,37 +1466,6 @@ body.drawer-scroll-lock {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-}
-
-.step-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.step-badge {
-    width: 24px;
-    height: 24px;
-    border-radius: var(--radius-pill);
-    background: rgba(0, 0, 0, 0.03);
-    border: 1px solid var(--line-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    color: var(--text-main);
-    flex-shrink: 0;
-}
-
-.step-text {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--text-main);
-}
-
-/* Slice 2 (F-14): Zeilenumbrüche innerhalb eines Schritts sichtbar lassen */
-.step-text--multiline {
-    white-space: pre-line;
 }
 
 /* Zweispaltiges Grid für Nährwerte + Notizen */
@@ -2154,10 +1517,6 @@ body.drawer-scroll-lock {
     color: var(--text-main);
 }
 
-.note-item + .note-item {
-    margin-top: 0.25rem;
-}
-
 /* Footer-Metadaten (Erstellt / Bearbeitet) */
 
 .footer-meta {
@@ -2192,7 +1551,7 @@ body.drawer-scroll-lock {
 
 .recipe-form__section {
     background: var(--cream);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     border: 1px solid var(--line-soft);
     box-shadow: var(--shadow-soft);
     padding: 1.1rem 1.25rem 1.2rem;
@@ -2379,7 +1738,7 @@ body.drawer-scroll-lock {
 .ingredients-builder__action,
 .ingredients-builder__remove {
     flex: 0 0 auto;
-    white-space: nowrap;    /* Text im Button soll nicht umbrechen */
+    white-space: nowrap;
 }
 
 /* Steps-Builder */
@@ -2577,60 +1936,6 @@ body.drawer-scroll-lock {
     color: var(--text-soft);
 }
 
-.rating-section {
-    margin-top: 1.5rem;
-    grid-column: 1 / 3;
-    grid-row: 2 / 3;
-}
-
-.rating-dimensions-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-}
-
-.rating-dimension-card {
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    background: rgba(0,0,0,0.02);
-}
-
-.rating-dimension-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.25rem;
-    font-weight: 500;
-}
-
-.rating-dimension-stars,
-.rating-overall-stars {
-    font-size: 0.9rem;
-}
-
-.stars-filled {
-    font-weight: 600;
-    color: var(--star);
-}
-
-.stars-empty {
-    color: rgba(60, 52, 38, 0.25);
-    margin-left: 0.15rem;
-}
-
-.rating-overall {
-    margin-top: 1rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid rgba(0,0,0,0.06);
-}
-
-.rating-overall-main {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-    font-weight: 500;
-}
-
 .ingredients-autocomplete {
     position: relative;
     flex: 1;
@@ -2762,13 +2067,6 @@ body.drawer-scroll-lock {
    Nur Inhaltsbereiche; keine Regeln für App-Shell/Header/Sidebar.
 ====================================== */
 
-/* Modal-Ebenen. Shell-Werte (nicht hier definiert): Sidebar-Backdrop 900,
-   Sidebar 1000, Header 1100, User-Menü 1200. Modals liegen darüber. */
-:root {
-    --z-modal-backdrop: 1300;
-    --z-modal: 1310;
-}
-
 .modal:focus {
     outline: none;
 }
@@ -2817,48 +2115,12 @@ body.drawer-scroll-lock {
     box-shadow: none;
 }
 
-/* Rezeptdetail-Kopf (F-31): Titel und Aktionen in einer umbrechenden Zeile */
-.recipe-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem 1rem;
-}
-
-.recipe-head .title {
-    flex: 1 1 14rem;
-    min-width: 0;
-}
-
-.recipe-head .recipe-actions {
-    flex: 0 1 auto;
-    align-items: stretch;
-    margin-bottom: 0;
-}
-
-.recipe-head .recipe-actions .recipe-button {
-    justify-content: center;
-}
-
-/* ohne Bild: Inhalt über die volle Breite statt in der schmalen Bildspalte */
-.header--no-image .header-content {
-    grid-column: 1 / -1;
-}
-
 /* Textumbruch langer Wörter in Inhalten (F-32; lang="de" für Silbentrennung) */
 .title,
 .description,
 .section-header__title,
 .recipe-card__title,
 .recipe-card__tag,
-.pill,
-.ingredient-amount,
-.ingredient-name,
-.ingredient-alternatives,
-.step-text,
-.note-item,
-.rating-dimension-name,
 .modal__title,
 .modal__list-item span,
 .tag-chip {
@@ -2866,15 +2128,8 @@ body.drawer-scroll-lock {
     hyphens: auto;
 }
 
-.ingredient-row,
-.ingredient-main-and-alts,
-.step-item > .step-text,
 .recipe-card__body {
     min-width: 0;
-}
-
-.ingredient-main-and-alts {
-    flex: 1 1 auto;
 }
 
 /* Rezeptformular: Pflichtfelder, Fehler, Zusammenfassung (F-06/F-74) */
@@ -2908,7 +2163,7 @@ body.drawer-scroll-lock {
 .form-error-summary {
     padding: 0.85rem 1rem;
     border: 1px solid var(--danger);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     background: #fff;
     color: var(--text-main);
 }
@@ -3014,19 +2269,6 @@ body.drawer-scroll-lock {
 }
 
 /* Rezeptliste: Leerzustand (F-44) */
-.recipes-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.6rem;
-    padding: 1rem 0.25rem;
-}
-
-.recipes-empty__text {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-soft);
-}
 
 @media (max-width: 900px) {
     .steps-builder__field {
@@ -3042,10 +2284,6 @@ body.drawer-scroll-lock {
     .form-actions__confirm {
         width: 100%;
         justify-content: flex-start;
-    }
-
-    .recipe-head .recipe-actions {
-        flex: 1 1 100%;
     }
 }
 
@@ -3101,7 +2339,7 @@ body.drawer-scroll-lock {
     width: 100%;
     max-width: 420px;
     background: var(--cream);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     padding: 1.6rem 1.8rem;
     box-shadow: var(--shadow-soft);
     border: 1px solid var(--line-soft);
@@ -3268,55 +2506,6 @@ body.drawer-scroll-lock {
    Slice 4 (F-10): Footer und Rechtsseiten
 ====================================== */
 
-/* Footer der App-Shell: dritte Zeile von .app-shell, volle Breite */
-.app-footer {
-    padding: 10px 24px;
-    border-top: 1px solid var(--line-soft);
-    background: var(--sand);
-    font-size: 13px;
-}
-
-.app-footer__nav {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 4px 24px;
-}
-
-/* min. 24 px Zielgroesse (WCAG 2.5.8) */
-.app-footer__link {
-    display: inline-flex;
-    align-items: center;
-    min-height: 32px;
-    padding: 0 4px;
-    color: #5f574a;
-    text-decoration: none;
-    border-radius: 6px;
-}
-
-.app-footer__link:hover {
-    color: var(--text-main);
-    text-decoration: underline;
-}
-
-.app-footer__link:focus-visible {
-    outline: 2px solid var(--herb);
-    outline-offset: 2px;
-}
-
-.app-footer__link[aria-current='page'] {
-    color: var(--text-main);
-    font-weight: 600;
-}
-
-/* Auth-Seiten: unter dem Formular, ohne eigene Flaeche */
-.app-footer--auth {
-    margin-top: 1.25rem;
-    padding: 0;
-    border-top: none;
-    background: transparent;
-}
-
 /* Hinweis bei der Registrierung (Information, keine Einwilligung) */
 .auth-privacy-note {
     margin: 0.4rem 0 0;
@@ -3417,9 +2606,6 @@ body.drawer-scroll-lock {
 }
 
 @media (max-width: 900px) {
-    .app-footer {
-        padding: 8px 14px;
-    }
 
     .legal-page {
         padding: 16px 14px 18px;
@@ -3429,34 +2615,13 @@ body.drawer-scroll-lock {
         font-size: 22px;
     }
 }
-
-/* Backdrop nur im Drawer-Modus (<= 900 px), siehe Mobile App-Shell (F-29) */
-.sidebar-backdrop {
-    display: none;
-}
 /* Responsive Anpassungen */
 
 @media (max-width: 900px) {
-    .header {
-        grid-template-columns: minmax(0, 1fr);
-    }
 
     /* rating-section liegt im .header-Grid; die Desktop-Platzierung
        (grid-column: 1/3) würde einspaltig eine implizite zweite Spalte
        erzeugen und das Rezeptbild auf 0px quetschen */
-    .rating-section {
-        grid-column: auto;
-        grid-row: auto;
-        margin-top: 0;
-    }
-
-    .header-content {
-        padding: 1.2rem 1.3rem;
-    }
-
-    .meta-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 
     .section-grid {
         grid-template-columns: minmax(0, 1fr);
@@ -3504,132 +2669,6 @@ body.drawer-scroll-lock {
 /* =========================
    Mobile App-Shell / Sidebar
    ========================= */
-
-@media (max-width: 900px) {
-
-    /* F-69: Header-Hoehe zentral (10 px Innenabstand oben/unten + 32 px Icon) */
-    .app-shell {
-        --app-header-height: 52px;
-    }
-
-    /* Header bleibt wie bisher nicht fixiert (scrollt mit); die Drawer-Oberkante
-       wird beim Oeffnen an die sichtbare Header-Unterkante gesetzt (--drawer-top) */
-    .app-header {
-        padding: 10px 14px;
-        gap: 12px;
-        position: relative;
-        z-index: 1100;
-        height: var(--app-header-height);
-    }
-
-    /* langer Seitentitel darf den Header nicht hoeher machen */
-    .app-header__title {
-        min-width: 0;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-    }
-
-    .app-main {
-        grid-template-columns: 1fr;
-    }
-
-    .app-content {
-        padding: 14px 14px 18px;
-    }
-
-    /* Backdrop nur auf Mobile und nur wenn Element gerendert (F-29) */
-    .sidebar-backdrop {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.35);
-        z-index: 900;
-    }
-
-    /* Sidebar als Drawer */
-    .sidebar {
-        position: fixed;
-        left: 0;
-        top: var(--drawer-top, var(--app-header-height));
-        height: calc(100vh - var(--drawer-top, var(--app-header-height)));
-        height: calc(100dvh - var(--drawer-top, var(--app-header-height)));
-        width: min(86vw, 320px);
-        z-index: 1000;
-        opacity: 1;
-        overflow: auto;
-        -webkit-overflow-scrolling: touch;
-
-        /* wichtig: SOLID background, sonst scheint Content durch */
-
-        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-
-        transform: translateX(0);
-
-        pointer-events: auto;
-    }
-
-    /* geschlossen */
-    .sidebar.sidebar--closed {
-        transform: translateX(-110%);
-        pointer-events: none;
-        opacity: 1; /* nicht ausblenden – sonst „flackert“ es */
-    }
-
-    /* Submenu auf Mobile nicht absolut */
-    .sidebar-submenu {
-        position: static;
-        left: auto;
-        top: auto;
-        min-width: 0;
-        margin-top: 8px;
-        display: none;
-        box-shadow: none;
-        border: 1px solid var(--line-soft);
-    }
-
-    .sidebar-submenu.is-open {
-        display: block;
-    }
-
-    .recipes-layout {
-        grid-template-columns: 1fr;
-    }
-
-    /* Submenu auf Mobile nicht mehr absolut neben die Sidebar */
-    .sidebar-submenu {
-        position: static;
-        left: auto;
-        top: auto;
-        min-width: 0;
-        margin-top: 8px;
-        display: none;
-        box-shadow: none;
-        border: 1px solid var(--line-soft);
-    }
-
-    /* Wenn offen: per Klasse am Body/App-Wrapper aktivieren */
-    .sidebar.is-open {
-        transform: translateX(0);
-        pointer-events: auto;
-    }
-
-    /* Desktop-Klasse .sidebar--closed auf Mobile nicht nutzen,
-       sondern nur über is-open steuern */
-    .sidebar--closed {
-        opacity: 1;
-        transform: translateX(-110%);
-        pointer-events: none;
-    }
-
-}
-
-@media (max-width: 480px) {
-    /* Header-Icons sind hier 40 px hoch (siehe unten): 10 + 40 + 10 */
-    .app-shell {
-        --app-header-height: 60px;
-    }
-}
 
 @media (max-width: 720px) {
 
@@ -3705,13 +2744,6 @@ body.drawer-scroll-lock {
         justify-content: center;
     }
 
-    .app-header__title { display: none; }
-    .app-header__icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 14px;
-    }
-
     .search-row {
         display: grid;
         align-items: center;
@@ -3754,7 +2786,7 @@ body.drawer-scroll-lock {
     gap: 1rem;
     padding: 1rem 1.2rem;
     background: rgba(255, 255, 255, 0.85);
-    border-radius: var(--radius-lg, 18px);
+    border-radius: var(--legacy-radius-lg);
     border: 1px solid var(--line-soft);
     text-decoration: none;
     color: inherit;
@@ -3846,22 +2878,6 @@ body.drawer-scroll-lock {
         gap: 4px;
     }
 
-    /* Rezept-Detail: Aktions-Buttons nicht mehr absolut über dem Titel,
-       sondern als eigene Zeile über dem Inhalt */
-    .recipe-actions {
-        position: static;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: stretch;
-        gap: 0.45rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .recipe-actions .recipe-button {
-        flex: 1 1 auto;
-        justify-content: center;
-    }
-
     /* iOS zoomt bei Eingabefeldern unter 16px automatisch hinein */
     .form-field__input,
     .form-field__textarea,
@@ -3877,8 +2893,7 @@ body.drawer-scroll-lock {
 
     /* Daumenfreundliche Buttons */
     .primary-pill-button,
-    .secondary-pill-button,
-    .recipe-button {
+    .secondary-pill-button {
         min-height: 42px;
     }
 
@@ -3894,19 +2909,6 @@ body.drawer-scroll-lock {
     }
 }
 
-@media (max-width: 540px) {
-    /* Bewertungs-Karten (Rezept-Detail) einspaltig */
-    .rating-dimensions-grid {
-        grid-template-columns: 1fr;
-    }
-
-    /* Meta-Karten (Zubereitung/Portionen) bleiben 2-spaltig,
-       aber mit weniger Innenabstand */
-    .meta-card {
-        padding: 0.5rem 0.6rem;
-    }
-}
-
 
 /* ======================================
    TikTok-Import (Rezept erstellen)
@@ -3915,7 +2917,7 @@ body.drawer-scroll-lock {
 .tiktok-import {
     background: linear-gradient(to top right, var(--rose), var(--cream) 65%);
     border: 1px solid var(--line-soft);
-    border-radius: var(--radius-lg);
+    border-radius: var(--legacy-radius-lg);
     box-shadow: var(--shadow-soft);
     padding: 1rem 1.2rem;
     margin-bottom: 1.25rem;

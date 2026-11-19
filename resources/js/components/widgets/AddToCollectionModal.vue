@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { useModal } from '@/composables/useModal';
+import Button from '@/components/ui/Button.vue';
+import Dialog from '@/components/ui/Dialog.vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { CircleAlert, CircleCheck } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -33,8 +35,6 @@ const errorMessage = ref<string | null>(null);
 // Teilerfolg: Sammlungen, in denen das Rezept in diesem Durchgang gespeichert wurde
 const savedNames = ref<string[]>([]);
 
-const dialogEl = ref<HTMLElement | null>(null);
-
 const resetState = () => {
     selectedCollectionIds.value = [];
     errorMessage.value = null;
@@ -54,13 +54,7 @@ const close = () => {
     emit('close');
 };
 
-// F-30: Ebene, Scroll-Sperre, Escape, Fokus
-useModal({
-    open: () => props.open,
-    dialog: dialogEl,
-    onClose: close,
-});
-
+// F-30/F-40: Ebene, Scroll-Sperre, Escape, Fokus und Fokusfalle im Baustein `Dialog`
 const nameOf = (id: number) =>
     props.collections.find((c) => c.id === id)?.name ?? `#${id}`;
 
@@ -149,120 +143,101 @@ const addToCollection = () => {
 </script>
 
 <template>
-    <!-- F-30: außerhalb von #app, über Header und Sidebar -->
-    <Teleport to="body">
-        <div v-if="open" class="modal-backdrop" @click.self="close">
-            <div
-                ref="dialogEl"
-                class="modal"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="add-to-collection-title"
-                tabindex="-1"
-            >
-                <h2 id="add-to-collection-title" class="modal__title">
-                    Zur Sammlung hinzufügen
-                </h2>
-
-                <!-- Gast: Hinweis mit Login-Link -->
-                <template v-if="isGuest">
-                    <p class="modal__subtitle">
-                        Melde dich an, um Rezepte in Sammlungen zu speichern.
-                    </p>
-                    <div class="modal__actions">
-                        <button
-                            type="button"
-                            class="secondary-pill-button"
-                            @click="close"
-                        >
-                            Schließen
-                        </button>
-                        <a :href="route('login')" class="primary-pill-button">
-                            Anmelden
-                        </a>
-                    </div>
-                </template>
-
-                <template v-else>
-                    <p
-                        v-if="collections.length"
-                        id="add-to-collection-hint"
-                        class="modal__subtitle"
-                    >
-                        Wähle eine oder mehrere deiner Sammlungen aus, in denen
-                        dieses Rezept gespeichert werden soll.
-                    </p>
-
-                    <fieldset
-                        v-if="collections.length"
-                        class="modal__list"
-                        aria-describedby="add-to-collection-hint"
-                    >
-                        <legend class="sr-only">Sammlungen</legend>
+    <!-- Gate C: auf dem Baustein Dialog; Verhalten aus Slice 3 (F-39) unverändert -->
+    <Dialog
+        :open="open"
+        title="Zur Sammlung hinzufügen"
+        :description="
+            isGuest
+                ? 'Melde dich an, um Rezepte in Sammlungen zu speichern.'
+                : collections.length
+                  ? 'Wähle eine oder mehrere deiner Sammlungen aus, in denen dieses Rezept gespeichert werden soll.'
+                  : undefined
+        "
+        @close="close"
+    >
+        <!-- Gast: Hinweis (Beschreibung) mit Login-Link -->
+        <template v-if="!isGuest">
+            <fieldset v-if="collections.length" class="min-w-0 border-0 p-0">
+                <legend class="sr-only">Sammlungen</legend>
+                <ul class="flex max-h-[50dvh] flex-col gap-2 overflow-y-auto">
+                    <li v-for="collection in collections" :key="collection.id">
                         <label
-                            v-for="collection in collections"
-                            :key="collection.id"
-                            class="modal__list-item"
+                            class="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line px-4 py-2 text-ink transition-colors hover:bg-canvas has-[:checked]:border-primary has-[:checked]:bg-tint has-[:disabled]:cursor-not-allowed"
                         >
                             <input
+                                v-model="selectedCollectionIds"
                                 type="checkbox"
                                 name="collection"
+                                class="size-5 shrink-0 accent-primary"
                                 :value="collection.id"
-                                v-model="selectedCollectionIds"
                                 :disabled="processing"
                             />
-                            <span>{{ collection.name }}</span>
+                            <span
+                                class="text-wrap-anywhere min-w-0 flex-1 font-medium"
+                                >{{ collection.name }}</span
+                            >
                         </label>
-                    </fieldset>
+                    </li>
+                </ul>
+            </fieldset>
 
-                    <div v-else class="modal__empty-state">
-                        <p class="modal__empty">
-                            Du hast noch keine Sammlungen angelegt.
-                        </p>
-                        <Link
-                            :href="route('collections.create')"
-                            class="modal__link"
-                        >
-                            Neue Sammlung anlegen
-                        </Link>
-                    </div>
-
-                    <p
-                        v-if="savedNames.length"
-                        class="modal__success"
-                        role="status"
-                    >
-                        Gespeichert in: {{ savedNames.join(', ') }}
-                    </p>
-                    <p v-if="errorMessage" class="modal__alert" role="alert">
-                        {{ errorMessage }}
-                    </p>
-
-                    <div class="modal__actions">
-                        <button
-                            type="button"
-                            class="secondary-pill-button"
-                            :disabled="processing"
-                            @click="close"
-                        >
-                            {{ savedNames.length ? 'Schließen' : 'Abbrechen' }}
-                        </button>
-                        <button
-                            v-if="collections.length"
-                            type="button"
-                            class="primary-pill-button"
-                            :disabled="
-                                selectedCollectionIds.length === 0 || processing
-                            "
-                            @click="addToCollection"
-                        >
-                            {{
-                                processing ? 'Wird gespeichert …' : 'Hinzufügen'
-                            }}
-                        </button>
-                    </div>
-                </template>
+            <div v-else class="flex flex-col items-start gap-2">
+                <p class="text-ink-muted">
+                    Du hast noch keine Sammlungen angelegt.
+                </p>
+                <Link
+                    :href="route('collections.create')"
+                    class="font-semibold text-primary underline underline-offset-4 hover:text-primary-hover"
+                >
+                    Neue Sammlung anlegen
+                </Link>
             </div>
-        </div>
-    </Teleport>
+
+            <p
+                v-if="savedNames.length"
+                class="mt-4 flex items-start gap-2 rounded-lg bg-success-surface px-3 py-2 text-sm font-medium text-success"
+                role="status"
+            >
+                <CircleCheck
+                    class="mt-0.5 size-4 shrink-0"
+                    aria-hidden="true"
+                />
+                <span class="text-wrap-anywhere"
+                    >Gespeichert in: {{ savedNames.join(', ') }}</span
+                >
+            </p>
+            <p
+                v-if="errorMessage"
+                class="mt-4 flex items-start gap-2 rounded-lg bg-danger-surface px-3 py-2 text-sm font-medium text-danger"
+                role="alert"
+            >
+                <CircleAlert
+                    class="mt-0.5 size-4 shrink-0"
+                    aria-hidden="true"
+                />
+                <span class="text-wrap-anywhere">{{ errorMessage }}</span>
+            </p>
+        </template>
+
+        <template #footer>
+            <template v-if="isGuest">
+                <Button variant="ghost" @click="close">Schließen</Button>
+                <Button :href="route('login')">Anmelden</Button>
+            </template>
+            <template v-else>
+                <Button variant="ghost" :disabled="processing" @click="close">
+                    {{ savedNames.length ? 'Schließen' : 'Abbrechen' }}
+                </Button>
+                <Button
+                    v-if="collections.length"
+                    :disabled="selectedCollectionIds.length === 0"
+                    :loading="processing"
+                    @click="addToCollection"
+                >
+                    {{ processing ? 'Wird gespeichert …' : 'Hinzufügen' }}
+                </Button>
+            </template>
+        </template>
+    </Dialog>
 </template>

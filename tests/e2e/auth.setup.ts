@@ -28,7 +28,8 @@ for (const [role, account] of roles) {
 
         // Beleg, dass der Server die E2E-Datenbank benutzt: das Seeder-Konto ist angemeldet.
         await page.goto('/home');
-        await expect(page.locator('.user-menu__dropdown')).toContainText(`Eingeloggt als ${account.name}`);
+        // Gate C: Benutzer-Menue der Kopfnavigation (Panel per aria-controls des Ausloesers)
+        await expect(page.locator('#user-menu')).toContainText(`Angemeldet als ${account.name}`);
         await page.context().storageState({ path: authFile(role) });
     });
 }
