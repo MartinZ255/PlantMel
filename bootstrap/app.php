@@ -42,6 +42,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->respond(function (Response $response, Throwable $exception, Request $request): Response {
             $status = $response->getStatusCode();
 
+            // Slice 4: Die `verified`-Middleware bricht JSON-/axios-Requests mit einem
+            // fest verdrahteten englischen Text ab (EnsureEmailIsVerified). Nur bei
+            // eingeschalteter E-Mail-Verifizierung erreichbar.
+            if ($status === 403
+                && $exception instanceof HttpExceptionInterface
+                && $exception->getMessage() === 'Your email address is not verified.'
+                && $request->expectsJson()
+                && ! $request->header('X-Inertia')) {
+                return response()->json(['message' => 'Bitte bestätige zuerst deine E-Mail-Adresse.'], 403);
+            }
+
             if (! in_array($status, [403, 404, 419, 429, 500, 503], true)
                 || $exception instanceof HttpResponseException
                 || ($request->expectsJson() && ! $request->header('X-Inertia'))

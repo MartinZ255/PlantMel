@@ -94,7 +94,8 @@ class EmailVerificationEnforcementTest extends TestCase
 
         $this->actingAs($host)
             ->postJson(route('recipeImports.store'), ['url' => 'https://www.tiktok.com/@example/video/1'])
-            ->assertForbidden();
+            ->assertForbidden()
+            ->assertExactJson(['message' => 'Bitte bestätige zuerst deine E-Mail-Adresse.']);
 
         $this->assertDatabaseCount('recipe_imports', 0);
     }
