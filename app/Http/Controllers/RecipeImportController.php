@@ -72,6 +72,11 @@ class RecipeImportController extends Controller
             'status' => $recipeImport->status,
             'source' => $recipeImport->source,
             'error' => $recipeImport->error,
+            // Fortschrittsanzeige (Slice 4): `started` = der Job hat begonnen;
+            // `updated_at` = letzter Statuswechsel. Zeiten als ISO-8601 in UTC.
+            'started' => $recipeImport->status !== 'pending',
+            'created_at' => $recipeImport->created_at?->copy()->utc()->toIso8601ZuluString(),
+            'updated_at' => $recipeImport->updated_at?->copy()->utc()->toIso8601ZuluString(),
         ]);
     }
 

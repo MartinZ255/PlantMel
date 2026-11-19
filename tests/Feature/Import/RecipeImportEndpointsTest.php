@@ -141,6 +141,8 @@ class RecipeImportEndpointsTest extends TestCase
                 'status' => 'pending',
                 'source' => null,
                 'error' => null,
+                'started' => false,
+                ...$this->timestampsOf($import),
             ]);
     }
 
@@ -157,6 +159,8 @@ class RecipeImportEndpointsTest extends TestCase
                 'status' => 'done',
                 'source' => 'video',
                 'error' => null,
+                'started' => true,
+                ...$this->timestampsOf($import),
             ]);
     }
 
@@ -172,6 +176,8 @@ class RecipeImportEndpointsTest extends TestCase
                 'status' => 'failed',
                 'source' => null,
                 'error' => 'Kaputt',
+                'started' => true,
+                ...$this->timestampsOf($import),
             ]);
     }
 
@@ -202,5 +208,20 @@ class RecipeImportEndpointsTest extends TestCase
         $owner->delete();
 
         $this->assertModelMissing($import);
+    }
+
+    /**
+     * Slice 4: `created_at`/`updated_at` als ISO-8601 in UTC (Zulu).
+     *
+     * @return array{created_at: string, updated_at: string}
+     */
+    private function timestampsOf(RecipeImport $import): array
+    {
+        $fresh = $import->fresh();
+
+        return [
+            'created_at' => $fresh->created_at->copy()->utc()->toIso8601ZuluString(),
+            'updated_at' => $fresh->updated_at->copy()->utc()->toIso8601ZuluString(),
+        ];
     }
 }

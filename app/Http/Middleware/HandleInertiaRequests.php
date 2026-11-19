@@ -54,6 +54,10 @@ class HandleInertiaRequests extends Middleware
                         'id'    => $request->user()->id,
                         'name'  => $request->user()->name,
                         'email' => $request->user()->email,
+                        // F-08/E2: ISO-8601 (UTC) oder null. Der Profilhinweis
+                        // (settings/Profile.vue) prueft zusaetzlich
+                        // `mustVerifyEmail`, erscheint also nur bei Schalter AN.
+                        'email_verified_at' => $request->user()->email_verified_at?->copy()->utc()->toIso8601ZuluString(),
                     ]
                     : null,
                 'collections' => $request->user()

@@ -56,6 +56,10 @@ class StaleImportStatusTest extends TestCase
             'status' => 'failed',
             'source' => null,
             'error' => ImportTikTokRecipe::MESSAGE_TIMEOUT,
+            // Slice 4: Fortschrittsfelder (Status != pending => started)
+            'started' => true,
+            'created_at' => $import->fresh()->created_at->copy()->utc()->toIso8601ZuluString(),
+            'updated_at' => $import->fresh()->updated_at->copy()->utc()->toIso8601ZuluString(),
         ]);
 
         // Der Zustand wird gespeichert, nicht nur gemeldet

@@ -3,9 +3,7 @@
 namespace Tests\Feature\Authorization;
 
 use App\Models\Recipe;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -20,20 +18,11 @@ class AuthorizationGapsTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * F-45: Host-Gruppe (routes/web.php:103) hat kein 'verified'.
-     * (Wegen F-08 waere 'verified' derzeit ohnehin wirkungslos.)
-     */
-    public function test_f45_unverified_host_reaches_host_routes(): void
-    {
-        $this->assertNotContains('verified', Route::getRoutes()->getByName('recipes.create')->gatherMiddleware());
-
-        $host = User::factory()->host()->unverified()->withoutTwoFactor()->create();
-
-        $this->actingAs($host)
-            ->get(route('recipes.create'))
-            ->assertOk();
-    }
+    // Slice 4 (F-08/E2): test_f45_unverified_host_reaches_host_routes und
+    // test_f08_unverified_user_reaches_home entfallen. Die Host-Gruppe traegt
+    // jetzt 'verified'; das Verhalten in beiden Schalterstellungen pruefen
+    // tests/Feature/Auth/EmailVerificationEnforcementTest.php (AN) und
+    // tests/Feature/Auth/EmailVerificationDisabledTest.php (AUS, Default).
 
     /**
      * F-45 (Designentscheidung E7 offen): Rezepte haben keinen Besitzer, jeder
@@ -50,18 +39,5 @@ class AuthorizationGapsTest extends TestCase
             ->assertRedirect(route('recipes.index'));
 
         $this->assertDatabaseMissing('recipes', ['id' => $recipe->id]);
-    }
-
-    /**
-     * F-08: User implementiert MustVerifyEmail nicht, 'verified' laesst alle durch.
-     * Sollverhalten: tests/KnownDefects/Security/EmailVerificationEnforcementTest.php.
-     */
-    public function test_f08_unverified_user_reaches_home(): void
-    {
-        $user = User::factory()->unverified()->withoutTwoFactor()->create();
-
-        $this->actingAs($user)
-            ->get(route('home'))
-            ->assertOk();
     }
 }

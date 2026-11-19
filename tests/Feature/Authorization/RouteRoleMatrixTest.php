@@ -36,7 +36,7 @@ class RouteRoleMatrixTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * routes/web.php:103-197, Gruppe ['auth', 'is_host'].
+     * routes/web.php, Gruppe ['auth', 'verified', 'is_host'].
      * Wert: [HTTP-Methode, gemessener Status fuer einen Host mit gueltigen Daten].
      *
      * @var array<string, array{0: string, 1: int}>
@@ -304,6 +304,8 @@ class RouteRoleMatrixTest extends TestCase
         foreach (array_keys(self::HOST_ROUTES) as $name) {
             $middleware = $this->middlewareOf($name);
             $this->assertContains('auth', $middleware, $name);
+            // Slice 4 (F-08/E2): wirkt nur bei plantmel.require_email_verification = true
+            $this->assertContains('verified', $middleware, $name);
             $this->assertContains('is_host', $middleware, $name);
         }
 
