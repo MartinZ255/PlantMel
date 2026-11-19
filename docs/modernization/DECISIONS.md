@@ -52,3 +52,23 @@ Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren
 **Alternativen.** Nur ein `confirm()` im Frontend (schützt nicht vor fehlerhaften Clients, kennt die Zahl nicht); Soft Deletes (braucht Migration).
 
 **Rollback.** Code zurücknehmen; keine Datenänderung.
+
+## ADR-003: Neues Design-System für Gate C
+
+**Datum:** 2026-11-19 · **Status:** angenommen (Richtung vom Auftraggeber gewählt) · **Befunde:** F-33, F-34, F-35, F-40, F-41, F-43
+
+**Kontext.** Das bestehende Design (Creme, Salbei, Pfirsich; ca. 4.200 Zeilen ungelayertes CSS in `resources/css/rezeptly/app.css`, sieben Breakpoint-Werte, zwei Token-Systeme, Seitenleiste) soll nicht beibehalten werden. Der Auftraggeber ist mit den Farben unzufrieden und wünscht eine umfassende Anpassung ohne konkretes Vorbild.
+
+**Entscheidung.**
+- **Farbwelt „Frisch & klar“** (Auswahl des Auftraggebers): Hintergrund `#FFFFFF` / `#F6F8F5`, Text `#17211B`, Primär Kräutergrün `#1F7A4D`, Akzent Tomate `#E4572E`, Flächen `#EAF2EC`, Rahmen `#DCE3DD`. Alle Text- und Bedienelement-Paare erfüllen WCAG 2.2 AA (Text ≥ 4,5:1, Bedienelemente und Fokus ≥ 3:1); wo ein gewählter Ton das nicht schafft, wird eine dunklere Variante für Text verwendet.
+- **Layout „bildbetont“** (Auswahl des Auftraggebers): Navigation oben statt dauerhafter Seitenleiste, mobil als Menü; große Rezeptbilder; klare Typografie mit viel Weißraum.
+- **Technik:** Design-Tokens als CSS-Variablen in `@theme` von Tailwind v4, damit Tailwind-Utilities und eigene Komponenten dieselben Werte nutzen. Neue Komponenten verwenden Tailwind-Utilities; das alte `rezeptly/app.css` wird seitenweise abgelöst und am Ende entfernt. Eine Breakpoint-Skala (Tailwind-Standard `sm 640`, `md 768`, `lg 1024`, `xl 1280`), mobil zuerst.
+- **Bausteine** unter `resources/js/components/ui/`: Button, Card, Field (Label, Hinweis, Fehler, ARIA), Input/Textarea/Select, Chip/Tag, Badge, Dialog (auf Basis von `useModal`), StarRating (Anzeige und Eingabe, per Tastatur), EmptyState, PageHeader. Keine neue UI-Bibliothek.
+- **Schrift** bleibt Instrument Sans (bereits selbst gehostet).
+- **Stack bleibt** (Laravel, Inertia, Vue, Tailwind); Routen und Datenverträge ändern sich nicht.
+
+**Vorgehen.** Zuerst Fundament, Kopfnavigation und drei Musterseiten (Startseite, Rezeptliste, Rezeptdetail) zur Abnahme durch den Auftraggeber; danach Ausrollen auf alle Seiten.
+
+**Risiken.** Viele Browser-Tests nutzen CSS-Klassen der alten Oberfläche; sie werden auf rollen- und textbasierte Selektoren umgestellt. Alle Screenshot-Baselines ändern sich. Barrierefreiheits-Verbesserungen aus Slice 1–4 dürfen nicht verloren gehen (Regressionstests bleiben der Maßstab).
+
+**Rollback.** Branch nicht mergen; der Stand von Slice 4 bleibt unverändert.
