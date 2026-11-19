@@ -1,113 +1,117 @@
 <template>
-    <!-- F-30: außerhalb von #app und vom Rezeptformular (Enter sendet es nicht ab) -->
-    <Teleport to="body">
-        <div v-if="show" class="modal-backdrop">
-            <div
-                ref="dialogEl"
-                class="modal"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="ingredient-edit-title"
-                tabindex="-1"
+    <!-- F-30 / Gate C2: gemeinsamer Dialog-Baustein (Teleport außerhalb des
+         Formulars – Enter sendet es nicht ab; Fokusfalle, Escape, Fokus zurück) -->
+    <Dialog
+        :open="show"
+        title="Zutat bearbeiten"
+        size="sm"
+        @close="requestClose"
+    >
+        <div class="flex min-w-0 flex-col gap-1.5">
+            <label for="ingredient-name" class="text-sm font-semibold text-ink">
+                Name der Zutat
+            </label>
+            <TextInput
+                id="ingredient-name"
+                v-model="localName"
+                type="text"
+                aria-describedby="ingredient-name-hint"
+                :disabled="isBusy || !!confirmMessage"
+            />
+            <p
+                id="ingredient-name-hint"
+                data-field-hint
+                class="text-sm text-ink-muted"
             >
-                <h2 id="ingredient-edit-title" class="modal__title">
-                    Zutat bearbeiten
-                </h2>
+                Umbenennen und Löschen gelten für alle Rezepte mit dieser Zutat.
+            </p>
+            <p
+                v-if="saveError"
+                data-field-error
+                class="text-sm font-medium text-danger"
+                role="alert"
+            >
+                {{ saveError }}
+            </p>
+        </div>
 
-                <div class="form-field">
-                    <label class="form-field__label" for="ingredient-name">
-                        Name der Zutat
-                    </label>
-                    <input
-                        id="ingredient-name"
-                        ref="nameInput"
-                        v-model="localName"
-                        type="text"
-                        class="form-field__input"
-                        aria-describedby="ingredient-name-hint"
-                        :disabled="isBusy || !!confirmMessage"
-                    />
-                    <p id="ingredient-name-hint" class="form-field__hint">
-                        Umbenennen und Löschen gelten für alle Rezepte mit
-                        dieser Zutat.
-                    </p>
-                    <p v-if="saveError" class="form-field__error" role="alert">
-                        {{ saveError }}
-                    </p>
-                </div>
+        <p
+            v-if="deleteError"
+            data-field-error
+            class="mt-4 rounded-[1.1rem_0.9rem_1.2rem_1rem] bg-danger-surface p-3.5 text-sm font-medium text-danger"
+            role="alert"
+        >
+            {{ deleteError }}
+        </p>
 
-                <p v-if="deleteError" class="modal__alert" role="alert">
-                    {{ deleteError }}
-                </p>
-
-                <!-- ADR-002: Bestätigung mit der Meldung des Servers (Name + Anzahl) -->
-                <div
-                    v-if="confirmMessage"
-                    class="modal__confirm"
-                    role="group"
-                    aria-labelledby="ingredient-confirm-text"
+        <!-- ADR-002: Bestätigung mit der Meldung des Servers (Name + Anzahl) -->
+        <div
+            v-if="confirmMessage"
+            class="mt-5 rounded-[1.5rem_1.2rem_1.6rem_1.3rem] border-[1.5px] border-danger/40 bg-danger-surface p-4"
+            role="group"
+            aria-labelledby="ingredient-confirm-text"
+        >
+            <p
+                id="ingredient-confirm-text"
+                data-confirm-text
+                class="font-medium text-wrap-anywhere text-ink"
+            >
+                {{ confirmMessage }}
+            </p>
+            <div
+                class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+            >
+                <Button
+                    ref="confirmCancelButton"
+                    variant="secondary"
+                    :disabled="isBusy"
+                    @click="cancelConfirm"
                 >
-                    <p id="ingredient-confirm-text" class="modal__confirm-text">
-                        {{ confirmMessage }}
-                    </p>
-                    <div class="modal__confirm-actions">
-                        <button
-                            ref="confirmCancelButton"
-                            type="button"
-                            class="secondary-pill-button"
-                            :disabled="isBusy"
-                            @click="cancelConfirm"
-                        >
-                            Abbrechen
-                        </button>
-                        <button
-                            type="button"
-                            class="primary-pill-button modal__confirm-delete"
-                            :disabled="isBusy"
-                            @click="deleteIngredient(true)"
-                        >
-                            Endgültig löschen
-                        </button>
-                    </div>
-                </div>
-
-                <div v-else class="modal__actions">
-                    <button
-                        type="button"
-                        class="secondary-pill-button"
-                        @click="emit('close')"
-                        :disabled="isBusy"
-                    >
-                        Abbrechen
-                    </button>
-
-                    <button
-                        ref="deleteButton"
-                        type="button"
-                        class="secondary-pill-button modal__delete"
-                        @click="deleteIngredient(false)"
-                        :disabled="isBusy"
-                    >
-                        Löschen
-                    </button>
-
-                    <button
-                        type="button"
-                        class="primary-pill-button"
-                        @click="onSave"
-                        :disabled="isBusy || !localName.trim()"
-                    >
-                        Speichern
-                    </button>
-                </div>
+                    Abbrechen
+                </Button>
+                <Button
+                    variant="danger"
+                    :loading="loadingDelete"
+                    :disabled="isBusy"
+                    @click="deleteIngredient(true)"
+                >
+                    Endgültig löschen
+                </Button>
             </div>
         </div>
-    </Teleport>
+
+        <template v-if="!confirmMessage" #footer>
+            <Button variant="ghost" :disabled="isBusy" @click="emit('close')">
+                Abbrechen
+            </Button>
+            <Button
+                ref="deleteButton"
+                variant="ghost"
+                class="text-danger hover:bg-danger-surface active:bg-danger-surface"
+                :loading="loadingDelete"
+                :disabled="isBusy"
+                @click="deleteIngredient(false)"
+            >
+                <Trash2 class="size-4" aria-hidden="true" />
+                Löschen
+            </Button>
+            <Button
+                :loading="loadingSave"
+                :disabled="isBusy || !localName.trim()"
+                @click="onSave"
+            >
+                Speichern
+            </Button>
+        </template>
+    </Dialog>
 </template>
 
 <script setup lang="ts">
-import { useModal } from '@/composables/useModal';
+import Button from '@/components/ui/Button.vue';
+import Dialog from '@/components/ui/Dialog.vue';
+import TextInput from '@/components/ui/TextInput.vue';
 import axios from 'axios';
+import { Trash2 } from 'lucide-vue-next';
 import { computed, nextTick, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -137,23 +141,18 @@ const saveError = ref('');
 const deleteError = ref('');
 // Meldung des Servers aus der 409-Antwort; gesetzt = Bestätigungsbereich sichtbar
 const confirmMessage = ref<string | null>(null);
-const confirmCancelButton = ref<HTMLButtonElement | null>(null);
-const deleteButton = ref<HTMLButtonElement | null>(null);
+// Baustein `Button`: Fokus über das gerenderte Element
+const confirmCancelButton = ref<{ $el: HTMLElement } | null>(null);
+const deleteButton = ref<{ $el: HTMLElement } | null>(null);
 
 const isBusy = computed(() => loadingSave.value || loadingDelete.value);
 
-const dialogEl = ref<HTMLElement | null>(null);
-const nameInput = ref<HTMLInputElement | null>(null);
-
-// F-30: Escape schließt (nicht während eines laufenden Requests)
-useModal({
-    open: () => props.show,
-    dialog: dialogEl,
-    initialFocus: nameInput,
-    onClose: () => {
-        if (!isBusy.value) emit('close');
-    },
-});
+// F-30: Escape, Klick auf den Hintergrund und „Schließen“ (Dialog-Baustein)
+// schließen – nicht während eines laufenden Requests. Fokus beim Öffnen auf
+// das Namensfeld (erstes Bedienelement), beim Schließen zurück zum Auslöser.
+const requestClose = () => {
+    if (!isBusy.value) emit('close');
+};
 
 const resetState = () => {
     localName.value = props.ingredient.name;
@@ -232,7 +231,7 @@ const onSave = async () => {
 const cancelConfirm = async () => {
     confirmMessage.value = null;
     await nextTick();
-    deleteButton.value?.focus();
+    deleteButton.value?.$el?.focus();
 };
 
 /**
@@ -276,7 +275,7 @@ const deleteIngredient = async (confirmed: boolean) => {
                 data.message ?? 'Bitte bestätige das Löschen.';
             loadingDelete.value = false;
             await nextTick();
-            confirmCancelButton.value?.focus();
+            confirmCancelButton.value?.$el?.focus();
             return;
         }
 
