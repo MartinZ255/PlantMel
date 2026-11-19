@@ -163,7 +163,7 @@ const addToCollection = () => {
                 <ul class="flex max-h-[50dvh] flex-col gap-2 overflow-y-auto">
                     <li v-for="collection in collections" :key="collection.id">
                         <label
-                            class="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line px-4 py-2 text-ink transition-colors hover:bg-canvas has-[:checked]:border-primary has-[:checked]:bg-tint has-[:disabled]:cursor-not-allowed"
+                            class="flex min-h-12 cursor-pointer items-center gap-3 rounded-[1.2rem_0.9rem_1.3rem_1rem] border-[1.5px] border-line px-4 py-2 text-ink transition-colors hover:border-primary hover:bg-canvas has-[:checked]:border-primary has-[:checked]:bg-tint has-[:disabled]:cursor-not-allowed"
                         >
                             <input
                                 v-model="selectedCollectionIds"
@@ -174,7 +174,7 @@ const addToCollection = () => {
                                 :disabled="processing"
                             />
                             <span
-                                class="text-wrap-anywhere min-w-0 flex-1 font-medium"
+                                class="min-w-0 flex-1 font-medium text-wrap-anywhere"
                                 >{{ collection.name }}</span
                             >
                         </label>
@@ -196,7 +196,7 @@ const addToCollection = () => {
 
             <p
                 v-if="savedNames.length"
-                class="mt-4 flex items-start gap-2 rounded-lg bg-success-surface px-3 py-2 text-sm font-medium text-success"
+                class="mt-4 flex items-start gap-2 rounded-[1rem_0.8rem_1.1rem_0.85rem] bg-success-surface px-3 py-2 text-sm font-medium text-success"
                 role="status"
             >
                 <CircleCheck
@@ -209,7 +209,7 @@ const addToCollection = () => {
             </p>
             <p
                 v-if="errorMessage"
-                class="mt-4 flex items-start gap-2 rounded-lg bg-danger-surface px-3 py-2 text-sm font-medium text-danger"
+                class="mt-4 flex items-start gap-2 rounded-[1rem_0.8rem_1.1rem_0.85rem] bg-danger-surface px-3 py-2 text-sm font-medium text-danger"
                 role="alert"
             >
                 <CircleAlert

@@ -16,8 +16,33 @@ use Laravel\Fortify\Features;
 
 // Landing
 Route::get('/', function () {
+    // Gate C1b: bis zu 6 Rezepte MIT Bild, neueste zuerst, für die Startseite.
+    // Bild-URL wie auf der Rezeptliste über die Disk `public` (erstes Bild).
+    // Die öffentliche Startseite bleibt auch ohne Datenbank erreichbar: Fehler
+    // werden protokolliert, die Seite zeigt dann die grafische Komposition.
+    $featuredRecipes = rescue(fn () => Recipe::query()
+        ->whereHas('images', fn ($q) => $q->whereNotNull('image_path')->where('image_path', '!=', ''))
+        ->with([
+            'categories',
+            'images' => fn ($q) => $q->whereNotNull('image_path')->where('image_path', '!=', '')->orderBy('id'),
+        ])
+        ->orderByDesc('created_at')
+        ->orderByDesc('id')
+        ->limit(6)
+        ->get()
+        ->map(fn (Recipe $recipe) => [
+            'id' => $recipe->id,
+            'name' => $recipe->title,
+            'image' => \Illuminate\Support\Facades\Storage::disk('public')->url($recipe->images->first()->image_path),
+            'categories' => $recipe->categories->pluck('name')->values()->all(),
+            'duration_minutes' => $recipe->duration_minutes,
+        ])
+        ->values()
+        ->all(), [], report: true);
+
     return Inertia::render('Landing', [
         'canRegister' => Features::enabled(Features::registration()),
+        'featuredRecipes' => $featuredRecipes,
     ]);
 })->name('landing');
 

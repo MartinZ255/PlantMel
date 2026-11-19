@@ -57,3 +57,14 @@ export interface User {
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
+
+/** Gate C1b: Rezept-Auswahl der Startseite (routes/web.php, Route `landing`). */
+export interface FeaturedRecipe {
+    id: number;
+    name: string;
+    /** öffentliche URL über die Disk `public` (immer gesetzt) */
+    image: string;
+    /** Kategorienamen */
+    categories: string[];
+    duration_minutes: number | null;
+}

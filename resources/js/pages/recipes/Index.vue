@@ -1,13 +1,24 @@
 <template>
     <AppLayout page-title="Rezepte" bleed>
-        <!-- Kopf mit Suche -->
-        <section class="border-b border-line bg-surface">
+        <!-- Kopf: organischer Hintergrund, große Fraunces-Headline, Suche als schwebende Kapsel -->
+        <section class="relative overflow-hidden">
+            <BlobBackdrop tone="light" />
+            <LeafOrnament
+                variant="eucalyptus"
+                class="pointer-events-none absolute top-4 right-[4%] hidden h-44 animate-sway text-tint-strong [--float-rotate:-16deg] md:block lg:h-56"
+            />
+            <LeafOrnament
+                variant="leaf"
+                class="pointer-events-none absolute top-24 right-[22%] hidden h-16 animate-float-slow text-moss/60 [--float-rotate:38deg] lg:block"
+            />
             <div
-                class="mx-auto flex w-full max-w-(--content-max) flex-col gap-6 px-4 pt-8 pb-6 sm:px-6 lg:px-8 lg:pt-10"
+                class="relative mx-auto flex w-full max-w-(--content-max) flex-col gap-8 px-4 pt-8 pb-10 sm:px-6 lg:px-8 lg:pt-12 lg:pb-14"
             >
                 <PageHeader
                     title="Rezepte"
+                    eyebrow="Aus dem Rezeptgarten"
                     description="Finde pflanzenbetonte Gerichte nach Name, Kategorie oder Zutaten."
+                    size="xl"
                 >
                     <template v-if="props.isHost" #actions>
                         <Button :href="route('recipes.create')">
@@ -17,32 +28,37 @@
                     </template>
                 </PageHeader>
 
-                <RecipeSearchArea
-                    ref="searchArea"
-                    :tags="tags"
-                    :tag-stats="tagStats"
-                    :initial-filters="props.filters"
-                    @update:filters="onUpdateFilters"
-                />
+                <div
+                    class="rounded-[2.25rem_1.75rem_2.5rem_2rem] bg-surface/85 p-3 shadow-float ring-1 ring-line/60 backdrop-blur-md sm:p-4"
+                >
+                    <RecipeSearchArea
+                        ref="searchArea"
+                        :tags="tags"
+                        :tag-stats="tagStats"
+                        :initial-filters="props.filters"
+                        @update:filters="onUpdateFilters"
+                    />
+                </div>
             </div>
         </section>
 
         <!-- Ergebnisse -->
         <section
             aria-labelledby="recipe-results-title"
-            class="mx-auto w-full max-w-(--content-max) px-4 py-8 sm:px-6 lg:px-8"
+            class="mx-auto w-full max-w-(--content-max) px-4 pt-4 pb-16 sm:px-6 lg:px-8"
         >
-            <div
-                class="mb-5 flex flex-wrap items-baseline justify-between gap-2"
-            >
+            <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
                 <h2
                     id="recipe-results-title"
-                    class="text-xl font-semibold text-ink"
+                    class="font-display-wonk text-3xl font-semibold text-ink sm:text-4xl"
                 >
                     {{ hasActiveFilters ? 'Suchergebnisse' : 'Alle Rezepte' }}
                 </h2>
                 <!-- F-44: Trefferzahl als Live-Region -->
-                <p class="text-sm font-medium text-ink-muted" role="status">
+                <p
+                    class="rounded-seed bg-tint px-3.5 py-1 text-sm font-semibold text-primary"
+                    role="status"
+                >
                     {{
                         recipeCards.length === 1
                             ? '1 Ergebnis'
@@ -74,14 +90,21 @@
                 </template>
             </EmptyState>
 
+            <!-- leicht gestaffeltes Raster: Reihenfolge im DOM = Lesereihenfolge -->
             <ul
                 v-else
-                class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                class="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-10"
                 aria-labelledby="recipe-results-title"
             >
-                <li v-for="card in recipeCards" :key="card.id" class="min-w-0">
-                    <RecipeDetailCard :recipe="card" />
-                </li>
+                <Reveal
+                    v-for="(card, i) in recipeCards"
+                    :key="card.id"
+                    as="li"
+                    :delay="(i % 3) * 90"
+                    class="min-w-0 sm:max-lg:even:mt-12 lg:[&:nth-child(3n+2)]:mt-16"
+                >
+                    <RecipeDetailCard :recipe="card" :shape="(i % 6) + 1" />
+                </Reveal>
             </ul>
         </section>
     </AppLayout>
@@ -91,9 +114,12 @@
 import AppLayout from '@/components/layout/AppLayout.vue';
 import RecipeDetailCard from '@/components/recipes/RecipeDetailCard.vue';
 import RecipeSearchArea from '@/components/recipes/RecipeSearchArea.vue';
+import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
 import Button from '@/components/ui/Button.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
+import Reveal from '@/components/ui/Reveal.vue';
 import { router } from '@inertiajs/vue3';
 import { Plus, SearchX } from 'lucide-vue-next';
 import { computed, ref } from 'vue';

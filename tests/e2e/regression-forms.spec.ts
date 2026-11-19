@@ -743,6 +743,26 @@ test.describe('Gast – lange Woerter (F-32)', () => {
                         const content =
                             document.getElementById('main-content')!;
                         const cr = content.getBoundingClientRect();
+                        // Gate C1b: nur der sichtbare Teil zaehlt – Vorfahren mit
+                        // overflow-x != visible (dekorative Blobs/Blaetter in
+                        // Abschnitten mit overflow-hidden) schneiden ab
+                        const visible = (el: Element) => {
+                            const r = el.getBoundingClientRect();
+                            let left = r.left;
+                            let right = r.right;
+                            for (
+                                let cur = el.parentElement;
+                                cur && cur !== content.parentElement;
+                                cur = cur.parentElement
+                            ) {
+                                if (getComputedStyle(cur).overflowX === 'visible')
+                                    continue;
+                                const pr = cur.getBoundingClientRect();
+                                left = Math.max(left, pr.left);
+                                right = Math.min(right, pr.right);
+                            }
+                            return { left, right };
+                        };
                         const out: string[] = [];
                         for (const el of Array.from(
                             content.querySelectorAll('*'),
@@ -755,7 +775,9 @@ test.describe('Gast – lange Woerter (F-32)', () => {
                                 continue;
                             const r = el.getBoundingClientRect();
                             if (r.width === 0 || r.height === 0) continue;
-                            if (r.right > cr.right + 1 || r.left < cr.left - 1)
+                            const v = visible(el);
+                            if (v.right <= v.left) continue; // vollstaendig abgeschnitten
+                            if (v.right > cr.right + 1 || v.left < cr.left - 1)
                                 out.push(
                                     `${el.tagName.toLowerCase()}.${String(el.className)} (${Math.round(r.left)}–${Math.round(r.right)})`,
                                 );

@@ -147,7 +147,13 @@ test.describe('Gast', () => {
         await expect(page.locator('main')).not.toContainText(
             'Bewertungen und Notizen',
         );
-        await expect(page.locator('main li')).toHaveCount(3);
+        // Gate C1b: die Startseite hat jetzt auch ein Rezeptband (weitere Listen);
+        // die Vorteilsliste selbst hat weiterhin genau drei Punkte
+        const benefits = page.getByRole('list', {
+            name: 'Was du mit PlantMel machen kannst',
+        });
+        await expect(benefits.getByRole('listitem')).toHaveCount(3);
+        await expect(benefits).not.toContainText(/Bewertung|Notiz/);
     });
 
     test('F-21 Gast: Sammlungen und Meine Zutaten als "Anmeldung erforderlich" erkennbar', async ({

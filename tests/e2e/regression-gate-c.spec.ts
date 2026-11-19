@@ -91,62 +91,91 @@ test.describe('Gate C – Kontraste der Tokens im Browser', () => {
             min: number;
             prop?: 'color' | 'outlineColor';
         };
+        // Gate C1b: Tokens „Natur & organisch“ (DESIGN-SYSTEM.md). Der Kopf der
+        // Detailseite ist Waldgrün, der Inhalt steht auf dem Naturgrund.
+        const T = {
+            canvas: '#f2f5ea',
+            surface: '#fcfdf8',
+            tint: '#e4edd3',
+            ink: '#142a1f',
+            forest: '#143d2d',
+            forestDeep: '#0d2a1f',
+            onForest: '#f2f5ea',
+            onForestMuted: '#b9cfb6',
+            matcha: '#c8e28a',
+            dangerOnForest: '#ffc2b8',
+        };
         const cases: Case[] = [
             {
-                name: 'Text ink auf canvas',
+                name: 'Titel on-forest auf forest',
                 locator: page.locator('h1'),
-                expected: ratio(hex('#17211b'), hex('#f6f8f5')),
+                expected: ratio(hex(T.onForest), hex(T.forest)),
                 min: 4.5,
             },
             {
-                name: 'Primaerbutton weiss auf primary',
+                name: 'Beschreibung on-forest-muted auf forest',
+                locator: page.locator('h1 + p'),
+                expected: ratio(hex(T.onForestMuted), hex(T.forest)),
+                min: 4.5,
+            },
+            {
+                name: 'Hauptaktion (lime) forest auf matcha',
                 locator: page.getByRole('button', {
                     name: 'Zur Sammlung hinzufügen',
                 }),
-                expected: ratio(hex('#ffffff'), hex('#1f7a4d')),
+                expected: ratio(hex(T.forest), hex(T.matcha)),
                 min: 4.5,
             },
             {
-                name: 'Sekundaerbutton primary auf surface',
+                name: 'Nebenaktion (outline-light) on-forest auf forest',
                 locator: page.getByRole('link', { name: 'Rezept bearbeiten' }),
-                expected: ratio(hex('#1f7a4d'), hex('#ffffff')),
+                expected: ratio(hex(T.onForest), hex(T.forest)),
                 min: 4.5,
             },
             {
-                name: 'Loeschen danger auf canvas',
+                name: 'Loeschen danger-on-forest auf forest',
                 locator: page.getByRole('button', { name: 'Rezept löschen' }),
-                expected: ratio(hex('#b42318'), hex('#f6f8f5')),
+                expected: ratio(hex(T.dangerOnForest), hex(T.forest)),
                 min: 4.5,
             },
             {
-                name: 'Gedaempfter Text ink-muted auf canvas',
-                locator: page.locator('h1 + p'),
-                expected: ratio(hex('#4b5a50'), hex('#f6f8f5')),
-                min: 4.5,
-            },
-            {
-                name: 'Badge primary auf tint',
+                name: 'Badge forest auf matcha',
                 locator: page
                     .getByRole('list', { name: 'Kategorien' })
                     .getByRole('listitem')
                     .first()
                     .locator('span')
                     .first(),
-                expected: ratio(hex('#1f7a4d'), hex('#eaf2ec')),
+                expected: ratio(hex(T.forest), hex(T.matcha)),
                 min: 4.5,
             },
             {
-                name: 'Notizen ink auf accent-surface',
+                name: 'Zutaten-Ueberschrift ink auf surface',
+                locator: page.getByRole('heading', { name: 'Zutaten' }),
+                expected: ratio(hex(T.ink), hex(T.surface)),
+                min: 4.5,
+            },
+            {
+                name: 'Schritt-Text ink auf canvas',
+                locator: page
+                    .getByRole('list', { name: 'Zubereitung', exact: true })
+                    .locator('p')
+                    .first(),
+                expected: ratio(hex(T.ink), hex(T.canvas)),
+                min: 4.5,
+            },
+            {
+                name: 'Notizen ink auf tint',
                 locator: page.getByRole('heading', { name: 'Notizen & Tipps' }),
-                expected: ratio(hex('#17211b'), hex('#fdece6')),
+                expected: ratio(hex(T.ink), hex(T.tint)),
                 min: 4.5,
             },
             {
-                name: 'Footer-Link ink-muted auf surface',
+                name: 'Footer-Link on-forest-muted auf forest-deep',
                 locator: page
                     .getByRole('contentinfo')
                     .getByRole('link', { name: 'Impressum' }),
-                expected: ratio(hex('#4b5a50'), hex('#ffffff')),
+                expected: ratio(hex(T.onForestMuted), hex(T.forestDeep)),
                 min: 4.5,
             },
         ];
@@ -165,7 +194,8 @@ test.describe('Gate C – Kontraste der Tokens im Browser', () => {
             ).toBeLessThan(0.05);
         }
 
-        // Fokus-Ring (Tastatur) >= 3:1 gegen die Flaeche dahinter
+        // Fokus-Ring (Tastatur) >= 3:1 gegen die Flaeche dahinter: auf Waldgruen
+        // schaltet die Utility `on-forest` den Ring auf Matcha um
         const btn = page.getByRole('button', { name: 'Zur Sammlung hinzufügen' });
         await page.getByRole('link', { name: 'Zur Übersicht' }).focus();
         await page.keyboard.press('Tab');
@@ -181,13 +211,14 @@ test.describe('Gate C – Kontraste der Tokens im Browser', () => {
                 style: s.outlineStyle,
             };
         });
-        const ringRatio = ratio(parseRgb(ring.color), hex('#f6f8f5'));
+        const ringRatio = ratio(parseRgb(ring.color), hex(T.forest));
         rows.push({ name: 'Fokus-Ring', ...ring, ringRatio });
         expect(ring.style).not.toBe('none');
         expect(ring.width).toBeGreaterThanOrEqual(2);
         expect(ringRatio).toBeGreaterThanOrEqual(3);
 
-        // Sterne (Grafik) >= 3:1 gegen die Kachel
+        // Sterne (Grafik) >= 3:1: im Waldgruen-Kopf Matcha; die Kachel ist dunkler als
+        // forest, der Vergleich mit forest ist daher die ungünstigste Stelle
         const star = page
             .getByRole('definition')
             .locator('svg')
@@ -195,9 +226,21 @@ test.describe('Gate C – Kontraste der Tokens im Browser', () => {
         const starColor = await star.evaluate(
             (el) => getComputedStyle(el).color,
         );
-        const starRatio = ratio(parseRgb(starColor), hex('#ffffff'));
+        const starRatio = ratio(parseRgb(starColor), hex(T.forest));
         rows.push({ name: 'Stern gefuellt', starColor, starRatio });
         expect(starRatio).toBeGreaterThanOrEqual(3);
+
+        // Sterne im hellen Inhalt (Bewertungen): Beere auf Naturgrund
+        const lightStar = page
+            .getByRole('region', { name: 'Bewertungen' })
+            .locator('li svg')
+            .last();
+        const lightStarColor = await lightStar.evaluate(
+            (el) => getComputedStyle(el).color,
+        );
+        const lightStarRatio = ratio(parseRgb(lightStarColor), hex(T.canvas));
+        rows.push({ name: 'Stern hell', lightStarColor, lightStarRatio });
+        expect(lightStarRatio).toBeGreaterThanOrEqual(3);
 
         writeRaw('regression', 'gate-c-kontrast', { rows });
     });
@@ -211,8 +254,9 @@ test.describe('Gate C – Kontraste der Tokens im Browser', () => {
             return { border: s.borderTopColor, size: parseFloat(s.fontSize) };
         });
         expect(st.size).toBeGreaterThanOrEqual(16);
+        // Gate C1b: Feld auf surface (#fcfdf8)
         expect(
-            ratio(parseRgb(st.border), hex('#ffffff')),
+            ratio(parseRgb(st.border), hex('#fcfdf8')),
         ).toBeGreaterThanOrEqual(3);
     });
 });

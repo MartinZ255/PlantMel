@@ -1,36 +1,52 @@
 <script setup lang="ts">
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+
 /**
  * Gate C: Seitenkopf mit genau einem `h1` (F-42). Optional Dachzeile
  * (`eyebrow`), Beschreibung, Aktionen rechts (mobil darunter) und ein
  * Bereich für Metadaten (`#meta`, z. B. Trefferzahl als Live-Region).
+ *
+ * C1b: Titel in Fraunces (Display), Dachzeile mit Keimling. Der Slot
+ * `#title` erlaubt ein kursives Akzentwort; der zugängliche Name bleibt der
+ * sichtbare Text.
  */
 withDefaults(
     defineProps<{
         title: string;
         description?: string;
         eyebrow?: string;
+        size?: 'md' | 'xl';
     }>(),
-    { description: undefined, eyebrow: undefined },
+    { description: undefined, eyebrow: undefined, size: 'md' },
 );
 </script>
 
 <template>
     <div
-        class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"
+        class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between"
     >
         <div class="min-w-0">
             <p
                 v-if="eyebrow"
-                class="mb-1 text-sm font-semibold tracking-wide text-primary uppercase"
+                class="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold tracking-[0.14em] text-primary uppercase"
             >
+                <LeafOrnament variant="sprout" class="size-4 text-moss" />
                 {{ eyebrow }}
             </p>
             <h1
-                class="text-wrap-anywhere text-3xl font-semibold tracking-tight text-ink sm:text-4xl"
+                class="font-display-wonk text-wrap-anywhere font-semibold text-ink"
+                :class="
+                    size === 'xl'
+                        ? 'text-5xl sm:text-6xl lg:text-7xl'
+                        : 'text-4xl sm:text-5xl'
+                "
             >
-                {{ title }}
+                <slot name="title">{{ title }}</slot>
             </h1>
-            <p v-if="description" class="mt-2 max-w-2xl text-lg text-ink-muted">
+            <p
+                v-if="description"
+                class="mt-3 max-w-2xl text-lg text-ink-muted sm:text-xl"
+            >
                 {{ description }}
             </p>
             <div v-if="$slots.meta" class="mt-2 text-sm text-ink-muted">

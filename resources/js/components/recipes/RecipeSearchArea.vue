@@ -7,10 +7,12 @@
                 <label for="recipe-search" class="sr-only">
                     Rezepte nach Namen durchsuchen
                 </label>
-                <Search
-                    class="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted"
+                <span
+                    class="pointer-events-none absolute top-1/2 left-2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-forest text-matcha"
                     aria-hidden="true"
-                />
+                >
+                    <Search class="size-5" />
+                </span>
                 <input
                     id="recipe-search"
                     v-model="searchTerm"
@@ -18,18 +20,18 @@
                     enterkeyhint="search"
                     autocomplete="off"
                     placeholder="Rezeptname eingeben …"
-                    class="block min-h-13 w-full min-w-0 rounded-full border border-line-strong bg-surface py-3 pr-4 pl-12 text-base text-ink shadow-card placeholder:text-ink-muted focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus"
+                    class="block min-h-14 w-full min-w-0 rounded-[1.6rem_1.2rem_1.7rem_1.3rem] border-[1.5px] border-line-strong bg-surface py-3 pr-4 pl-15 text-base text-ink placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus sm:text-lg"
                     @keydown.enter.prevent="flushSearch"
                 />
             </div>
             <button
                 ref="filterButton"
                 type="button"
-                class="inline-flex min-h-13 shrink-0 items-center justify-center gap-2 rounded-full border px-5 text-base font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                class="inline-flex min-h-14 shrink-0 items-center justify-center gap-2 pebble-morph border-[1.5px] px-6 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 :class="
                     isPanelOpen
-                        ? 'border-primary bg-tint text-primary'
-                        : 'border-line-strong bg-surface text-ink hover:bg-tint'
+                        ? 'border-forest bg-forest text-on-forest'
+                        : 'border-primary bg-surface text-primary hover:bg-tint'
                 "
                 :aria-expanded="
                     isDesktop ? (isPanelOpen ? 'true' : 'false') : undefined
@@ -42,7 +44,7 @@
                 Filter
                 <span
                     v-if="activeFilterCount > 0"
-                    class="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-sm text-on-primary"
+                    class="inline-flex min-w-6 items-center justify-center rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-berry px-1.5 text-sm text-white"
                 >
                     {{ activeFilterCount }}
                     <span class="sr-only">aktiv</span>
@@ -56,12 +58,12 @@
             v-show="isPanelOpen"
             id="recipe-filter-panel"
             aria-labelledby="recipe-filter-title"
-            class="rounded-2xl border border-line bg-surface p-5 shadow-card lg:p-6"
+            class="rounded-[1.75rem_1.5rem_2rem_1.25rem] bg-canvas p-5 ring-1 ring-line/70 lg:p-7"
             @keydown.esc.stop="closePanel(true)"
         >
             <h2
                 id="recipe-filter-title"
-                class="mb-4 text-lg font-semibold text-ink"
+                class="mb-4 font-display text-2xl font-semibold text-ink"
             >
                 Filter
             </h2>
@@ -75,7 +77,7 @@
                 @apply="applyFilters"
             />
             <div
-                class="mt-6 flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:justify-end"
+                class="mt-6 flex flex-col-reverse gap-2 border-t border-line pt-5 sm:flex-row sm:justify-end"
             >
                 <Button variant="ghost" @click="closePanel(true)">
                     Schließen
@@ -111,7 +113,7 @@
         <!-- F-44: aktive Filter als entfernbare Chips -->
         <div
             v-if="activeChips.length"
-            class="flex flex-wrap items-center gap-2"
+            class="flex flex-wrap items-center gap-2 px-1"
         >
             <span class="text-sm font-medium text-ink-muted"
                 >Aktive Filter:</span
@@ -133,7 +135,7 @@
             </ul>
             <button
                 type="button"
-                class="min-h-9 rounded-full px-2 text-sm font-semibold text-primary underline underline-offset-4 hover:text-primary-hover"
+                class="min-h-9 rounded-seed px-2 text-sm font-semibold text-primary underline decoration-berry decoration-2 underline-offset-4 hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 @click="reset"
             >
                 Alle Filter entfernen

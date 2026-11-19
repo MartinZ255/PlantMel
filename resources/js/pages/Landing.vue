@@ -1,15 +1,31 @@
 <script setup lang="ts">
+import FeaturedRecipeBand from '@/components/landing/FeaturedRecipeBand.vue';
+import LandingHeroArt from '@/components/landing/LandingHeroArt.vue';
 import AppLayout from '@/components/layout/AppLayout.vue';
+import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
 import Button from '@/components/ui/Button.vue';
-import type { AppPageProps } from '@/types';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import Reveal from '@/components/ui/Reveal.vue';
+import WaveDivider from '@/components/ui/WaveDivider.vue';
+import type { AppPageProps, FeaturedRecipe } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ArrowRight, Carrot, FolderHeart, Leaf, Search } from 'lucide-vue-next';
+import { ArrowRight, Carrot, FolderHeart, Search } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { route } from 'ziggy-js';
 
-const page = usePage<AppPageProps<{ canRegister?: boolean }>>();
+const props = withDefaults(
+    defineProps<{
+        canRegister?: boolean;
+        /** Gate C1b: bis zu 6 Rezepte mit Bild, neueste zuerst (routes/web.php) */
+        featuredRecipes?: FeaturedRecipe[];
+    }>(),
+    { canRegister: false, featuredRecipes: () => [] },
+);
+
+const page = usePage<AppPageProps>();
 const user = computed(() => page.props.auth?.user ?? null);
-const canRegister = computed(() => page.props.canRegister ?? false);
+
+const featured = computed(() => props.featuredRecipes ?? []);
 
 // E8/F-55: nur vorhandene Funktionen bewerben (genau drei Punkte)
 const benefits = [
@@ -33,180 +49,232 @@ const benefits = [
 
 <template>
     <AppLayout page-title="PlantMel – Deine Rezept-Sammlung" bleed>
-        <!-- Einstieg -->
-        <section class="relative overflow-hidden bg-surface">
+        <!-- ============================================================
+             Einstieg: große Fraunces-Headline + organische Bildkomposition
+             ============================================================ -->
+        <section
+            aria-labelledby="landing-title"
+            class="relative overflow-hidden"
+        >
+            <BlobBackdrop tone="light" />
+            <LeafOrnament
+                variant="sprig"
+                class="pointer-events-none absolute top-6 -left-6 h-32 animate-float-slow text-tint-strong [--float-rotate:-28deg] sm:left-[3%] lg:h-44"
+            />
+
             <div
-                class="mx-auto grid w-full max-w-(--content-max) items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-24"
+                class="relative mx-auto grid w-full max-w-(--content-max) items-center gap-10 px-4 pt-10 pb-12 sm:px-6 sm:pt-14 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:px-8 lg:pt-16 lg:pb-20"
             >
-                <div class="relative z-(--z-raised) min-w-0">
+                <div class="relative min-w-0">
                     <p
-                        class="mb-4 inline-flex items-center gap-2 rounded-full bg-tint px-3 py-1 text-sm font-semibold text-primary"
+                        class="mb-6 inline-flex items-center gap-2 rounded-seed bg-surface/80 px-3.5 py-1.5 text-sm font-semibold text-primary shadow-card"
                     >
-                        <Leaf class="size-4" aria-hidden="true" />
+                        <LeafOrnament
+                            variant="sprout"
+                            class="size-4 text-moss"
+                        />
                         Pflanzenbetonte Küche
                     </p>
                     <h1
-                        class="text-4xl font-semibold tracking-tight text-balance [overflow-wrap:anywhere] text-ink sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05]"
+                        id="landing-title"
+                        class="font-display-wonk text-[clamp(2.4rem,10.5vw,5.75rem)] leading-[0.98] font-semibold text-balance [overflow-wrap:anywhere] text-ink"
                     >
-                        Lieblingsrezepte an einem Ort
+                        Lieblings&shy;rezepte,
+                        <span class="relative inline-block whitespace-nowrap">
+                            <span class="accent-word text-primary"
+                                >liebevoll</span
+                            >
+                            <!-- handgezeichneter Strich unter dem Akzentwort -->
+                            <svg
+                                viewBox="0 0 220 24"
+                                preserveAspectRatio="none"
+                                class="absolute -bottom-1 left-0 h-[0.22em] w-full text-berry"
+                                aria-hidden="true"
+                                focusable="false"
+                            >
+                                <path
+                                    d="M3 17 C 40 6 92 4 140 10 C 168 13 196 9 217 5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="5"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                        </span>
+                        gesammelt.
                     </h1>
-                    <p class="mt-5 max-w-xl text-lg text-ink-muted sm:text-xl">
+                    <p
+                        class="mt-7 max-w-xl text-lg leading-relaxed text-ink-muted sm:text-xl"
+                    >
                         Speichere, sortiere und entdecke pflanzenbetonte Rezepte
                         für deinen Alltag – mit PlantMel behältst du den
                         Überblick.
                     </p>
 
                     <div
-                        class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap"
+                        class="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
                     >
                         <!-- F-21: öffentlicher Einstieg ohne Anmeldung -->
                         <Button :href="route('recipes.index')" size="lg">
                             Rezepte entdecken
                             <ArrowRight class="size-5" aria-hidden="true" />
                         </Button>
-                        <template v-if="user">
-                            <Button
-                                :href="route('home')"
-                                variant="secondary"
-                                size="lg"
-                            >
-                                Zu meinem Dashboard
-                            </Button>
-                        </template>
-                        <template v-else>
-                            <Button
-                                :href="route('login')"
-                                variant="secondary"
-                                size="lg"
-                            >
-                                Anmelden
-                            </Button>
-                        </template>
+                        <Button
+                            v-if="user"
+                            :href="route('home')"
+                            variant="secondary"
+                            size="lg"
+                        >
+                            Zu meinem Dashboard
+                        </Button>
+                        <Button
+                            v-else
+                            :href="route('login')"
+                            variant="secondary"
+                            size="lg"
+                        >
+                            Anmelden
+                        </Button>
                     </div>
-                    <p v-if="!user && canRegister" class="mt-4 text-ink-muted">
+                    <p v-if="!user && canRegister" class="mt-5 text-ink-muted">
                         Neu hier?
                         <Link
                             :href="route('register')"
-                            class="font-semibold text-primary underline underline-offset-4 hover:text-primary-hover"
+                            class="font-semibold text-primary underline decoration-berry decoration-2 underline-offset-4 hover:text-primary-hover"
                         >
                             Konto erstellen
                         </Link>
                     </p>
                 </div>
 
-                <!-- Grafik aus Formen und Farbflächen (keine Fotos, keine Zahlen) -->
-                <div
-                    class="relative mx-auto aspect-square w-full max-w-md lg:max-w-none"
-                    aria-hidden="true"
-                >
-                    <div
-                        class="absolute inset-[8%] rounded-[2.5rem] bg-tint"
-                    ></div>
-                    <div
-                        class="absolute top-[2%] right-[6%] size-[34%] rounded-full bg-accent"
-                    ></div>
-                    <div
-                        class="absolute bottom-[6%] left-[2%] size-[26%] rounded-full bg-primary"
-                    ></div>
-                    <!-- stilisierte Rezeptkarte -->
-                    <div
-                        class="absolute top-[20%] left-[16%] w-[62%] -rotate-3 overflow-hidden rounded-2xl border border-line bg-surface shadow-overlay"
-                    >
-                        <div
-                            class="relative aspect-[4/3] bg-gradient-to-br from-tint-strong to-tint"
-                        >
-                            <Leaf
-                                class="absolute top-1/2 left-1/2 size-[30%] -translate-x-1/2 -translate-y-1/2 text-primary"
-                            />
-                        </div>
-                        <div class="flex flex-col gap-2 p-[7%]">
-                            <span
-                                class="h-2.5 w-3/4 rounded-full bg-ink/80"
-                            ></span>
-                            <span class="h-2 w-1/2 rounded-full bg-line"></span>
-                            <span class="mt-1 flex gap-1.5">
-                                <span
-                                    class="h-4 w-12 rounded-full bg-tint"
-                                ></span>
-                                <span
-                                    class="h-4 w-10 rounded-full bg-accent-surface"
-                                ></span>
-                            </span>
-                        </div>
-                    </div>
-                    <!-- zweite, kleinere Karte -->
-                    <div
-                        class="absolute right-[4%] bottom-[14%] w-[40%] rotate-6 rounded-2xl border border-line bg-surface p-[4%] shadow-raised"
-                    >
-                        <span
-                            class="mb-2 block h-2 w-2/3 rounded-full bg-ink/70"
-                        ></span>
-                        <span
-                            class="mb-1.5 block h-1.5 w-full rounded-full bg-line"
-                        ></span>
-                        <span
-                            class="mb-1.5 block h-1.5 w-5/6 rounded-full bg-line"
-                        ></span>
-                        <span
-                            class="block h-1.5 w-1/2 rounded-full bg-line"
-                        ></span>
-                    </div>
-                </div>
+                <LandingHeroArt :recipes="featured.slice(0, 3)" />
             </div>
         </section>
 
-        <!-- Vorteile -->
+        <!-- ============================================================
+             Vorteile: Waldgrün-Band mit welligen Übergängen
+             ============================================================ -->
+        <!-- Wellen liegen IN der Waldgrün-Fläche (Naturgrund-Farbe), damit Körnung und
+             Verlauf ohne Nahtstelle bis an die Welle reichen -->
         <section
             aria-labelledby="landing-benefits-title"
-            class="mx-auto w-full max-w-(--content-max) px-4 py-14 sm:px-6 lg:px-8 lg:py-20"
+            class="relative overflow-hidden bg-forest grain-light on-forest"
         >
-            <h2
-                id="landing-benefits-title"
-                class="text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+            <BlobBackdrop tone="forest" />
+            <WaveDivider :variant="1" flip class="text-canvas" />
+            <LeafOrnament
+                variant="leaf"
+                class="pointer-events-none absolute top-[24%] right-[4%] h-40 animate-sway text-forest-soft [--float-rotate:24deg] lg:h-56"
+            />
+            <LeafOrnament
+                variant="eucalyptus"
+                class="pointer-events-none absolute -bottom-10 left-[38%] hidden h-48 rotate-[64deg] text-forest-soft lg:block"
+            />
+
+            <div
+                class="relative mx-auto grid w-full max-w-(--content-max) gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16 lg:px-8 lg:py-16"
             >
-                Was du mit PlantMel machen kannst
-            </h2>
-            <ul class="mt-8 grid gap-5 md:grid-cols-3">
-                <li
-                    v-for="b in benefits"
-                    :key="b.title"
-                    class="rounded-2xl border border-line bg-surface p-6 shadow-card"
-                >
-                    <span
-                        class="inline-flex size-12 items-center justify-center rounded-xl bg-tint text-primary"
-                        aria-hidden="true"
+                <Reveal class="min-w-0">
+                    <p
+                        class="mb-3 inline-flex items-center gap-2 text-sm font-semibold tracking-[0.14em] text-matcha uppercase"
                     >
-                        <component :is="b.icon" class="size-6" />
-                    </span>
-                    <h3 class="mt-4 text-lg font-semibold text-ink">
-                        {{ b.title }}
-                    </h3>
-                    <p class="mt-1.5 text-ink-muted">{{ b.text }}</p>
-                </li>
-            </ul>
+                        <LeafOrnament variant="sprout" class="size-4" />
+                        Deine Küche, sortiert
+                    </p>
+                    <h2
+                        id="landing-benefits-title"
+                        class="font-display-wonk text-4xl font-semibold text-balance text-on-forest sm:text-5xl"
+                    >
+                        Was du mit PlantMel
+                        <span class="accent-word text-matcha">machen</span>
+                        kannst
+                    </h2>
+                </Reveal>
+
+                <ul
+                    class="flex flex-col gap-5"
+                    aria-labelledby="landing-benefits-title"
+                >
+                    <Reveal
+                        v-for="(b, i) in benefits"
+                        :key="b.title"
+                        as="li"
+                        :delay="i * 120"
+                        class="relative flex min-w-0 items-start gap-5 rounded-[2rem_1.5rem_2.25rem_1.75rem] bg-forest-deep/45 p-5 sm:p-6"
+                        :class="i === 1 ? 'lg:ml-12' : i === 2 ? 'lg:ml-4' : ''"
+                    >
+                        <span
+                            class="relative blob-mask inline-flex size-16 shrink-0 items-center justify-center bg-matcha text-forest shadow-card"
+                            :class="['blob-1', 'blob-3', 'blob-5'][i]"
+                            aria-hidden="true"
+                        >
+                            <component :is="b.icon" class="size-7" />
+                        </span>
+                        <div class="min-w-0">
+                            <h3
+                                class="flex items-baseline gap-3 font-display text-2xl font-semibold text-on-forest"
+                            >
+                                <span
+                                    class="accent-word text-lg text-matcha"
+                                    aria-hidden="true"
+                                    >0{{ i + 1 }}</span
+                                >
+                                {{ b.title }}
+                            </h3>
+                            <p class="mt-1.5 text-on-forest-muted">
+                                {{ b.text }}
+                            </p>
+                        </div>
+                    </Reveal>
+                </ul>
+            </div>
+            <WaveDivider :variant="2" class="text-canvas" />
         </section>
 
-        <!-- Abschluss -->
-        <section class="px-4 pb-16 sm:px-6 lg:px-8">
-            <div
-                class="mx-auto flex w-full max-w-(--content-max) flex-col items-start gap-5 rounded-3xl bg-primary px-6 py-10 text-on-primary sm:px-10 md:flex-row md:items-center md:justify-between"
+        <!-- ============================================================
+             Auswahl: wischbares Band mit echten Rezeptbildern
+             ============================================================ -->
+        <FeaturedRecipeBand v-if="featured.length" :recipes="featured" />
+
+        <!-- ============================================================
+             Abschluss-Aufruf auf einem großen Matcha-Blob
+             ============================================================ -->
+        <section
+            aria-labelledby="landing-cta-title"
+            class="px-4 pt-6 pb-4 sm:px-6 lg:px-8"
+        >
+            <Reveal
+                class="relative mx-auto w-full max-w-(--content-max) overflow-hidden rounded-[3rem_2.25rem_3.5rem_2.5rem] bg-matcha grain px-6 py-12 sm:px-12 lg:px-16 lg:py-16"
             >
-                <div class="min-w-0">
-                    <h2 class="text-2xl font-semibold tracking-tight">
-                        Lust auf etwas Neues?
+                <span
+                    class="pointer-events-none absolute -top-24 -right-16 size-72 animate-morph bg-tint-strong/80 sm:size-96"
+                    aria-hidden="true"
+                ></span>
+                <LeafOrnament
+                    variant="sprig"
+                    class="pointer-events-none absolute right-[6%] -bottom-6 h-44 animate-float text-moss/70 [--float-rotate:-18deg] sm:h-56"
+                />
+                <div class="relative max-w-2xl">
+                    <h2
+                        id="landing-cta-title"
+                        class="font-display-wonk text-4xl font-semibold text-balance text-forest sm:text-5xl"
+                    >
+                        Lust auf etwas
+                        <span class="accent-word text-berry">Neues</span>?
                     </h2>
-                    <p class="mt-1 text-on-primary">
+                    <p class="mt-3 text-lg text-forest">
                         Stöbere ohne Anmeldung durch alle Rezepte.
                     </p>
+                    <Button
+                        :href="route('recipes.index')"
+                        size="lg"
+                        class="mt-7"
+                    >
+                        Zu den Rezepten
+                        <ArrowRight class="size-5" aria-hidden="true" />
+                    </Button>
                 </div>
-                <Link
-                    :href="route('recipes.index')"
-                    class="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-surface px-6 text-lg font-semibold text-primary hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                    Zu den Rezepten
-                    <ArrowRight class="size-5" aria-hidden="true" />
-                </Link>
-            </div>
+            </Reveal>
         </section>
     </AppLayout>
 </template>

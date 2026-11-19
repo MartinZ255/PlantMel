@@ -25,6 +25,8 @@ interface Props {
     /** Eingabe: zugänglicher Name der Gruppe */
     label?: string;
     max?: number;
+    /** Anzeige auf Waldgrün-Flächen: Sterne Matcha, Text hell */
+    tone?: 'default' | 'on-forest';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
     size: 'md',
     label: 'Bewertung',
     max: 5,
+    tone: 'default',
 });
 
 const model = defineModel<number | null>('modelValue', { default: null });
@@ -64,6 +67,7 @@ const countText = computed(() => {
 });
 
 const starSize = computed(() => (props.size === 'sm' ? 'size-4' : 'size-5'));
+const onForest = computed(() => props.tone === 'on-forest');
 
 // --- Eingabe ---------------------------------------------------------------
 const hover = ref<number | null>(null);
@@ -78,11 +82,15 @@ const stars = computed(() => Array.from({ length: props.max }, (_, i) => i + 1))
         class="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5"
     >
         <span class="relative inline-flex shrink-0" aria-hidden="true">
-            <span class="inline-flex text-star-empty">
+            <span
+                class="inline-flex"
+                :class="onForest ? 'text-on-forest-muted' : 'text-star-empty'"
+            >
                 <Star v-for="i in max" :key="i" :class="starSize" />
             </span>
             <span
-                class="absolute inset-y-0 left-0 inline-flex overflow-hidden text-star"
+                class="absolute inset-y-0 left-0 inline-flex overflow-hidden"
+                :class="onForest ? 'text-matcha' : 'text-star'"
                 :style="{ width: `${fillPercent}%` }"
             >
                 <Star
@@ -94,13 +102,20 @@ const stars = computed(() => Array.from({ length: props.max }, (_, i) => i + 1))
             </span>
         </span>
         <span
-            class="text-sm text-ink"
-            :class="compact ? 'font-semibold' : 'font-medium'"
+            class="text-sm"
+            :class="[
+                compact ? 'font-semibold' : 'font-medium',
+                onForest ? 'text-on-forest' : 'text-ink',
+            ]"
         >
             <template v-if="displayValue != null">
                 {{ format(displayValue) }}
                 <span :class="compact && 'sr-only'">von {{ max }}</span>
-                <span v-if="countText" class="font-normal text-ink-muted">
+                <span
+                    v-if="countText"
+                    class="font-normal"
+                    :class="onForest ? 'text-on-forest-muted' : 'text-ink-muted'"
+                >
                     ({{ countText }})</span
                 >
             </template>

@@ -5,6 +5,7 @@ import { navLinkBase, navLinkState } from '@/components/layout/navStyles';
 import UserMenu from '@/components/layout/UserMenu.vue';
 import Button from '@/components/ui/Button.vue';
 import { useAppNavigation } from '@/composables/useAppNavigation';
+import { cn } from '@/lib/utils';
 import { Link } from '@inertiajs/vue3';
 import { Lock, Menu, Plus } from 'lucide-vue-next';
 import { toRef } from 'vue';
@@ -31,7 +32,10 @@ const collectionLinks = nav.collectionLinks;
 </script>
 
 <template>
-    <header class="sticky top-0 z-(--z-header) border-b border-line bg-surface">
+    <!-- C1b: leicht transparent mit Unschärfe auf dem Naturgrund -->
+    <header
+        class="sticky top-0 z-(--z-header) border-b border-line/60 bg-canvas/85 backdrop-blur-md backdrop-saturate-150"
+    >
         <div
             class="mx-auto flex h-(--header-height) w-full max-w-(--content-max) items-center gap-2 px-4 sm:px-6 lg:gap-6 lg:px-8"
         >
@@ -87,7 +91,12 @@ const collectionLinks = nav.collectionLinks;
                 <template v-if="!user">
                     <Link
                         :href="route('login')"
-                        :class="[navLinkBase, 'text-ink hover:bg-canvas']"
+                        :class="
+                            cn(
+                                navLinkBase,
+                                'px-2.5 text-ink hover:bg-tint sm:px-3.5',
+                            )
+                        "
                     >
                         Anmelden
                     </Link>
@@ -110,7 +119,7 @@ const collectionLinks = nav.collectionLinks;
                 <!-- Menü-Knopf unter md -->
                 <button
                     type="button"
-                    class="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:hidden"
+                    class="inline-flex size-11 items-center justify-center rounded-pebble bg-forest text-matcha shadow-card hover:bg-forest-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:hidden"
                     aria-label="Menü"
                     aria-controls="mobile-menu"
                     :aria-expanded="menuOpen ? 'true' : 'false'"
