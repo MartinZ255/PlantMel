@@ -393,3 +393,9 @@ Branch `fix/slice-4-konto-recht-import` (lokal). Belege: reguläre Suite 562 Tes
 | F-86 | P2 | Bestätigungsmails werden synchron verschickt: Ist der Mailversand bei eingeschalteter Verifizierung kaputt, scheitert die Registrierung. | Mailversand vor dem Einschalten testen (`MAIL-SETUP.md`); optional Versand über die Queue |
 | F-87 | P2 | `recipe_imports` hat keine Löschfrist (Datenschutz-Vorlage P6). | Aufbewahrungsregel festlegen, dann `model:prune` |
 | F-88 | P3 | Nach jedem Update ist `npm ci` vor `npm run build` nötig, sonst bleiben neue Asset-Pakete ungebündelt (beim Merge selbst passiert). | in das Deployment-Runbook aufnehmen |
+
+### Nachtrag 2026-11-19: TikTok-Import lokal
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-89 | P1 | Import scheiterte in Schritt 2 („Das Video konnte nicht geladen werden.“). Log: yt-dlp 2026.07.04 meldete `Unexpected response from webpage request` – TikTok hatte die Seite geändert. Nach `winget upgrade yt-dlp.yt-dlp` auf 2026.10.26 liefert `yt-dlp -J` für dasselbe Video wieder Metadaten (Exit 0). | yt-dlp auf dem VPS regelmäßig automatisch aktualisieren (z. B. wöchentlicher Timer `yt-dlp -U` bzw. pip/pipx); in das Deployment-Runbook aufnehmen |
