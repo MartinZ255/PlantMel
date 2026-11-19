@@ -1,23 +1,49 @@
 <script setup lang="ts">
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import { Link } from '@inertiajs/vue3';
-import { Leaf } from 'lucide-vue-next';
 
-/** Gate C: Wortmarke. Gäste → `/`, Angemeldete → `/home` (F-21). */
-defineProps<{ href: string; current?: boolean }>();
+/**
+ * Gate C: Wortmarke. Gäste → `/`, Angemeldete → `/home` (F-21).
+ * C1b: Signet = Keimling in einem Waldgrün-Blob, Wortmarke in Fraunces mit
+ * kursivem „Mel“. `tone="on-forest"` für dunkle Flächen (Footer, Mobilmenü).
+ * Ohne `href` (z. B. Footer) wird nur die Marke angezeigt.
+ */
+withDefaults(
+    defineProps<{
+        href?: string;
+        current?: boolean;
+        tone?: 'default' | 'on-forest';
+    }>(),
+    { href: undefined, current: false, tone: 'default' },
+);
 </script>
 
 <template>
-    <Link
+    <component
+        :is="href ? Link : 'span'"
         :href="href"
-        class="inline-flex shrink-0 items-center gap-2 rounded-full py-1 pr-2 text-lg font-semibold tracking-tight text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        :aria-current="current ? 'page' : undefined"
+        class="group inline-flex shrink-0 items-center gap-2 rounded-full py-1 pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:gap-2.5 sm:pr-2"
+        :aria-current="href && current ? 'page' : undefined"
     >
         <span
-            class="inline-flex size-9 items-center justify-center rounded-xl bg-primary text-on-primary"
+            class="inline-flex size-9 items-center justify-center rounded-[58%_42%_52%_48%/46%_54%_46%_54%] transition-[border-radius,rotate] duration-700 ease-organic group-hover:-rotate-6 group-hover:rounded-[44%_56%_40%_60%/56%_44%_58%_42%]"
+            :class="
+                tone === 'on-forest'
+                    ? 'bg-matcha text-forest'
+                    : 'bg-forest text-matcha'
+            "
             aria-hidden="true"
         >
-            <Leaf class="size-5" />
+            <LeafOrnament variant="sprout" class="size-5.5" />
         </span>
-        <span>PlantMel<span class="sr-only"> – Startseite</span></span>
-    </Link>
+        <span
+            class="font-display-wonk text-[1.3rem] leading-none font-semibold tracking-tight sm:text-[1.45rem]"
+            :class="tone === 'on-forest' ? 'text-on-forest' : 'text-ink'"
+            >Plant<span
+                class="accent-word"
+                :class="tone === 'on-forest' ? 'text-matcha' : 'text-primary'"
+                >Mel</span
+            ><span v-if="href" class="sr-only"> – Startseite</span></span
+        >
+    </component>
 </template>

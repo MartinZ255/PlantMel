@@ -25,7 +25,9 @@ use RuntimeException;
  * - Nur für die E2E-Datenbank `database/e2e.sqlite` gedacht (siehe tests/e2e/global-setup.ts).
  * - Bewusst NICHT im DatabaseSeeder registriert.
  * - Nutzt keine Factories: Daten werden direkt ueber die Modelle erzeugt.
- * - Bilder werden lokal per GD als einfarbige PNGs erzeugt (keine Downloads).
+ * - Bilder werden lokal per GD erzeugt (keine Downloads, keine fremden Fotos): seit Gate C1b
+ *   eine weiche „Teller von oben“-Komposition in den Farbtönen des Gerichts statt einer
+ *   einfarbigen Fläche (foodPng). Pfade, Rezept-IDs und alle übrigen Daten bleiben gleich.
  *
  * Die IDs (Rezepte 1..8, Sammlungen 1..2) sind stabil, weil die Datei vor jedem Lauf neu
  * angelegt wird. tests/e2e/support/fixtures.ts spiegelt diese Werte.
@@ -103,7 +105,7 @@ class E2eSeeder extends Seeder
                 'description' => 'Herzhafte Bolognese mit roten Linsen, ideal für die schnelle Feierabendküche.',
                 'duration' => 35,
                 'servings' => 4,
-                'image' => [125, 168, 121],
+                'image' => [150, 62, 44], // Linsen-Bolognese: tiefes Tomatenrot
                 'categories' => ['Abendessen', 'Vegetarisch'],
                 'ingredients' => [
                     ['Rote Linsen', '200 g', ['Braune Linsen']],
@@ -126,7 +128,7 @@ class E2eSeeder extends Seeder
                 'description' => 'Ein absichtlich sehr langer zusammengesetzter Titel, um Umbruch und Overflow zu prüfen.',
                 'duration' => 50,
                 'servings' => 3,
-                'image' => [232, 180, 83],
+                'image' => [226, 150, 52], // Kürbis-Curry: Orange
                 'categories' => ['Mittagessen', 'Abendessen', 'Vegetarisch', 'Low Carb'],
                 'ingredients' => [
                     ['Kichererbsen (gekocht)', '1 Dose', ['Weiße Bohnen (gekocht)']],
@@ -168,7 +170,7 @@ class E2eSeeder extends Seeder
                 'description' => 'Schnelle Pfanne mit Sojasauce.',
                 'duration' => 20,
                 'servings' => 2,
-                'image' => [94, 120, 160],
+                'image' => [168, 124, 76], // Räuchertofu: Röstbraun
                 'categories' => ['Abendessen'],
                 'ingredients' => [
                     ['Räuchertofu', '200 g', ['Naturtofu', 'Tempeh']],
@@ -187,7 +189,7 @@ class E2eSeeder extends Seeder
                 'description' => null,
                 'duration' => 30,
                 'servings' => 2,
-                'image' => [160, 90, 70],
+                'image' => [196, 150, 92], // Quinoa-Bowl: Sand
                 'categories' => ['Mittagessen', 'Vegetarisch'],
                 'ingredients' => [
                     ['Quinoa', '150 g', []],
@@ -206,7 +208,7 @@ class E2eSeeder extends Seeder
                 'description' => 'Ohne Bewertungen.',
                 'duration' => 15,
                 'servings' => 2,
-                'image' => [200, 70, 60],
+                'image' => [214, 86, 58], // Tomatenpasta: Tomate
                 // E2E-Wegwerf-Tag: F-07-Regressionstest löscht die Kategorie mit Bestätigung
                 'categories' => ['Mittagessen', 'E2E-Wegwerf-Tag'],
                 'ingredients' => [
@@ -224,7 +226,7 @@ class E2eSeeder extends Seeder
                 'description' => 'Dessert für Vorbereitung am Vorabend.',
                 'duration' => 10,
                 'servings' => 2,
-                'image' => [240, 200, 120],
+                'image' => [244, 182, 64], // Chia-Mango: Mango
                 'categories' => ['Dessert', 'Snack'],
                 'ingredients' => [
                     ['Chiasamen', '4 EL', ['Leinsamen (geschrotet)']],
@@ -242,7 +244,7 @@ class E2eSeeder extends Seeder
                 'description' => 'Rezept ohne Kategorien.',
                 'duration' => 45,
                 'servings' => 4,
-                'image' => [110, 140, 90],
+                'image' => [208, 116, 62], // Ofengemüse: Karotte
                 'categories' => [],
                 'ingredients' => [
                     ['Karotten', '4 Stück', []],
@@ -308,7 +310,7 @@ class E2eSeeder extends Seeder
 
             if ($data['image'] !== null) {
                 $path = 'e2e/recipe-'.($i + 1).'.png';
-                $disk->put($path, $this->solidPng($data['image']));
+                $disk->put($path, $this->foodPng($data['image'], $i + 1));
                 RecipeImage::create(['recipe_id' => $recipe->id, 'image_path' => $path]);
             }
 
@@ -381,10 +383,112 @@ class E2eSeeder extends Seeder
         return implode("\n", $lines);
     }
 
-    private function solidPng(array $rgb): string
+    /**
+     * Gate C1b: lokal erzeugtes Platzhalterbild „Teller von oben“ (keine Downloads, keine
+     * fremden Fotos). Deterministisch je Rezept: Tischfläche mit weichem Verlauf, Teller mit
+     * Rand und Schatten, darauf viele halbtransparente Kreise in Farbtönen des Gerichts und
+     * ein paar Kräuterblätter. Format 4:3 (960 x 720), PNG.
+     */
+    private function foodPng(array $rgb, int $seed): string
     {
-        $img = imagecreatetruecolor(1200, 800);
-        imagefill($img, 0, 0, imagecolorallocate($img, $rgb[0], $rgb[1], $rgb[2]));
+        mt_srand($seed);
+        $w = 960;
+        $h = 720;
+        $img = imagecreatetruecolor($w, $h);
+        imagealphablending($img, true);
+
+        // Tischfläche: abwechselnd heller Leinenton und dunkles Waldgrün, weicher Verlauf
+        $dark = $seed % 2 === 0;
+        $top = $dark ? [24, 52, 40] : [236, 232, 218];
+        $bottom = $dark ? [14, 36, 28] : [214, 222, 200];
+        for ($y = 0; $y < $h; $y++) {
+            $t = $y / ($h - 1);
+            $c = imagecolorallocate(
+                $img,
+                (int) round($top[0] + ($bottom[0] - $top[0]) * $t),
+                (int) round($top[1] + ($bottom[1] - $top[1]) * $t),
+                (int) round($top[2] + ($bottom[2] - $top[2]) * $t),
+            );
+            imageline($img, 0, $y, $w, $y, $c);
+        }
+
+        $clamp = static fn (float $v): int => max(0, min(255, (int) round($v)));
+        $shade = static function (array $c, float $f) use ($clamp): array {
+            return $f >= 0
+                ? [$clamp($c[0] + (255 - $c[0]) * $f), $clamp($c[1] + (255 - $c[1]) * $f), $clamp($c[2] + (255 - $c[2]) * $f)]
+                : [$clamp($c[0] * (1 + $f)), $clamp($c[1] * (1 + $f)), $clamp($c[2] * (1 + $f))];
+        };
+        $color = static fn (array $c, int $alpha = 0) => imagecolorallocatealpha($img, $c[0], $c[1], $c[2], $alpha);
+
+        // Teller (leicht aus der Mitte), Schatten, Rand, Innenfläche
+        $cx = (int) ($w * (0.46 + mt_rand(0, 8) / 100));
+        $cy = (int) ($h * (0.5 + mt_rand(-4, 4) / 100));
+        $r = (int) ($h * 0.43);
+        imagefilledellipse($img, $cx + 18, $cy + 26, 2 * $r + 10, 2 * $r + 10, $color([0, 0, 0], $dark ? 70 : 96));
+        imagefilledellipse($img, $cx, $cy, 2 * $r, 2 * $r, $color([248, 248, 242]));
+        imagefilledellipse($img, $cx, $cy, (int) (1.62 * $r), (int) (1.62 * $r), $color([236, 238, 228]));
+
+        // Essen: viele weiche Kreise in Farbtönen des Gerichts
+        $tones = [$rgb, $shade($rgb, -0.25), $shade($rgb, 0.25), $shade($rgb, -0.45), $shade($rgb, 0.45)];
+        $inner = 0.66 * $r;
+        // Grundschicht (Soße/Brei) als unregelmäßiger Fleck
+        for ($i = 0; $i < 9; $i++) {
+            $a = $i / 9 * 6.283;
+            imagefilledellipse($img, (int) ($cx + cos($a) * $inner * 0.35), (int) ($cy + sin($a) * $inner * 0.35), (int) ($inner * 1.3), (int) ($inner * 1.2), $color($shade($rgb, 0.15), 70));
+        }
+        for ($i = 0; $i < 420; $i++) {
+            $a = mt_rand(0, 6283) / 1000;
+            $d = sqrt(mt_rand(0, 1000) / 1000) * $inner;
+            $x = (int) ($cx + cos($a) * $d);
+            $y = (int) ($cy + sin($a) * $d);
+            $s = mt_rand(14, 58);
+            imagefilledellipse($img, $x, $y, $s, (int) ($s * (0.7 + mt_rand(0, 40) / 100)), $color($tones[mt_rand(0, 4)], mt_rand(10, 60)));
+        }
+
+        // Kräuterblätter (Polygon in Blattform, gedreht)
+        $leafGreens = [[92, 140, 58], [61, 110, 52], [140, 178, 92]];
+        for ($i = 0; $i < 14; $i++) {
+            $a = mt_rand(0, 6283) / 1000;
+            $d = sqrt(mt_rand(0, 1000) / 1000) * ($inner * 0.95);
+            $lx = $cx + cos($a) * $d;
+            $ly = $cy + sin($a) * $d;
+            $len = mt_rand(26, 46);
+            $rot = mt_rand(0, 6283) / 1000;
+            $pts = [];
+            for ($k = 0; $k <= 16; $k++) {
+                $t = $k / 16;
+                $px = $len * $t;
+                $py = sin(M_PI * $t) * $len * 0.32;
+                $pts[] = [$px, $py];
+            }
+            for ($k = 15; $k >= 1; $k--) {
+                $t = $k / 16;
+                $pts[] = [$len * $t, -sin(M_PI * $t) * $len * 0.32];
+            }
+            $flat = [];
+            foreach ($pts as [$px, $py]) {
+                $flat[] = (int) round($lx + $px * cos($rot) - $py * sin($rot));
+                $flat[] = (int) round($ly + $px * sin($rot) + $py * cos($rot));
+            }
+            imagefilledpolygon($img, $flat, $color($leafGreens[mt_rand(0, 2)], 8));
+        }
+
+        // Ein paar Kräuter und Krümel neben dem Teller
+        for ($i = 0; $i < 18; $i++) {
+            $x = mt_rand(0, $w);
+            $y = mt_rand(0, $h);
+            if (hypot($x - $cx, $y - $cy) < $r + 20) {
+                continue;
+            }
+            $s = mt_rand(6, 18);
+            imagefilledellipse($img, $x, $y, $s, $s, $color($i % 3 === 0 ? $rgb : $leafGreens[$i % 3], 30));
+        }
+
+        // weichzeichnen: wirkt wie unscharfes Foto statt Vektorgrafik
+        for ($i = 0; $i < 3; $i++) {
+            imagefilter($img, IMG_FILTER_GAUSSIAN_BLUR);
+        }
+
         ob_start();
         imagepng($img, null, 9);
         $png = (string) ob_get_clean();

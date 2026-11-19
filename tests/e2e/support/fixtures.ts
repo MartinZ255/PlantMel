@@ -118,9 +118,15 @@ export async function settle(page: Page): Promise<void> {
     await page.waitForLoadState('networkidle').catch(() => undefined);
     await page.evaluate(async () => {
         await document.fonts.ready;
+        // Gate C1b: Bilder mit loading="lazy" weit unterhalb des Sichtbereichs laedt der
+        // Browser absichtlich erst beim Scrollen - auf sie wird nicht gewartet (sonst haengt
+        // settle bei langen Listen). Alle anderen unvollstaendigen Bilder wie bisher.
+        const isDeferred = (img: HTMLImageElement) =>
+            img.loading === 'lazy' &&
+            img.getBoundingClientRect().top > window.innerHeight * 1.5;
         await Promise.all(
             Array.from(document.images)
-                .filter((img) => !img.complete)
+                .filter((img) => !img.complete && !isDeferred(img))
                 .map(
                     (img) =>
                         new Promise((resolve) => {
@@ -167,6 +173,23 @@ export async function measureLayout(page: Page): Promise<LayoutMetrics> {
             }
             return parts.join(' > ');
         };
+        // Gate C1b: sichtbarer Teil eines Elements. Vorfahren mit overflow-x != visible
+        // (z. B. Abschnitte mit dekorativen Blobs, das wischbare Rezeptband, SVGs) schneiden
+        // ab; was dort abgeschnitten ist, ragt fuer Nutzer nicht ueber den Rand. <body> und
+        // <html> zaehlen bewusst nicht (das Legacy-CSS setzt dort overflow-x: hidden und
+        // wuerde echten Ueberlauf sonst verdecken).
+        const visibleRight = (el: Element): number => {
+            let right = el.getBoundingClientRect().right;
+            for (
+                let cur = el.parentElement;
+                cur && cur !== document.body && cur !== document.documentElement;
+                cur = cur.parentElement
+            ) {
+                if (getComputedStyle(cur).overflowX !== 'visible')
+                    right = Math.min(right, cur.getBoundingClientRect().right);
+            }
+            return right;
+        };
         const over: string[] = [];
         let count = 0;
         for (const el of Array.from(document.body.querySelectorAll('*'))) {
@@ -176,7 +199,7 @@ export async function measureLayout(page: Page): Promise<LayoutMetrics> {
             const r = el.getBoundingClientRect();
             if (r.width === 0 || r.height === 0) continue;
             if (r.left >= vw) continue; // komplett ausserhalb (z. B. Off-Canvas) zaehlt nicht als Ueberstand
-            if (r.right > vw + 1) {
+            if (r.right > vw + 1 && visibleRight(el) > vw + 1) {
                 // nur aeusserstes Element einer Kette melden
                 const parent = el.parentElement;
                 const pr = parent?.getBoundingClientRect();

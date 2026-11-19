@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import AppLayout from '@/components/layout/AppLayout.vue';
+import IngredientChecklist from '@/components/recipes/IngredientChecklist.vue';
 import Badge from '@/components/ui/Badge.vue';
+import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
+import BlobImage from '@/components/ui/BlobImage.vue';
 import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import Reveal from '@/components/ui/Reveal.vue';
 import StarRating from '@/components/ui/StarRating.vue';
+import WaveDivider from '@/components/ui/WaveDivider.vue';
 import AddToCollectionModal from '@/components/widgets/AddToCollectionModal.vue';
 import { Link, router } from '@inertiajs/vue3';
 import {
@@ -95,6 +101,19 @@ const durationText = computed(() =>
         ? `${recipe.value.duration_minutes} Min.`
         : 'Keine Angabe',
 );
+/** große Ziffer der Gesamtbewertung (rein grafisch, Text kommt aus StarRating) */
+const formatRating = (v: number | null) =>
+    v == null
+        ? ''
+        : v.toLocaleString('de-DE', {
+              minimumFractionDigits: Number.isInteger(v) ? 0 : 1,
+              maximumFractionDigits: 1,
+          });
+
+/** Schritt-Ziffern in wechselnden Blob-Formen */
+const stepShape = (index: number) =>
+    ['blob-1', 'blob-4', 'blob-2', 'blob-5', 'blob-3', 'blob-6'][index % 6];
+
 const servingsText = computed(() =>
     recipe.value.servings !== null
         ? String(recipe.value.servings)
@@ -104,214 +123,250 @@ const servingsText = computed(() =>
 
 <template>
     <AppLayout :page-title="recipe.name" bleed>
-        <article class="pb-12">
-            <!-- Bild oben: festes Seitenverhältnis, kein Layout-Springen (F-85) -->
-            <div
-                class="mx-auto w-full max-w-(--content-max) sm:px-6 sm:pt-6 lg:px-8"
+        <article>
+            <!-- ============================================================
+                 Kopf: Waldgrün mit Körnung, großer Titel, Bild in Blob-Maske
+                 ============================================================ -->
+            <header
+                class="relative overflow-hidden bg-forest grain-light on-forest"
             >
+                <BlobBackdrop tone="forest" />
+                <LeafOrnament
+                    variant="sprig"
+                    class="pointer-events-none absolute -top-4 left-[46%] hidden h-40 animate-sway text-forest-soft [--float-rotate:20deg] lg:block"
+                />
+                <LeafOrnament
+                    variant="leaf"
+                    class="pointer-events-none absolute -bottom-8 -left-6 h-36 rotate-[38deg] text-forest-soft"
+                />
+
                 <div
-                    class="relative w-full overflow-hidden bg-tint sm:rounded-2xl"
-                    :class="
-                        recipe.image
-                            ? 'aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9]'
-                            : 'aspect-[3/1] sm:aspect-[5/1]'
-                    "
+                    class="relative mx-auto grid w-full max-w-(--content-max) items-center gap-10 px-4 pt-6 pb-4 sm:px-6 lg:grid-cols-[1.08fr_1fr] lg:gap-14 lg:px-8 lg:pt-10 lg:pb-6"
                 >
-                    <img
-                        v-if="recipe.image"
-                        :src="recipe.image"
-                        :alt="`Foto: ${recipe.name}`"
-                        class="size-full object-cover"
-                    />
-                    <!-- ohne Bild: dekorative Fläche statt leerer Kasten -->
-                    <div
-                        v-else
-                        class="absolute inset-0 overflow-hidden bg-gradient-to-br from-tint via-tint to-tint-strong"
-                        aria-hidden="true"
-                    >
+                    <div class="min-w-0">
+                        <Link
+                            :href="route('recipes.index')"
+                            class="mb-5 inline-flex min-h-10 items-center gap-1.5 rounded-pebble px-2 text-sm font-semibold text-on-forest-muted hover:bg-forest-soft hover:text-on-forest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                        >
+                            <ArrowLeft class="size-4" aria-hidden="true" />
+                            Zur Übersicht
+                        </Link>
+
+                        <ul
+                            v-if="recipe.categories?.length"
+                            class="mb-4 flex flex-wrap gap-2"
+                            aria-label="Kategorien"
+                        >
+                            <li
+                                v-for="cat in recipe.categories"
+                                :key="cat"
+                                class="max-w-full"
+                            >
+                                <Badge tone="matcha">{{ cat }}</Badge>
+                            </li>
+                        </ul>
+
+                        <h1
+                            class="font-display-wonk text-[clamp(2.25rem,8vw,4.5rem)] leading-[1.02] font-semibold text-balance text-wrap-anywhere text-on-forest"
+                        >
+                            {{ recipe.name }}
+                        </h1>
+
+                        <p
+                            v-if="recipe.description"
+                            class="mt-4 max-w-2xl text-lg text-wrap-anywhere text-on-forest-muted sm:text-xl"
+                        >
+                            {{ recipe.description }}
+                        </p>
+
+                        <!-- Eckdaten als schwebende Kiesel -->
+                        <dl
+                            class="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3"
+                            aria-label="Eckdaten"
+                        >
+                            <div
+                                class="rounded-[1.4rem_1.1rem_1.5rem_1.2rem] bg-forest-deep/55 px-4 py-3.5 ring-1 ring-forest-soft backdrop-blur-sm"
+                            >
+                                <dt
+                                    class="flex items-center gap-1.5 text-sm text-on-forest-muted"
+                                >
+                                    <Clock class="size-4" aria-hidden="true" />
+                                    Zubereitung
+                                </dt>
+                                <dd
+                                    class="mt-1 font-display text-2xl font-semibold text-on-forest"
+                                >
+                                    {{ durationText }}
+                                </dd>
+                            </div>
+                            <div
+                                class="rounded-[1.1rem_1.5rem_1.2rem_1.4rem] bg-forest-deep/55 px-4 py-3.5 ring-1 ring-forest-soft backdrop-blur-sm"
+                            >
+                                <dt
+                                    class="flex items-center gap-1.5 text-sm text-on-forest-muted"
+                                >
+                                    <Users class="size-4" aria-hidden="true" />
+                                    Portionen
+                                </dt>
+                                <dd
+                                    class="mt-1 font-display text-2xl font-semibold text-on-forest"
+                                >
+                                    {{ servingsText }}
+                                </dd>
+                            </div>
+                            <div
+                                class="col-span-2 rounded-[1.5rem_1.2rem_1.4rem_1.1rem] bg-forest-deep/55 px-4 py-3.5 ring-1 ring-forest-soft backdrop-blur-sm sm:col-span-1"
+                            >
+                                <dt class="text-sm text-on-forest-muted">
+                                    Bewertung
+                                </dt>
+                                <dd class="mt-1.5">
+                                    <StarRating
+                                        tone="on-forest"
+                                        :value="
+                                            hasAnyRatings ? recipe.rating : null
+                                        "
+                                        :count="
+                                            hasAnyRatings
+                                                ? recipe.ratingCount
+                                                : null
+                                        "
+                                    />
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <!-- Aktionen: umbrechend, nie über dem Titel (F-31) -->
+                        <div class="mt-7 flex flex-wrap gap-2.5">
+                            <Button
+                                variant="lime"
+                                aria-haspopup="dialog"
+                                @click="isCollectionModalOpen = true"
+                            >
+                                <BookmarkPlus
+                                    class="size-5"
+                                    aria-hidden="true"
+                                />
+                                Zur Sammlung hinzufügen
+                            </Button>
+                            <template v-if="isHost">
+                                <Button
+                                    variant="outline-light"
+                                    :href="route('recipes.edit', recipe.id)"
+                                >
+                                    <Pencil class="size-4" aria-hidden="true" />
+                                    Rezept bearbeiten
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    class="text-danger-on-forest hover:bg-forest-soft active:bg-forest-deep"
+                                    aria-haspopup="dialog"
+                                    @click="isDeleteOpen = true"
+                                >
+                                    <Trash2 class="size-4" aria-hidden="true" />
+                                    Rezept löschen
+                                </Button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Bild in organischer Maske; ohne Bild eine Komposition -->
+                    <div class="relative mx-auto w-full max-w-md lg:max-w-none">
                         <span
-                            class="absolute -top-10 right-[6%] size-40 rounded-full bg-accent/15 sm:size-56"
+                            class="pointer-events-none absolute inset-[6%_-3%_-4%_8%] animate-morph bg-matcha/90"
+                            aria-hidden="true"
                         ></span>
                         <span
-                            class="absolute -bottom-12 left-8 size-32 rounded-full bg-primary/10 sm:size-44"
+                            class="pointer-events-none absolute -top-3 left-[6%] size-[16%] rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-berry shadow-berry"
+                            aria-hidden="true"
                         ></span>
-                        <CookingPot
-                            class="absolute top-1/2 left-1/2 size-12 -translate-x-1/2 -translate-y-1/2 text-primary sm:size-16"
+                        <div class="group relative">
+                            <BlobImage
+                                v-if="recipe.image"
+                                :src="recipe.image"
+                                :alt="`Foto: ${recipe.name}`"
+                                :shape="2"
+                                ratio="1/1"
+                                eager
+                                sizes="(min-width: 1024px) 40vw, 90vw"
+                                class="shadow-float ring-[6px] ring-forest-deep/40"
+                            />
+                            <div
+                                v-else
+                                class="relative blob-mask aspect-square w-full overflow-hidden bg-forest-soft shadow-float blob-2"
+                                aria-hidden="true"
+                            >
+                                <span
+                                    class="absolute top-[14%] left-[12%] size-[46%] rounded-full bg-forest-deep/60"
+                                ></span>
+                                <span
+                                    class="absolute right-[12%] bottom-[16%] flex size-[38%] items-center justify-center rounded-full bg-canvas shadow-float ring-[10px] ring-tint-strong"
+                                >
+                                    <CookingPot
+                                        class="size-[42%] text-primary"
+                                    />
+                                </span>
+                                <LeafOrnament
+                                    variant="leaf"
+                                    class="absolute top-[12%] left-[16%] h-[44%] rotate-[-24deg] text-matcha"
+                                />
+                                <LeafOrnament
+                                    variant="eucalyptus"
+                                    class="absolute bottom-[4%] left-[30%] h-[42%] rotate-[52deg] text-moss"
+                                />
+                            </div>
+                        </div>
+                        <LeafOrnament
+                            variant="sprig"
+                            class="pointer-events-none absolute -bottom-6 -left-4 h-28 animate-float text-matcha [--float-rotate:-30deg] sm:h-36"
                         />
                     </div>
                 </div>
-            </div>
+                <WaveDivider :variant="3" class="text-canvas" />
+            </header>
 
-            <div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-                <!-- Kopf -->
-                <header class="pt-6 sm:pt-8">
-                    <Link
-                        :href="route('recipes.index')"
-                        class="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-full text-sm font-semibold text-primary hover:text-primary-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                    >
-                        <ArrowLeft class="size-4" aria-hidden="true" />
-                        Zur Übersicht
-                    </Link>
-
-                    <ul
-                        v-if="recipe.categories?.length"
-                        class="mb-3 flex flex-wrap gap-2"
-                        aria-label="Kategorien"
-                    >
-                        <li
-                            v-for="cat in recipe.categories"
-                            :key="cat"
-                            class="max-w-full"
-                        >
-                            <Badge tone="primary">{{ cat }}</Badge>
-                        </li>
-                    </ul>
-
-                    <h1
-                        class="text-wrap-anywhere text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl"
-                    >
-                        {{ recipe.name }}
-                    </h1>
-
-                    <p
-                        v-if="recipe.description"
-                        class="text-wrap-anywhere mt-3 max-w-3xl text-lg text-ink-muted"
-                    >
-                        {{ recipe.description }}
-                    </p>
-
-                    <!-- Metadaten -->
-                    <dl
-                        class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3"
-                        aria-label="Eckdaten"
-                    >
-                        <div
-                            class="rounded-xl border border-line bg-surface p-4"
-                        >
-                            <dt
-                                class="flex items-center gap-1.5 text-sm text-ink-muted"
-                            >
-                                <Clock class="size-4" aria-hidden="true" />
-                                Zubereitung
-                            </dt>
-                            <dd class="mt-1 text-lg font-semibold text-ink">
-                                {{ durationText }}
-                            </dd>
-                        </div>
-                        <div
-                            class="rounded-xl border border-line bg-surface p-4"
-                        >
-                            <dt
-                                class="flex items-center gap-1.5 text-sm text-ink-muted"
-                            >
-                                <Users class="size-4" aria-hidden="true" />
-                                Portionen
-                            </dt>
-                            <dd class="mt-1 text-lg font-semibold text-ink">
-                                {{ servingsText }}
-                            </dd>
-                        </div>
-                        <div
-                            class="col-span-2 rounded-xl border border-line bg-surface p-4 sm:col-span-1"
-                        >
-                            <dt class="text-sm text-ink-muted">Bewertung</dt>
-                            <dd class="mt-1.5">
-                                <StarRating
-                                    :value="
-                                        hasAnyRatings ? recipe.rating : null
-                                    "
-                                    :count="
-                                        hasAnyRatings
-                                            ? recipe.ratingCount
-                                            : null
-                                    "
-                                />
-                            </dd>
-                        </div>
-                    </dl>
-
-                    <!-- Aktionen: umbrechend, nie über dem Titel (F-31) -->
-                    <div class="mt-6 flex flex-wrap gap-2">
-                        <Button
-                            aria-haspopup="dialog"
-                            @click="isCollectionModalOpen = true"
-                        >
-                            <BookmarkPlus class="size-5" aria-hidden="true" />
-                            Zur Sammlung hinzufügen
-                        </Button>
-                        <template v-if="isHost">
-                            <Button
-                                variant="secondary"
-                                :href="route('recipes.edit', recipe.id)"
-                            >
-                                <Pencil class="size-4" aria-hidden="true" />
-                                Rezept bearbeiten
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                class="text-danger hover:bg-danger-surface"
-                                aria-haspopup="dialog"
-                                @click="isDeleteOpen = true"
-                            >
-                                <Trash2 class="size-4" aria-hidden="true" />
-                                Rezept löschen
-                            </Button>
-                        </template>
-                    </div>
-                </header>
-
-                <!-- Inhalt: Zutaten | Zubereitung -->
-                <div class="mt-10 grid gap-8 lg:grid-cols-12 lg:gap-10">
+            <!-- ============================================================
+                 Inhalt: Zutaten (Papierblatt, abhakbar) | Zubereitung
+                 ============================================================ -->
+            <div
+                class="mx-auto w-full max-w-6xl px-4 pt-6 pb-16 sm:px-6 lg:px-8"
+            >
+                <div class="grid gap-12 lg:grid-cols-12 lg:gap-12">
                     <section
                         v-if="recipe.ingredients?.length"
                         aria-labelledby="recipe-ingredients-title"
                         class="lg:col-span-5"
                     >
                         <div
-                            class="rounded-2xl border border-line bg-surface p-5 shadow-card sm:p-6 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)]"
+                            class="relative overflow-hidden rounded-[2.25rem_1.75rem_2.5rem_2rem] bg-surface p-5 shadow-float sm:p-7 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)]"
                         >
+                            <LeafOrnament
+                                variant="eucalyptus"
+                                class="pointer-events-none absolute -top-6 -right-4 h-32 rotate-[32deg] text-tint"
+                            />
                             <h2
                                 id="recipe-ingredients-title"
-                                class="text-xl font-semibold text-ink"
+                                class="relative font-display-wonk text-3xl font-semibold text-ink"
                             >
                                 Zutaten
                             </h2>
-                            <ul
-                                class="mt-4 divide-y divide-line"
-                                aria-labelledby="recipe-ingredients-title"
+                            <p
+                                v-if="recipe.servings"
+                                class="relative mt-1 text-sm text-ink-muted"
                             >
-                                <li
-                                    v-for="(
-                                        ingredient, index
-                                    ) in recipe.ingredients"
-                                    :key="`${index}-${ingredient.name}`"
-                                    class="grid grid-cols-[minmax(4.5rem,auto)_minmax(0,1fr)] gap-x-4 py-2.5"
-                                >
-                                    <span
-                                        class="text-wrap-anywhere font-semibold text-ink"
-                                    >
-                                        {{ ingredient.amount || '–' }}
-                                    </span>
-                                    <span
-                                        class="text-wrap-anywhere min-w-0 text-ink"
-                                    >
-                                        {{ ingredient.name }}
-                                        <span
-                                            v-if="
-                                                ingredient.alternatives?.length
-                                            "
-                                            class="block text-sm text-ink-muted"
-                                        >
-                                            oder:
-                                            {{
-                                                ingredient.alternatives.join(
-                                                    ' / ',
-                                                )
-                                            }}
-                                        </span>
-                                    </span>
-                                </li>
-                            </ul>
+                                für {{ recipe.servings }}
+                                {{
+                                    recipe.servings === 1
+                                        ? 'Portion'
+                                        : 'Portionen'
+                                }}
+                                · zum Abhaken beim Kochen
+                            </p>
+                            <IngredientChecklist
+                                class="relative mt-4"
+                                :ingredients="recipe.ingredients"
+                                labelled-by="recipe-ingredients-title"
+                            />
                         </div>
                     </section>
 
@@ -326,102 +381,166 @@ const servingsText = computed(() =>
                     >
                         <h2
                             id="recipe-steps-title"
-                            class="text-xl font-semibold text-ink"
+                            class="font-display-wonk text-3xl font-semibold text-ink sm:text-4xl"
                         >
                             Zubereitung
                         </h2>
                         <ol
-                            class="mt-4 flex flex-col gap-5"
+                            class="mt-6 flex flex-col gap-7"
                             aria-labelledby="recipe-steps-title"
                         >
-                            <li
+                            <Reveal
                                 v-for="(step, index) in recipe.steps"
                                 :key="index"
-                                class="flex gap-4"
+                                as="li"
+                                class="relative flex items-start gap-4 sm:gap-6"
                             >
+                                <!-- Ranke zwischen den Schritten -->
                                 <span
-                                    class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-on-primary"
+                                    v-if="index < recipe.steps.length - 1"
+                                    class="pointer-events-none absolute top-16 -bottom-7 left-7 border-l-2 border-dashed border-tint-strong sm:left-8"
+                                    aria-hidden="true"
+                                ></span>
+                                <span
+                                    class="relative blob-mask inline-flex size-14 shrink-0 items-center justify-center font-display-wonk text-3xl font-semibold shadow-card sm:size-16 sm:text-4xl"
+                                    :class="[
+                                        stepShape(index),
+                                        index % 2 === 0
+                                            ? 'bg-matcha text-forest'
+                                            : 'bg-forest text-matcha',
+                                    ]"
                                     aria-hidden="true"
                                     >{{ index + 1 }}</span
                                 >
                                 <!-- F-14/ADR-001: Zeilenumbrüche innerhalb eines Schritts sichtbar -->
                                 <p
-                                    class="text-wrap-anywhere min-w-0 flex-1 pt-1 text-base leading-relaxed whitespace-pre-line text-ink"
+                                    class="min-w-0 flex-1 pt-2.5 text-lg leading-relaxed text-wrap-anywhere whitespace-pre-line text-ink sm:pt-3.5"
                                 >
                                     {{ step }}
                                 </p>
-                            </li>
+                            </Reveal>
                         </ol>
                     </section>
                 </div>
 
-                <!-- Notizen (nur, wenn vorhanden) -->
-                <section
+                <!-- Notizen (nur, wenn vorhanden): Hinweis mit Blatt -->
+                <Reveal
                     v-if="recipe.notes?.length"
+                    as="section"
                     aria-labelledby="recipe-notes-title"
-                    class="mt-10 rounded-2xl border border-accent/30 bg-accent-surface p-5 sm:p-6"
+                    class="relative mt-16 overflow-hidden rounded-[2.5rem_2rem_2.75rem_1.75rem] bg-tint p-6 sm:p-9"
                 >
-                    <h2
-                        id="recipe-notes-title"
-                        class="text-xl font-semibold text-ink"
-                    >
-                        Notizen & Tipps
-                    </h2>
+                    <LeafOrnament
+                        variant="leaf"
+                        class="pointer-events-none absolute -right-6 -bottom-10 h-48 rotate-[-28deg] text-tint-strong sm:right-6"
+                    />
+                    <div class="relative flex items-center gap-3">
+                        <span
+                            class="blob-mask inline-flex size-11 shrink-0 items-center justify-center bg-forest text-matcha blob-4"
+                            aria-hidden="true"
+                        >
+                            <LeafOrnament variant="sprout" class="size-6" />
+                        </span>
+                        <h2
+                            id="recipe-notes-title"
+                            class="font-display-wonk text-3xl font-semibold text-ink"
+                        >
+                            Notizen &amp; Tipps
+                        </h2>
+                    </div>
                     <ul
-                        class="mt-3 flex list-disc flex-col gap-1.5 pl-5 text-ink marker:text-accent-strong"
+                        class="relative mt-5 flex max-w-3xl flex-col gap-3 text-lg text-ink"
                     >
                         <li
                             v-for="(note, index) in recipe.notes"
                             :key="index"
-                            class="text-wrap-anywhere"
+                            class="flex items-start gap-3 text-wrap-anywhere"
                         >
-                            {{ note }}
+                            <LeafOrnament
+                                variant="leaf"
+                                class="mt-1.5 h-4 shrink-0 rotate-[30deg] text-moss"
+                            />
+                            <span class="min-w-0">{{ note }}</span>
                         </li>
                     </ul>
-                </section>
+                </Reveal>
 
                 <!-- Bewertungen je Dimension -->
-                <section aria-labelledby="recipe-ratings-title" class="mt-10">
+                <Reveal
+                    as="section"
+                    aria-labelledby="recipe-ratings-title"
+                    class="mt-16"
+                >
                     <h2
                         id="recipe-ratings-title"
-                        class="text-xl font-semibold text-ink"
+                        class="font-display-wonk text-3xl font-semibold text-ink sm:text-4xl"
                     >
                         Bewertungen
                     </h2>
-                    <div v-if="hasAnyRatings" class="mt-2">
-                        <span class="sr-only">Gesamtbewertung: </span>
-                        <StarRating
-                            :value="recipe.rating"
-                            :count="recipe.ratingCount"
-                        />
-                    </div>
-                    <ul
-                        v-if="ratingDimensions.length"
-                        class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                    <div
+                        v-if="hasAnyRatings || ratingDimensions.length"
+                        class="mt-6 grid gap-8 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] md:items-center"
                     >
-                        <li
-                            v-for="dim in ratingDimensions"
-                            :key="dim.id ?? dim.name"
-                            class="rounded-xl border border-line bg-surface p-4"
+                        <div
+                            v-if="hasAnyRatings"
+                            class="relative flex flex-col items-start gap-2 overflow-hidden rounded-[2.5rem_2rem_2.75rem_2.25rem] bg-berry-surface p-6"
                         >
-                            <p
-                                class="text-wrap-anywhere font-semibold text-ink"
+                            <span
+                                class="font-display-wonk text-7xl leading-none font-semibold text-berry"
+                                aria-hidden="true"
+                                >{{ formatRating(recipe.rating) }}</span
                             >
-                                {{ dim.name }}
-                            </p>
-                            <div class="mt-1.5">
-                                <StarRating
-                                    :value="dim.avg"
-                                    :count="dim.count"
-                                    size="sm"
-                                />
-                            </div>
-                        </li>
-                    </ul>
-                    <p v-else-if="!hasAnyRatings" class="mt-2 text-ink-muted">
+                            <span class="sr-only">Gesamtbewertung: </span>
+                            <StarRating
+                                :value="recipe.rating"
+                                :count="recipe.ratingCount"
+                            />
+                        </div>
+                        <ul
+                            v-if="ratingDimensions.length"
+                            class="grid gap-x-8 gap-y-5 sm:grid-cols-2"
+                        >
+                            <li
+                                v-for="(dim, i) in ratingDimensions"
+                                :key="dim.id ?? dim.name"
+                                class="min-w-0"
+                            >
+                                <p
+                                    class="font-display text-xl font-semibold text-wrap-anywhere text-ink"
+                                >
+                                    {{ dim.name }}
+                                </p>
+                                <!-- Balken rein grafisch; Wert steht als Text daneben -->
+                                <span
+                                    class="mt-2 block h-3 overflow-hidden rounded-full bg-tint"
+                                    aria-hidden="true"
+                                >
+                                    <span
+                                        class="block h-full rounded-[1rem_0.6rem_1rem_0.6rem]"
+                                        :class="
+                                            i % 2 === 0
+                                                ? 'bg-primary'
+                                                : 'bg-berry'
+                                        "
+                                        :style="{
+                                            width: `${Math.max(0, Math.min(5, dim.avg)) * 20}%`,
+                                        }"
+                                    ></span>
+                                </span>
+                                <div class="mt-2">
+                                    <StarRating
+                                        :value="dim.avg"
+                                        :count="dim.count"
+                                        size="sm"
+                                    />
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <p v-else class="mt-3 text-lg text-ink-muted">
                         Noch keine Bewertungen
                     </p>
-                </section>
+                </Reveal>
             </div>
         </article>
 

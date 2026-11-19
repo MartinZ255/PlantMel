@@ -33,13 +33,13 @@ const initials = computed(() => getInitials(props.name));
         <button
             ref="trigger"
             type="button"
-            class="inline-flex min-h-10 items-center gap-2 rounded-full border border-line py-1 pr-2 pl-1 text-ink transition-colors hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="inline-flex min-h-10 items-center gap-2 rounded-pebble border border-line-strong/40 bg-surface/70 py-1 pr-2 pl-1 text-ink transition-colors hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             aria-controls="user-menu"
             :aria-expanded="isOpen ? 'true' : 'false'"
             @click="menu.toggle()"
         >
             <span
-                class="inline-flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-on-primary"
+                class="inline-flex size-8 items-center justify-center rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-forest text-sm font-semibold text-matcha"
                 aria-hidden="true"
                 >{{ initials }}</span
             >
@@ -61,7 +61,7 @@ const initials = computed(() => getInitials(props.name));
             :inert="!isOpen"
         >
             <p
-                class="text-wrap-anywhere border-b border-line px-3 pt-1 pb-2.5 text-sm text-ink-muted"
+                class="border-b border-line px-3 pt-1 pb-2.5 text-sm text-wrap-anywhere text-ink-muted"
             >
                 Angemeldet als
                 <span class="font-semibold text-ink">{{ name }}</span>

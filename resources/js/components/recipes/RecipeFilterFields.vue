@@ -2,7 +2,7 @@
     <div class="grid gap-6 md:grid-cols-2 md:gap-8">
         <!-- Kategorien: Umschalter mit aria-pressed, wirken sofort -->
         <fieldset class="min-w-0 border-0 p-0 md:col-span-2">
-            <legend class="mb-2 text-sm font-semibold text-ink">
+            <legend class="mb-3 text-sm font-semibold text-ink">
                 Kategorien
             </legend>
             <p v-if="!categories.length" class="text-sm text-ink-muted">
@@ -67,10 +67,10 @@
                 <li v-for="s in suggestions" :key="s">
                     <button
                         type="button"
-                        class="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-line-strong px-3.5 text-sm font-medium text-ink hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                        class="inline-flex min-h-9 items-center gap-1 rounded-seed border-[1.5px] border-dashed border-line-strong px-3.5 text-sm font-medium text-ink transition-colors hover:border-primary hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                         @click="$emit('add-suggestion', s)"
                     >
-                        <Plus class="size-4" aria-hidden="true" />
+                        <Plus class="size-4 text-primary" aria-hidden="true" />
                         {{ s }}
                     </button>
                 </li>

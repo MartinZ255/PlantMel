@@ -16,6 +16,6 @@ defineExpose({ focus: () => el.value?.focus(), el });
     <input
         ref="el"
         v-model="model"
-        class="block min-h-11 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3.5 py-2 text-base text-ink placeholder:text-ink-muted focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-canvas aria-[invalid=true]:border-danger"
+        class="block min-h-11 w-full min-w-0 rounded-[0.9rem_0.75rem_0.95rem_0.8rem] border-[1.5px] border-line-strong bg-surface px-3.5 py-2 text-base text-ink placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-canvas aria-[invalid=true]:border-danger"
     />
 </template>

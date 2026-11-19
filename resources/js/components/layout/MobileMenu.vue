@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from '@/components/ui/Button.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import { useAppNavigation } from '@/composables/useAppNavigation';
 import { useModal } from '@/composables/useModal';
 import { Link } from '@inertiajs/vue3';
@@ -40,9 +41,10 @@ useModal({
 
 const close = () => emit('close');
 
+// C1b: Waldgrün-Blatt; aktive Seite als Matcha-Kiesel
 const rowClass = (active: boolean) => [
-    'flex min-h-12 w-full items-center gap-2 rounded-lg px-3 text-base font-medium focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus',
-    active ? 'bg-tint text-primary' : 'text-ink hover:bg-canvas',
+    'flex min-h-12 w-full items-center gap-2 rounded-[1.1rem_0.85rem_1.2rem_0.9rem] px-3.5 text-base font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus',
+    active ? 'bg-matcha text-forest' : 'text-on-forest hover:bg-forest-soft',
 ];
 </script>
 
@@ -50,7 +52,7 @@ const rowClass = (active: boolean) => [
     <Teleport to="body">
         <div v-if="open" class="fixed inset-0 z-(--z-modal-backdrop) md:hidden">
             <div
-                class="absolute inset-0 bg-ink/55"
+                class="absolute inset-0 bg-forest-deep/55 backdrop-blur-[3px]"
                 aria-hidden="true"
                 @click="close"
             ></div>
@@ -61,20 +63,33 @@ const rowClass = (active: boolean) => [
                 aria-modal="true"
                 aria-labelledby="mobile-menu-title"
                 tabindex="-1"
-                class="absolute inset-y-0 right-0 flex w-[min(88vw,22rem)] flex-col overflow-y-auto overscroll-contain bg-surface shadow-overlay focus:outline-none"
+                class="absolute inset-y-0 right-0 flex w-[min(88vw,22rem)] flex-col overflow-x-hidden overflow-y-auto overscroll-contain rounded-l-[2.5rem] bg-forest-deep grain-light on-forest shadow-overlay focus:outline-none"
             >
+                <!-- dekorative Ebene: weicher Blob und ein Zweig -->
                 <div
-                    class="flex h-(--header-height) shrink-0 items-center justify-between border-b border-line px-4"
+                    class="pointer-events-none absolute inset-0 overflow-hidden"
+                    aria-hidden="true"
+                >
+                    <span
+                        class="absolute -top-20 -right-16 size-64 rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-forest-soft/70"
+                    ></span>
+                    <LeafOrnament
+                        variant="eucalyptus"
+                        class="absolute -bottom-8 -left-6 h-52 rotate-[-28deg] text-forest-soft"
+                    />
+                </div>
+                <div
+                    class="relative flex h-(--header-height) shrink-0 items-center justify-between px-5"
                 >
                     <h2
                         id="mobile-menu-title"
-                        class="text-lg font-semibold text-ink"
+                        class="font-display-wonk text-2xl font-semibold text-on-forest"
                     >
                         Menü
                     </h2>
                     <button
                         type="button"
-                        class="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                        class="inline-flex size-11 items-center justify-center rounded-pebble bg-forest-soft text-on-forest hover:bg-forest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                         aria-label="Menü schließen"
                         @click="close"
                     >
@@ -82,7 +97,10 @@ const rowClass = (active: boolean) => [
                     </button>
                 </div>
 
-                <nav aria-label="Hauptnavigation" class="flex-1 px-3 py-3">
+                <nav
+                    aria-label="Hauptnavigation"
+                    class="relative flex-1 px-3 py-2"
+                >
                     <ul class="flex flex-col gap-0.5">
                         <li>
                             <Link
@@ -107,7 +125,7 @@ const rowClass = (active: boolean) => [
                                 <span class="flex-1">{{ item.label }}</span>
                                 <template v-if="item.requiresAuth && !user">
                                     <span
-                                        class="inline-flex items-center gap-1 text-sm font-normal text-ink-muted"
+                                        class="inline-flex items-center gap-1 text-sm font-normal text-on-forest-muted"
                                         aria-hidden="true"
                                     >
                                         <Lock class="size-3.5" />
@@ -119,7 +137,7 @@ const rowClass = (active: boolean) => [
                                 </template>
                                 <ChevronRight
                                     v-else
-                                    class="size-4 text-ink-muted"
+                                    class="size-4 opacity-70"
                                     aria-hidden="true"
                                 />
                             </Link>
@@ -127,7 +145,7 @@ const rowClass = (active: boolean) => [
                             <!-- eigene Sammlungen (wie bisher in der Seitenleiste) -->
                             <ul
                                 v-if="item.key === 'collections' && user"
-                                class="mt-0.5 mb-1 ml-3 flex flex-col gap-0.5 border-l-2 border-line pl-2"
+                                class="mt-0.5 mb-1 ml-4 flex flex-col gap-0.5 border-l-2 border-forest-soft pl-2"
                                 aria-label="Deine Sammlungen"
                             >
                                 <li v-for="c in collectionLinks" :key="c.id">
@@ -135,7 +153,7 @@ const rowClass = (active: boolean) => [
                                         :href="c.href"
                                         :class="[
                                             rowClass(c.current),
-                                            'text-wrap-anywhere min-h-11 text-[0.9375rem] font-normal',
+                                            'min-h-11 text-[0.9375rem] font-normal text-wrap-anywhere',
                                         ]"
                                         :aria-current="
                                             c.current ? 'page' : undefined
@@ -145,7 +163,9 @@ const rowClass = (active: boolean) => [
                                     </Link>
                                 </li>
                                 <li v-if="!collectionLinks.length">
-                                    <p class="px-3 py-2 text-sm text-ink-muted">
+                                    <p
+                                        class="px-3 py-2 text-sm text-on-forest-muted"
+                                    >
                                         Noch keine Sammlungen
                                     </p>
                                 </li>
@@ -154,7 +174,7 @@ const rowClass = (active: boolean) => [
                                         :href="route('collections.create')"
                                         :class="[
                                             rowClass(false),
-                                            'min-h-11 text-[0.9375rem] text-primary',
+                                            'min-h-11 text-[0.9375rem] text-matcha',
                                         ]"
                                     >
                                         <Plus
@@ -169,24 +189,31 @@ const rowClass = (active: boolean) => [
                     </ul>
                 </nav>
 
-                <div class="flex flex-col gap-2 border-t border-line px-4 py-4">
-                    <Button v-if="isHost" :href="route('recipes.create')" block>
+                <div
+                    class="relative flex flex-col gap-2 border-t border-forest-soft px-4 py-5"
+                >
+                    <Button
+                        v-if="isHost"
+                        :href="route('recipes.create')"
+                        variant="lime"
+                        block
+                    >
                         <Plus class="size-4" aria-hidden="true" />
                         Rezept erstellen
                     </Button>
 
                     <template v-if="user">
                         <p
-                            class="text-wrap-anywhere px-1 text-sm text-ink-muted"
+                            class="px-1 text-sm text-wrap-anywhere text-on-forest-muted"
                         >
                             Angemeldet als
-                            <span class="font-semibold text-ink">{{
+                            <span class="font-semibold text-on-forest">{{
                                 user.name
                             }}</span>
                         </p>
                         <Button
                             :href="route('settings.index')"
-                            variant="secondary"
+                            variant="outline-light"
                             block
                         >
                             Einstellungen
@@ -195,7 +222,7 @@ const rowClass = (active: boolean) => [
                             :href="route('logout')"
                             method="post"
                             as="button"
-                            class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 font-semibold text-danger hover:bg-danger-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                            class="inline-flex min-h-11 w-full items-center justify-center rounded-pebble px-5 font-semibold text-berry-surface underline-offset-4 hover:bg-forest-soft hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                         >
                             Abmelden
                         </Link>
@@ -203,7 +230,7 @@ const rowClass = (active: boolean) => [
                     <template v-else>
                         <Button
                             :href="route('login')"
-                            variant="secondary"
+                            variant="outline-light"
                             block
                         >
                             Anmelden
@@ -211,6 +238,7 @@ const rowClass = (active: boolean) => [
                         <Button
                             v-if="canRegister"
                             :href="route('register')"
+                            variant="lime"
                             block
                         >
                             Registrieren

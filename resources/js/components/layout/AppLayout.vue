@@ -5,7 +5,7 @@
         <!-- F-42: erstes fokussierbares Element -->
         <a
             href="#main-content"
-            class="fixed top-2 left-3 z-(--z-skip-link) -translate-y-[200%] rounded-full border border-primary bg-surface px-4 py-2 text-sm font-semibold text-ink shadow-raised focus:translate-y-0"
+            class="fixed top-2 left-3 z-(--z-skip-link) -translate-y-[200%] rounded-pebble bg-forest px-4 py-2.5 text-sm font-semibold text-on-forest shadow-float focus:translate-y-0"
         >
             Zum Inhalt springen
         </a>
@@ -34,7 +34,7 @@
             >
                 <div
                     v-if="flashSuccess"
-                    class="flex items-start gap-3 rounded-lg border border-primary/40 bg-success-surface py-2.5 pr-2 pl-4 text-sm text-success shadow-card"
+                    class="flex items-start gap-3 rounded-[1.25rem_1rem_1.4rem_0.9rem] border border-primary/30 bg-success-surface py-2.5 pr-2 pl-4 text-sm text-success shadow-card"
                     role="status"
                 >
                     <CircleCheck
@@ -42,7 +42,7 @@
                         aria-hidden="true"
                     />
                     <p
-                        class="text-wrap-anywhere min-w-0 flex-1 py-0.5 font-medium"
+                        class="min-w-0 flex-1 py-0.5 font-medium text-wrap-anywhere"
                     >
                         {{ flashSuccess }}
                     </p>
@@ -57,7 +57,7 @@
                 </div>
                 <div
                     v-if="flashError"
-                    class="mt-2 flex items-start gap-3 rounded-lg border border-danger/40 bg-danger-surface py-2.5 pr-2 pl-4 text-sm text-danger shadow-card first:mt-0"
+                    class="mt-2 flex items-start gap-3 rounded-[1.25rem_1rem_1.4rem_0.9rem] border border-danger/40 bg-danger-surface py-2.5 pr-2 pl-4 text-sm text-danger shadow-card first:mt-0"
                     role="alert"
                 >
                     <CircleAlert
@@ -65,7 +65,7 @@
                         aria-hidden="true"
                     />
                     <p
-                        class="text-wrap-anywhere min-w-0 flex-1 py-0.5 font-medium"
+                        class="min-w-0 flex-1 py-0.5 font-medium text-wrap-anywhere"
                     >
                         {{ flashError }}
                     </p>
