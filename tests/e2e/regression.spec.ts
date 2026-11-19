@@ -117,22 +117,23 @@ test.describe('Gast', () => {
         ).toBeGreaterThan(0);
     });
 
+    // Gate C2: Zutaten-Karten liegen als Listeneintraege [data-ingredient] in den
+    // Buchstaben-Gruppen; Name in [data-ingredient-name]; Suchfeld per Label.
     test('F-02 Zutatensuche filtert beim Tippen ohne JS-Fehler', async ({
         page,
         diag,
     }) => {
         await page.goto('/zutatensuche');
         await settle(page);
-        const before = await page.locator('.ingredient-card').count();
+        const before = await page.locator('[data-ingredient]').count();
         await page
-            .locator('.search-row__input')
-            .first()
+            .getByLabel('Zutat suchen')
             .pressSequentially('Linsen', { delay: 30 });
         await expect
-            .poll(() => page.locator('.ingredient-card').count())
+            .poll(() => page.locator('[data-ingredient]').count())
             .toBeLessThan(before);
         const names = await page
-            .locator('.ingredient-card__name')
+            .locator('[data-ingredient-name]')
             .allTextContents();
         writeRaw('regression', 'F-02', {
             before,
@@ -149,7 +150,7 @@ test.describe('Gast', () => {
         expect(names.length).toBeLessThan(before);
         for (const n of names) expect(n).toContain('Linsen');
         // Trefferzahl in der Meta-Zeile folgt der Liste
-        await expect(page.locator('.search-meta')).toHaveText(
+        await expect(page.getByRole('main').getByRole('status')).toHaveText(
             `${names.length} Zutaten gefunden`,
         );
     });
@@ -160,32 +161,32 @@ test.describe('Gast', () => {
     }) => {
         await page.goto('/zutatensuche');
         await settle(page);
-        const all = await page.locator('.ingredient-card').count();
+        const all = await page.locator('[data-ingredient]').count();
         expect(all, 'Seeder liefert Zutaten').toBeGreaterThan(1);
 
         // Einschluss
-        await page.locator('.search-row__filter-button').click();
+        await page.getByRole('button', { name: /^Filter\b/ }).click();
         await page.locator('#includeIngredients').fill('Linsen');
         await page.getByRole('button', { name: 'Anwenden' }).click();
         await expect
-            .poll(() => page.locator('.ingredient-card').count())
+            .poll(() => page.locator('[data-ingredient]').count())
             .toBeLessThan(all);
         const included = await page
-            .locator('.ingredient-card__name')
+            .locator('[data-ingredient-name]')
             .allTextContents();
         expect(included.length).toBeGreaterThan(0);
         for (const n of included) expect(n.toLowerCase()).toContain('linsen');
 
         // Ausschluss (Einschluss leeren)
-        await page.locator('.search-row__filter-button').click();
+        await page.getByRole('button', { name: /^Filter\b/ }).click();
         await page.locator('#includeIngredients').fill('');
         await page.locator('#excludeIngredients').fill('Linsen');
         await page.getByRole('button', { name: 'Anwenden' }).click();
         await expect
-            .poll(() => page.locator('.ingredient-card').count())
+            .poll(() => page.locator('[data-ingredient]').count())
             .toBe(all - included.length);
         const excluded = await page
-            .locator('.ingredient-card__name')
+            .locator('[data-ingredient-name]')
             .allTextContents();
         for (const n of excluded)
             expect(n.toLowerCase()).not.toContain('linsen');
@@ -206,8 +207,16 @@ test.describe('Gast', () => {
     }) => {
         await page.goto('/zutatensuche');
         await settle(page);
-        await expect(page.locator('.tag-chips')).toHaveCount(0);
-        await expect(page.locator('.filter-panel--tags')).toHaveCount(0);
+        // Gate C2: Kategorie-Chips als Gruppe "Kategorien", Kategorienliste "Weitere Kategorien"
+        await expect(
+            page.getByRole('group', { name: 'Kategorien' }),
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole('button', { name: 'Weitere Kategorien' }),
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole('list', { name: 'Weitere Kategorien' }),
+        ).toHaveCount(0);
     });
 
     // Gate C: Gaeste haben kein verstecktes Menue mehr, sondern sichtbare Links.
@@ -318,8 +327,16 @@ test.describe('Nutzer', () => {
             }),
         ).toBeVisible();
         // keine erfundenen Kategorien/Zaehler
-        await expect(page.locator('.tag-chips')).toHaveCount(0);
-        await expect(page.locator('.filter-panel--tags')).toHaveCount(0);
+        // Gate C2: Kategorie-Chips als Gruppe "Kategorien", Kategorienliste "Weitere Kategorien"
+        await expect(
+            page.getByRole('group', { name: 'Kategorien' }),
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole('button', { name: 'Weitere Kategorien' }),
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole('list', { name: 'Weitere Kategorien' }),
+        ).toHaveCount(0);
     });
 
     test('F-03 Navigations-Eintrag "Meine Zutaten" navigiert', async ({

@@ -1,146 +1,210 @@
 <template>
-    <section class="content-section">
-        <div class="search-area">
-            <!-- Suchzeile + Zutaten-Filter -->
-            <div class="search-row">
+    <!--
+        Gate C2: Zutatensuche als schwebende Kapsel (wie die Rezeptliste).
+        Filter liegt als aufklappbares Papierblatt direkt darunter (kein
+        überlagerndes Panel => kein Überlauf bei 320 px). Filterlogik unverändert.
+    -->
+    <div class="flex min-w-0 flex-col gap-3">
+        <div
+            class="flex min-w-0 flex-col gap-2 rounded-[2.25rem_1.75rem_2.5rem_2rem] bg-surface/85 p-2.5 shadow-float ring-1 ring-line/60 backdrop-blur-md sm:flex-row sm:items-center sm:p-3"
+        >
+            <div class="relative min-w-0 flex-1">
+                <label :for="searchId" class="sr-only">Zutat suchen</label>
+                <span
+                    class="pointer-events-none absolute top-1/2 left-1.5 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-forest text-matcha"
+                    aria-hidden="true"
+                >
+                    <Search class="size-4" />
+                </span>
                 <input
-                    class="search-row__input"
-                    type="text"
-                    placeholder="Zutat suchen …"
+                    :id="searchId"
                     v-model="searchTerm"
+                    type="search"
+                    autocomplete="off"
+                    enterkeyhint="search"
+                    placeholder="Zutat suchen …"
+                    class="block min-h-12 w-full min-w-0 rounded-[1.4rem_1.1rem_1.5rem_1.2rem] border-[1.5px] border-line-strong bg-surface py-2 pr-4 pl-13 text-base text-ink placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus"
                     @input="applyFilters"
                 />
-                <button
-                    class="search-row__filter-button"
-                    type="button"
-                    @click="toggleIngredientFilter"
-                >
-                    ☰ Filter
-                </button>
-
-                <!-- Zutaten-Filterpanel -->
-                <div
-                    class="filter-panel filter-panel--ingredients"
-                    :class="{ 'is-open': showIngredientFilter }"
-                >
-                    <div class="filter-panel__title">Nach Zutaten filtern</div>
-                    <div class="filter-panel__subtitle">
-                        Gib Begriffe an, die im Namen oder in den Kategorien
-                        vorkommen sollen.
-                    </div>
-
-                    <div class="filter-panel__field">
-                        <label for="includeIngredients"
-                            >enthaltene Begriffe</label
-                        >
-                        <input
-                            id="includeIngredients"
-                            class="filter-panel__input"
-                            type="text"
-                            v-model="includeIngredients"
-                            placeholder="z.B. Tomaten, Knoblauch"
-                            @keyup.enter="applyFilters"
-                        />
-                    </div>
-
-                    <div class="filter-panel__field">
-                        <label for="excludeIngredients">ausschließen</label>
-                        <input
-                            id="excludeIngredients"
-                            class="filter-panel__input"
-                            type="text"
-                            v-model="excludeIngredients"
-                            placeholder="z.B. Nüsse, Sellerie"
-                            @keyup.enter="applyFilters"
-                        />
-                    </div>
-
-                    <div class="filter-panel__field">
-                        <span class="filter-panel__subtitle"
-                            >häufig genutzte Zutaten:</span
-                        >
-                        <div class="filter-panel__chips">
-                            <button
-                                v-for="chip in frequentIngredients"
-                                :key="chip"
-                                type="button"
-                                class="filter-panel__chip"
-                                @click="appendIngredient(chip)"
-                            >
-                                {{ chip }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="filter-panel__actions">
-                        <button
-                            type="button"
-                            class="filter-panel__btn filter-panel__btn--ghost"
-                            @click="closeIngredientFilter"
-                        >
-                            Abbrechen
-                        </button>
-                        <button
-                            type="button"
-                            class="filter-panel__btn filter-panel__btn--primary"
-                            @click="applyFilters"
-                        >
-                            Anwenden
-                        </button>
-                    </div>
-                </div>
             </div>
-
-            <!-- Tag-Chips; "..." öffnet Kategorien-Panel. Nur mit echten Kategorien rendern (F-02). -->
-            <div v-if="visibleTags.length" class="tag-chips">
-                <button
-                    v-for="tag in visibleTags"
-                    :key="tag.key"
-                    class="tag-chip"
-                    :class="{ 'tag-chip--active': tag.key === activeTag }"
-                    type="button"
-                    @click="setActiveTag(tag.key)"
-                >
-                    {{ tag.label }}
-                </button>
-
-                <button
-                    class="tag-chip"
-                    type="button"
-                    id="moreFilterToggle"
-                    @click="toggleTagPanel"
-                >
-                    ...
-                </button>
-            </div>
-
-            <!-- Kategorien-Panel (z.B. gemüse, obst, vegan, glutenfrei, ...) -->
-            <div
-                v-if="extraTagStats.length"
-                class="filter-panel filter-panel--tags"
-                :class="{ 'is-open': showTagPanel }"
+            <button
+                ref="filterToggle"
+                type="button"
+                class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 pebble-morph border-[1.5px] px-5 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                :class="
+                    showIngredientFilter
+                        ? 'border-primary bg-primary text-on-primary hover:bg-primary-hover'
+                        : 'border-primary bg-surface text-primary hover:bg-tint'
+                "
+                :aria-expanded="showIngredientFilter ? 'true' : 'false'"
+                :aria-controls="panelId"
+                @click="toggleIngredientFilter"
             >
-                <div
-                    v-for="tag in extraTagStats"
-                    :key="tag.key"
-                    class="filter-panel__row"
-                    @click="setActiveTag(tag.key)"
+                <SlidersHorizontal class="size-4" aria-hidden="true" />
+                Filter
+                <span
+                    v-if="activeFilterCount"
+                    class="inline-flex min-w-6 items-center justify-center rounded-full bg-berry px-1.5 text-xs font-semibold text-white"
                 >
-                    <span>{{ tag.label }}</span>
-                    <span>{{ tag.count }}</span>
-                </div>
+                    {{ activeFilterCount }}
+                    <span class="sr-only">aktiv</span>
+                </span>
+            </button>
+        </div>
+
+        <!-- Zutaten-Filterblatt -->
+        <div
+            v-show="showIngredientFilter"
+            :id="panelId"
+            role="group"
+            :aria-labelledby="`${panelId}-title`"
+            class="relative min-w-0 overflow-hidden rounded-[2rem_1.5rem_2.25rem_1.75rem] bg-surface p-5 shadow-raised sm:p-6"
+            @keydown.esc.stop="closeIngredientFilter(true)"
+        >
+            <LeafOrnament
+                variant="sprig"
+                class="pointer-events-none absolute -top-6 -right-4 h-24 rotate-[24deg] text-tint"
+            />
+            <h2
+                :id="`${panelId}-title`"
+                class="relative font-display text-xl font-semibold text-ink"
+            >
+                Nach Zutaten filtern
+            </h2>
+            <p class="relative mt-1 text-sm text-ink-muted">
+                Gib Begriffe an, die im Namen oder in den Kategorien vorkommen
+                sollen. Mehrere Begriffe trennst du mit Komma.
+            </p>
+
+            <div class="relative mt-4 grid gap-4 sm:grid-cols-2">
+                <Field
+                    id="includeIngredients"
+                    label="Enthaltene Begriffe"
+                    v-slot="field"
+                >
+                    <TextInput
+                        v-model="includeIngredients"
+                        v-bind="field.inputAttrs"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="z. B. Tomaten, Knoblauch"
+                        @keyup.enter="applyFromPanel"
+                    />
+                </Field>
+                <Field
+                    id="excludeIngredients"
+                    label="Ausschließen"
+                    v-slot="field"
+                >
+                    <TextInput
+                        v-model="excludeIngredients"
+                        v-bind="field.inputAttrs"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="z. B. Nüsse, Sellerie"
+                        @keyup.enter="applyFromPanel"
+                    />
+                </Field>
             </div>
 
-            <!-- kleine Meta-Info, wie viele Zutaten aktuell gefunden wurden -->
-            <div class="search-meta">
-                {{ filteredIngredients.length }} Zutaten gefunden
+            <div class="relative mt-4">
+                <p
+                    :id="`${panelId}-frequent`"
+                    class="text-sm font-semibold text-ink"
+                >
+                    Häufig genutzte Zutaten
+                </p>
+                <ul
+                    class="mt-2 flex flex-wrap gap-2"
+                    :aria-labelledby="`${panelId}-frequent`"
+                >
+                    <li v-for="chip in frequentIngredients" :key="chip">
+                        <Chip
+                            :aria-label="`${chip} zu den enthaltenen Begriffen hinzufügen`"
+                            @click="appendFromPanel(chip)"
+                        >
+                            {{ chip }}
+                        </Chip>
+                    </li>
+                </ul>
+            </div>
+
+            <div
+                class="relative mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+            >
+                <Button variant="ghost" @click="closeIngredientFilter(true)">
+                    Abbrechen
+                </Button>
+                <Button @click="applyFromPanel">Anwenden</Button>
             </div>
         </div>
-    </section>
+
+        <!-- Kategorie-Chips; nur mit echten Kategorien (F-02) -->
+        <div
+            v-if="visibleTags.length"
+            role="group"
+            aria-label="Kategorien"
+            class="flex flex-wrap gap-2"
+        >
+            <Chip
+                v-for="tag in visibleTags"
+                :key="tag.key"
+                :pressed="tag.key === activeTag"
+                @click="setActiveTag(tag.key)"
+            >
+                {{ tag.label }}
+            </Chip>
+            <Chip
+                id="moreFilterToggle"
+                :pressed="showTagPanel"
+                aria-label="Weitere Kategorien"
+                @click="toggleTagPanel"
+            >
+                …
+            </Chip>
+        </div>
+
+        <!-- Kategorien-Liste mit Zählern; nur mit echten Daten (F-02) -->
+        <ul
+            v-if="extraTagStats.length && showTagPanel"
+            aria-label="Weitere Kategorien"
+            class="grid gap-1 rounded-[1.5rem_1.25rem_1.75rem_1.1rem] bg-surface p-2 shadow-card sm:grid-cols-2"
+        >
+            <li v-for="tag in extraTagStats" :key="tag.key">
+                <button
+                    type="button"
+                    class="flex min-h-11 w-full items-center justify-between gap-3 rounded-seed px-3 text-left hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                    @click="setActiveTag(tag.key)"
+                >
+                    <span class="min-w-0 text-wrap-anywhere">{{
+                        tag.label
+                    }}</span>
+                    <span class="text-sm font-semibold text-ink-muted">{{
+                        tag.count
+                    }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <!-- Trefferzahl als Live-Region -->
+        <p
+            class="self-start rounded-seed bg-tint px-3.5 py-1 text-sm font-semibold text-primary"
+            role="status"
+            data-ingredient-count
+        >
+            {{ filteredIngredients.length }} Zutaten gefunden
+        </p>
+    </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import Button from '@/components/ui/Button.vue';
+import Chip from '@/components/ui/Chip.vue';
+import Field from '@/components/ui/Field.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import TextInput from '@/components/ui/TextInput.vue';
+import { Search, SlidersHorizontal } from 'lucide-vue-next';
+import { computed, nextTick, ref, useId } from 'vue';
 
 interface TagStat {
     key: string;
@@ -185,6 +249,11 @@ const emit = defineEmits<{
     ): void;
 }>();
 
+const uid = useId();
+const searchId = `ingredient-search-${uid}`;
+const panelId = `ingredient-filter-${uid}`;
+const filterToggle = ref<HTMLButtonElement | null>(null);
+
 // Such-/Filterzustände
 const searchTerm = ref('');
 const activeTag = ref('alle');
@@ -204,6 +273,14 @@ const visibleTags = computed(() =>
 );
 
 const extraTagStats = computed(() => props.tagStats);
+
+/** Zahl der ausgefüllten Filterfelder (Anzeige am Filter-Knopf) */
+const activeFilterCount = computed(
+    () =>
+        [includeIngredients.value, excludeIngredients.value].filter((v) =>
+            v.trim(),
+        ).length,
+);
 
 // Hilfsfunktionen zur Normalisierung
 // fehlende Kategorien als leere Liste behandeln (F-02)
@@ -274,8 +351,11 @@ const toggleIngredientFilter = () => {
     showIngredientFilter.value = !showIngredientFilter.value;
 };
 
-const closeIngredientFilter = () => {
+/** Schließt das Filterblatt; aus dem Blatt heraus geht der Fokus an den Knopf zurück. */
+const closeIngredientFilter = (returnFocus = false) => {
+    const wasOpen = showIngredientFilter.value;
     showIngredientFilter.value = false;
+    if (returnFocus && wasOpen) nextTick(() => filterToggle.value?.focus());
 };
 
 const toggleTagPanel = () => {
@@ -305,5 +385,16 @@ const applyFilters = () => {
     emit('update:results', filteredIngredients.value);
 
     closeIngredientFilter();
+};
+
+// Aus dem Filterblatt: wie bisher anwenden und schließen, Fokus zurück an den Knopf
+const applyFromPanel = () => {
+    applyFilters();
+    nextTick(() => filterToggle.value?.focus());
+};
+
+const appendFromPanel = (name: string) => {
+    appendIngredient(name);
+    nextTick(() => filterToggle.value?.focus());
 };
 </script>
