@@ -22,14 +22,18 @@ const MOBILE_390 = {
     hasTouch: true,
 } as const;
 
-const sidebar = (page: Page) => page.locator('#app-sidebar');
-const menuButton = (page: Page) => page.locator('.app-header__icon--menu');
-
-async function isSidebarClosed(page: Page) {
-    return sidebar(page).evaluate((el) =>
-        el.classList.contains('sidebar--closed'),
-    );
-}
+// Gate C: Kopfnavigation statt Seitenleiste; Selektoren ueber Rollen und Namen
+const banner = (page: Page) => page.getByRole('banner');
+const mainNav = (page: Page) =>
+    banner(page).getByRole('navigation', { name: 'Hauptnavigation' });
+const logo = (page: Page) =>
+    banner(page).getByRole('link', { name: 'PlantMel – Startseite' });
+const menuButton = (page: Page) =>
+    page.getByRole('button', { name: 'Menü', exact: true });
+/** Mobilmenue (Dialog, per Teleport ausserhalb von #app) */
+const mobileMenu = (page: Page) => page.getByRole('dialog', { name: 'Menü' });
+const collectionsButton = (page: Page) =>
+    mainNav(page).getByRole('button', { name: 'Sammlungen' });
 
 /** elementFromPoint an 10 %, 50 % und 90 % der Breite: trifft jeweils das Element selbst? */
 async function samplePoints(locator: Locator) {
@@ -84,8 +88,14 @@ async function newContext(
     return context;
 }
 
+/** Erfolgsmeldung der App-Shell (F-17): Status mit Schliessen-Knopf im Inhalt */
 const flashSuccess = (page: Page) =>
-    page.locator('.flash-message--success[role="status"]');
+    page
+        .getByRole('main')
+        .getByRole('status')
+        .filter({
+            has: page.getByRole('button', { name: 'Meldung schließen' }),
+        });
 
 // ---------------------------------------------------------------------------------------------
 test.describe('Gast', () => {
@@ -96,20 +106,24 @@ test.describe('Gast', () => {
         await settle(page);
         await Promise.all([
             page.waitForURL((u) => u.pathname === '/'),
-            page.locator('.app-header__logo').click(),
+            logo(page).click(),
         ]);
         expect(new URL(page.url()).pathname).toBe('/');
     });
 
-    test('F-21 Gast: "Start" fuehrt auf "/" und ist dort als aktuelle Seite markiert', async ({
+    test('F-21 Gast: Logo (Start) fuehrt auf "/" und ist dort als aktuelle Seite markiert', async ({
         page,
     }) => {
+        // Gate C: "Start" der Seitenleiste ist jetzt das Logo der Kopfzeile
         await page.goto('/');
         await settle(page);
-        const start = sidebar(page).getByRole('link', { name: 'Start' });
-        await expect(start).toHaveAttribute('aria-current', 'page');
-        await expect(start).toHaveClass(/sidebar-link--active/);
-        expect(new URL((await start.getAttribute('href'))!).pathname).toBe('/');
+        await expect(logo(page)).toHaveAttribute('aria-current', 'page');
+        expect(new URL((await logo(page).getAttribute('href'))!).pathname).toBe(
+            '/',
+        );
+        await page.goto('/rezepte');
+        await settle(page);
+        await expect(logo(page)).not.toHaveAttribute('aria-current', 'page');
     });
 
     test('F-21 Landing: "Rezepte entdecken" fuehrt Gaeste zu /rezepte', async ({
@@ -142,35 +156,35 @@ test.describe('Gast', () => {
         await page.goto('/rezepte');
         await settle(page);
         for (const name of ['Sammlungen', 'Meine Zutaten']) {
-            const link = sidebar(page).getByRole('link', {
+            const link = mainNav(page).getByRole('link', {
                 name: `${name} (Anmeldung erforderlich)`,
             });
             await expect(link).toBeVisible();
         }
-        await expect(sidebar(page)).toContainText(
-            'Nach dem Anmelden verfügbar',
-        );
+        // Gaeste bekommen kein Sammlungen-Aufklappmenue (nur den Link zur Anmeldung)
+        await expect(collectionsButton(page)).toHaveCount(0);
     });
 
-    test('F-21 Untermenue: aktive Seite traegt aria-current und kein type an Links', async ({
+    test('F-21 Kopfnavigation: aktive Seite traegt aria-current und kein type an Links', async ({
         page,
     }) => {
+        // Gate C: ersetzt den Test des Such-Untermenues (Rezeptsuche/Zutatensuche
+        // sind jetzt direkte Eintraege der Hauptnavigation)
         await page.goto('/zutatensuche');
         await settle(page);
-        const toggle = page.locator('.sidebar-link--submenu-toggle');
-        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        await expect(toggle).toHaveAttribute(
-            'aria-controls',
-            'sidebar-search-submenu',
-        );
-        await expect(toggle).toHaveClass(/sidebar-link--active/);
-        await toggle.click();
-        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        const current = mainNav(page).locator('[aria-current="page"]');
+        await expect(current).toHaveCount(1);
+        await expect(current).toHaveText('Zutatensuche');
         await expect(
-            page.locator('#sidebar-search-submenu a[aria-current="page"]'),
-        ).toHaveText('Zutatensuche');
+            mainNav(page).getByRole('link', { name: 'Rezepte', exact: true }),
+        ).not.toHaveAttribute('aria-current', 'page');
+        await page.goto('/rezepte');
+        await settle(page);
+        await expect(mainNav(page).locator('[aria-current="page"]')).toHaveText(
+            'Rezepte',
+        );
         expect(
-            await page.locator('.app-shell a[type]').count(),
+            await page.locator('a[type]').count(),
             'kein type-Attribut an <a>',
         ).toBe(0);
     });
@@ -186,7 +200,7 @@ test.describe('Gast', () => {
         await page.goto('/zutatensuche');
         await settle(page);
         await page.keyboard.press('Tab');
-        const skip = page.locator('.skip-link');
+        const skip = page.getByRole('link', { name: 'Zum Inhalt springen' });
         await expect(skip).toBeFocused();
         await expect(skip).toHaveText('Zum Inhalt springen');
         // bei Fokus sichtbar im Viewport
@@ -200,12 +214,10 @@ test.describe('Gast', () => {
             .locator('nav:not([aria-label]):not([aria-labelledby])')
             .count();
         expect(unnamedNav, 'nav ohne aria-label').toBe(0);
-        // Titel im App-Header ist keine Ueberschrift
-        expect(
-            await page
-                .locator('.app-header__title')
-                .evaluate((el) => el.tagName.toLowerCase()),
-        ).toBe('div');
+        // Die Kopfzeile enthaelt keine Ueberschrift (das h1 steht im Inhalt)
+        await expect(
+            banner(page).locator('h1, h2, h3, h4, h5, h6'),
+        ).toHaveCount(0);
     });
 
     test('F-42 fehlerhafter Login zeigt deutsche Validierungsmeldung', async ({
@@ -320,69 +332,133 @@ test.describe('Gast', () => {
     test.describe('mobil 390', () => {
         test.use(MOBILE_390);
 
-        test('F-05 Such-Untermenue: Rezeptsuche/Zutatensuche sichtbar und klickbar', async ({
+        // Gate C: ersetzt "F-05 Such-Untermenue sichtbar und klickbar" (Seitenleiste)
+        test('F-05/Gate C Mobilmenue: alle Eintraege sichtbar und klickbar, schliesst nach Navigation', async ({
             page,
         }) => {
             await page.goto('/zutatensuche');
             await settle(page);
-            const submenu = page.locator('#sidebar-search-submenu');
+            // Hauptnavigation der Kopfzeile ist mobil ausgeblendet
+            await expect(mainNav(page)).toBeHidden();
+            await expect(mobileMenu(page)).toHaveCount(0);
             await menuButton(page).click();
-            await expect(sidebar(page)).not.toHaveClass(/sidebar--closed/);
-            await expect(submenu).toBeHidden();
-            await page.locator('.sidebar-link--submenu-toggle').click();
+            await expect(mobileMenu(page)).toBeVisible();
             await page.waitForTimeout(300);
             const results: unknown[] = [];
-            for (const name of ['Rezeptsuche', 'Zutatensuche']) {
-                const link = page
-                    .locator('.sidebar-submenu__item')
-                    .filter({ hasText: name });
+            const nav = mobileMenu(page).getByRole('navigation', {
+                name: 'Hauptnavigation',
+            });
+            for (const name of [
+                'Startseite',
+                'Rezepte',
+                'Zutatensuche',
+                'Sammlungen (Anmeldung erforderlich)',
+                'Meine Zutaten (Anmeldung erforderlich)',
+            ]) {
+                const link = nav.getByRole('link', { name, exact: true });
                 await expect(link).toBeVisible();
                 const samples = await samplePoints(link);
-                // liegt innerhalb des Drawers
-                const inDrawer = await link.evaluate(
-                    (el) => !!el.closest('#app-sidebar'),
-                );
-                results.push({ name, samples, inDrawer });
-                expect(inDrawer, `${name} im Drawer`).toBe(true);
+                results.push({ name, samples });
                 expect(
                     samples.every((s) => s.hitsTarget),
                     `${name} erhaelt an allen Messpunkten den Klick: ${JSON.stringify(samples)}`,
                 ).toBe(true);
             }
+            // aktuelle Seite markiert
+            await expect(
+                nav.getByRole('link', { name: 'Zutatensuche', exact: true }),
+            ).toHaveAttribute('aria-current', 'page');
+            for (const name of ['Anmelden', 'Registrieren']) {
+                await expect(
+                    mobileMenu(page).getByRole('link', { name, exact: true }),
+                ).toBeVisible();
+            }
             writeRaw('regression', 'F-05', { results });
             await Promise.all([
                 page.waitForURL('**/rezepte'),
-                page
-                    .locator('.sidebar-submenu__item')
-                    .filter({ hasText: 'Rezeptsuche' })
-                    .click(),
+                nav.getByRole('link', { name: 'Rezepte', exact: true }).click(),
             ]);
             await settle(page);
-            // F-29: Drawer nach der Navigation geschlossen
-            expect(await isSidebarClosed(page)).toBe(true);
+            // F-29: Menue nach der Navigation geschlossen, Sperren aufgehoben
+            await expect(mobileMenu(page)).toHaveCount(0);
+            await expect(menuButton(page)).toHaveAttribute(
+                'aria-expanded',
+                'false',
+            );
+            const after = await page.evaluate(() => ({
+                overflow: getComputedStyle(document.body).overflowY,
+                inert: document.getElementById('app')?.inert,
+            }));
+            expect(after.overflow).not.toBe('hidden');
+            expect(after.inert).toBe(false);
         });
 
-        test('F-05 geschlossenes Untermenue ist nicht per Tab erreichbar', async ({
+        // Gate C/F-40: Fokus beim Oeffnen ins Menue, Fokusfalle
+        test('F-40 Mobilmenue: Fokus beim Oeffnen im Menue, Tab bleibt im Menue (Fokusfalle)', async ({
+            page,
+        }) => {
+            await page.goto('/rezepte');
+            await settle(page);
+            await menuButton(page).focus();
+            await page.keyboard.press('Enter');
+            await expect(mobileMenu(page)).toBeVisible();
+            // erster Eintrag hat den Fokus
+            await expect(
+                mobileMenu(page).getByRole('link', {
+                    name: 'Startseite',
+                    exact: true,
+                }),
+            ).toBeFocused();
+            const outside: string[] = [];
+            const count = await mobileMenu(page)
+                .locator('a[href], button:not([disabled])')
+                .count();
+            for (let i = 0; i < count + 3; i++) {
+                await page.keyboard.press('Tab');
+                const inMenu = await page.evaluate(
+                    () =>
+                        !!document.activeElement?.closest('#mobile-menu'),
+                );
+                if (!inMenu)
+                    outside.push(
+                        await page.evaluate(
+                            () => document.activeElement?.tagName ?? 'null',
+                        ),
+                    );
+            }
+            for (let i = 0; i < 3; i++) {
+                await page.keyboard.press('Shift+Tab');
+                if (
+                    !(await page.evaluate(
+                        () => !!document.activeElement?.closest('#mobile-menu'),
+                    ))
+                )
+                    outside.push('shift-tab');
+            }
+            writeRaw('regression', 'F-40-fokusfalle', { count, outside });
+            expect(outside, 'Fokus verlaesst das offene Menue').toEqual([]);
+        });
+
+        test('F-05 geschlossenes Mobilmenue ist nicht per Tab erreichbar, geoeffnet schon', async ({
             page,
         }) => {
             await page.goto('/zutatensuche');
             await settle(page);
-            await menuButton(page).click();
-            await page.locator('.sidebar-link--submenu-toggle').focus();
-            const visits = await tabVisits(page, '.sidebar-submenu', 3);
-            expect(visits, 'Fokus im geschlossenen Untermenue').toEqual([]);
-            await page.keyboard.press('Shift+Tab');
-            await page.keyboard.press('Shift+Tab');
-            await page.keyboard.press('Shift+Tab');
-            await page.locator('.sidebar-link--submenu-toggle').focus();
+            expect(
+                await tabVisits(page, '#mobile-menu', 12),
+                'Fokus im geschlossenen Menue',
+            ).toEqual([]);
+            await menuButton(page).focus();
             await page.keyboard.press('Enter');
             await page.keyboard.press('Tab');
-            await expect(
-                page.locator('.sidebar-submenu__item').first(),
-            ).toBeFocused();
+            expect(
+                await page.evaluate(
+                    () => !!document.activeElement?.closest('#mobile-menu'),
+                ),
+            ).toBe(true);
         });
 
-        test('F-29 Backdrop sichtbar, Tippen neben den Drawer schliesst ihn', async ({
+        test('F-29 Backdrop sichtbar, Tippen neben das Menue schliesst es', async ({
             page,
         }) => {
             await page.goto('/rezepte');
@@ -392,33 +468,31 @@ test.describe('Gast', () => {
                 'false',
             );
             await expect(menuButton(page)).toHaveAttribute(
-                'aria-label',
-                'Navigation',
+                'aria-controls',
+                'mobile-menu',
             );
             await menuButton(page).click();
-            await expect(menuButton(page)).toHaveAttribute(
-                'aria-expanded',
-                'true',
-            );
+            await expect(mobileMenu(page)).toBeVisible();
             await page.waitForTimeout(300);
-            const backdrop = page.locator('.sidebar-backdrop');
+            // Hintergrund scrollt nicht und ist inert
             expect(
-                await backdrop.evaluate((el) => getComputedStyle(el).display),
-            ).not.toBe('none');
-            // Hintergrund scrollt nicht
-            expect(
-                await page.evaluate(
-                    () => getComputedStyle(document.body).overflowY,
-                ),
-            ).toBe('hidden');
+                await page.evaluate(() => ({
+                    overflow: getComputedStyle(document.body).overflowY,
+                    inert: document.getElementById('app')?.inert,
+                })),
+            ).toEqual({ overflow: 'hidden', inert: true });
+            // links neben dem Seitenblatt liegt die abgedunkelte Flaeche
             const hit = await page.evaluate(() => {
-                const e = document.elementFromPoint(375, 500);
-                return e?.className ?? 'null';
+                const e = document.elementFromPoint(20, 500);
+                return {
+                    inMenu: !!e?.closest('#mobile-menu'),
+                    inApp: !!e?.closest('#app'),
+                    hidden: e?.getAttribute('aria-hidden') ?? null,
+                };
             });
-            expect(hit).toContain('sidebar-backdrop');
-            await page.mouse.click(375, 500);
-            await expect(sidebar(page)).toHaveClass(/sidebar--closed/);
-            await expect(backdrop).toHaveCount(0);
+            expect(hit).toEqual({ inMenu: false, inApp: false, hidden: 'true' });
+            await page.mouse.click(20, 500);
+            await expect(mobileMenu(page)).toHaveCount(0);
             await expect(menuButton(page)).toHaveAttribute(
                 'aria-expanded',
                 'false',
@@ -430,31 +504,41 @@ test.describe('Gast', () => {
             ).not.toBe('hidden');
         });
 
-        test('F-29 Escape schliesst den Drawer und gibt den Fokus an den Hamburger', async ({
+        test('F-29 Escape schliesst das Menue und gibt den Fokus an den Menue-Knopf', async ({
             page,
         }) => {
             await page.goto('/rezepte');
             await settle(page);
             await menuButton(page).click();
-            await expect(sidebar(page)).not.toHaveClass(/sidebar--closed/);
-            await sidebar(page).getByRole('link', { name: 'Start' }).focus();
+            await expect(mobileMenu(page)).toBeVisible();
+            await mobileMenu(page)
+                .getByRole('link', { name: 'Zutatensuche', exact: true })
+                .focus();
             await page.keyboard.press('Escape');
-            await expect(sidebar(page)).toHaveClass(/sidebar--closed/);
+            await expect(mobileMenu(page)).toHaveCount(0);
+            await expect(menuButton(page)).toBeFocused();
+            // ebenso der Schliessen-Knopf
+            await menuButton(page).click();
+            await mobileMenu(page)
+                .getByRole('button', { name: 'Menü schließen' })
+                .click();
+            await expect(mobileMenu(page)).toHaveCount(0);
             await expect(menuButton(page)).toBeFocused();
         });
 
-        test('F-29/F-40 geschlossener Drawer erhaelt keinen Tab-Fokus', async ({
+        test('F-29/F-40 geschlossenes Menue erhaelt keinen Tab-Fokus', async ({
             page,
         }) => {
             await page.goto('/rezepte');
             await settle(page);
-            expect(await isSidebarClosed(page)).toBe(true);
-            const visits = await tabVisits(page, '#app-sidebar', 12);
+            await expect(mobileMenu(page)).toHaveCount(0);
+            const visits = await tabVisits(page, '#mobile-menu', 12);
             writeRaw('regression', 'F-29-tab-mobil', { visits });
             expect(visits).toEqual([]);
         });
 
-        test('F-69 Drawer schliesst buendig an den Header an (kein Versatz)', async ({
+        // Gate C: ersetzt "F-69 Drawer schliesst buendig an den Header an"
+        test('F-69 Mobilmenue deckt die volle Hoehe ab und liegt ueber der Kopfzeile', async ({
             page,
         }) => {
             for (const path of ['/rezepte', '/']) {
@@ -462,21 +546,50 @@ test.describe('Gast', () => {
                 await settle(page);
                 await menuButton(page).click();
                 await page.waitForTimeout(300);
-                const header = (await page
-                    .locator('.app-header')
-                    .boundingBox())!;
-                const drawer = (await sidebar(page).boundingBox())!;
-                writeRaw('regression', `F-69-${path}`, { header, drawer });
+                const panel = (await mobileMenu(page).boundingBox())!;
+                const headerHit = await page.evaluate(() => {
+                    const e = document.elementFromPoint(20, 20);
+                    return !!e?.closest('header');
+                });
+                writeRaw('regression', `F-69-${path}`, { panel, headerHit });
+                expect(panel.y, `${path}: Oberkante`).toBeLessThanOrEqual(1);
                 expect(
-                    Math.abs(drawer.y - (header.y + header.height)),
-                    `${path}: Drawer-Oberkante = Header-Unterkante`,
+                    Math.abs(panel.y + panel.height - 844),
+                    `${path}: Unterkante = Viewport`,
                 ).toBeLessThanOrEqual(1);
-                expect(drawer.y + drawer.height).toBeLessThanOrEqual(844 + 1);
+                expect(panel.x + panel.width).toBeLessThanOrEqual(390 + 1);
+                expect(headerHit, 'Kopfzeile liegt unter dem Backdrop').toBe(
+                    false,
+                );
+                await page.keyboard.press('Escape');
+            }
+        });
+
+        test('Gate C Kopfzeile mobil: kein Ueberlauf bei 390 und 320 px', async ({
+            page,
+        }) => {
+            for (const width of [390, 320]) {
+                await page.setViewportSize({ width, height: 700 });
+                await page.goto('/rezepte');
+                await settle(page);
+                const box = (await banner(page).boundingBox())!;
+                const right = await banner(page).evaluate((h) =>
+                    Math.max(
+                        ...Array.from(h.querySelectorAll('*'))
+                            .filter((e) => e.getClientRects().length > 0)
+                            .map((e) => e.getBoundingClientRect().right),
+                    ),
+                );
+                expect(box.width).toBeLessThanOrEqual(width);
+                expect(right, `${width}: rechter Rand`).toBeLessThanOrEqual(
+                    width + 1,
+                );
+                await expect(menuButton(page)).toBeVisible();
+                await expect(logo(page)).toBeVisible();
             }
         });
     });
 });
-
 // ---------------------------------------------------------------------------------------------
 test.describe('Nutzer', () => {
     test.use({ storageState: authFile('user') });
@@ -557,24 +670,37 @@ test.describe('Nutzer', () => {
         ).toBe(titles.length);
     });
 
-    test('F-21 angemeldet: Logo und Start fuehren auf /home, aktive Sammlung markiert', async ({
+    test('F-21 angemeldet: Logo fuehrt auf /home, aktive Sammlung im Sammlungen-Menue markiert', async ({
         page,
     }) => {
         await page.goto(`/sammlung/${DATA.collections.filled.id}`);
         await settle(page);
-        const logo = page.locator('.app-header__logo');
-        expect(new URL((await logo.getAttribute('href'))!).pathname).toBe(
-            '/home',
+        expect(
+            new URL((await logo(page).getAttribute('href'))!).pathname,
+        ).toBe('/home');
+        await expect(logo(page)).not.toHaveAttribute('aria-current', 'page');
+        // Gate C: die eigenen Sammlungen (frueher in der Seitenleiste) liegen im Menue "Sammlungen"
+        await expect(collectionsButton(page)).toHaveAttribute(
+            'aria-expanded',
+            'false',
         );
-        const start = sidebar(page).getByRole('link', { name: 'Start' });
-        expect(new URL((await start.getAttribute('href'))!).pathname).toBe(
-            '/home',
+        await collectionsButton(page).click();
+        await expect(collectionsButton(page)).toHaveAttribute(
+            'aria-expanded',
+            'true',
         );
-        await expect(start).not.toHaveAttribute('aria-current', 'page');
-        const current = sidebar(page).locator('[aria-current="page"]');
+        const menu = page.locator('#collections-menu');
+        await expect(menu).toBeVisible();
+        const current = menu.locator('[aria-current="page"]');
         await expect(current).toHaveCount(1);
         await expect(current).toHaveText(DATA.collections.filled.name);
-        await expect(sidebar(page)).not.toContainText('Anmeldung');
+        await expect(
+            menu.getByRole('link', { name: 'Alle Sammlungen' }),
+        ).toBeVisible();
+        await expect(
+            menu.getByRole('link', { name: DATA.collections.empty.name }),
+        ).toBeVisible();
+        await expect(banner(page)).not.toContainText('Anmeldung');
     });
 
     test('F-20 (E4) /settings/appearance und /settings/two-factor liefern die deutsche 404-Seite', async ({
@@ -587,8 +713,8 @@ test.describe('Nutzer', () => {
             await expect(page.locator('h1'), path).toHaveText(
                 'Seite nicht gefunden',
             );
-            // angemeldete Shell bleibt erhalten
-            await expect(page.locator('.app-header')).toBeVisible();
+            // Shell mit Kopfzeile bleibt erhalten (ohne Session, siehe F-81)
+            await expect(banner(page)).toBeVisible();
         }
     });
 
@@ -628,57 +754,92 @@ test.describe('Nutzer', () => {
         );
     });
 
-    test('F-29/F-40 Desktop: zugeklappte Sidebar erhaelt keinen Tab-Fokus', async ({
+    // Gate C: ersetzt "F-29/F-40 Desktop: zugeklappte Sidebar erhaelt keinen Tab-Fokus"
+    test('F-40 Desktop: geschlossenes Sammlungen-Menue erhaelt keinen Tab-Fokus, Escape und Aussenklick schliessen', async ({
         page,
     }) => {
         await page.goto('/home');
         await settle(page);
-        // offen: Sidebar ist per Tab erreichbar
-        await menuButton(page).focus();
+        const menu = page.locator('#collections-menu');
+        await collectionsButton(page).focus();
         expect(
-            await tabVisits(page, '#app-sidebar', 6),
-            'offene Sidebar erreichbar',
-        ).not.toEqual([]);
-        await menuButton(page).click();
-        await expect(sidebar(page)).toHaveClass(/sidebar--closed/);
-        await expect(menuButton(page)).toHaveAttribute(
+            await tabVisits(page, '#collections-menu', 6),
+            'geschlossenes Menue erreichbar',
+        ).toEqual([]);
+        // geoeffnet: per Tab erreichbar
+        await collectionsButton(page).focus();
+        await page.keyboard.press('Enter');
+        await expect(menu).toBeVisible();
+        await page.keyboard.press('Tab');
+        await expect(
+            menu.getByRole('link', { name: 'Alle Sammlungen' }),
+        ).toBeFocused();
+        // Escape: zu, Fokus zurueck am Ausloeser
+        await page.keyboard.press('Escape');
+        await expect(menu).toBeHidden();
+        await expect(collectionsButton(page)).toBeFocused();
+        // Aussenklick schliesst
+        await collectionsButton(page).click();
+        await expect(menu).toBeVisible();
+        await page.locator('h1').click();
+        await expect(menu).toBeHidden();
+        await expect(collectionsButton(page)).toHaveAttribute(
             'aria-expanded',
             'false',
         );
-        await menuButton(page).focus();
-        expect(await tabVisits(page, '#app-sidebar', 10)).toEqual([]);
+        // Tab aus dem Menue heraus schliesst es ebenfalls
+        await collectionsButton(page).click();
+        await menu.getByRole('link', { name: 'Neue Sammlung' }).focus();
+        await page.keyboard.press('Tab');
+        await expect(menu).toBeHidden();
     });
 
-    test('F-05 Desktop: Untermenue erscheint neben der Sidebar auf Hoehe des Ausloesers', async ({
+    // Gate C: ersetzt "F-05 Desktop: Untermenue erscheint neben der Sidebar"
+    test('F-05 Desktop: Sammlungen-Menue erscheint unter dem Ausloeser, Eintraege klickbar', async ({
         page,
     }) => {
         await page.goto('/home');
         await settle(page);
-        const toggle = page.locator('.sidebar-link--submenu-toggle');
-        await toggle.click();
-        const submenu = page.locator('#sidebar-search-submenu');
-        await expect(submenu).toBeVisible();
+        const menu = page.locator('#collections-menu');
+        // geschlossen: unsichtbar, nicht klickbar, inert
+        expect(
+            await menu.evaluate((el) => ({
+                visibility: getComputedStyle(el).visibility,
+                pointerEvents: getComputedStyle(el).pointerEvents,
+                inert: (el as HTMLElement).inert,
+            })),
+        ).toEqual({ visibility: 'hidden', pointerEvents: 'none', inert: true });
+        await collectionsButton(page).click();
+        await expect(menu).toBeVisible();
         await page.waitForTimeout(300);
-        const t = (await toggle.boundingBox())!;
-        const s = (await submenu.boundingBox())!;
-        const side = (await sidebar(page).boundingBox())!;
-        writeRaw('regression', 'F-05-desktop', { toggle: t, submenu: s, side });
-        expect(Math.abs(s.x - (side.x + side.width))).toBeLessThanOrEqual(1);
-        expect(Math.abs(s.y - t.y)).toBeLessThanOrEqual(1);
-        for (const name of ['Rezeptsuche', 'Zutatensuche']) {
+        const t = (await collectionsButton(page).boundingBox())!;
+        const m = (await menu.boundingBox())!;
+        writeRaw('regression', 'F-05-desktop', { trigger: t, menu: m });
+        expect(m.y).toBeGreaterThanOrEqual(t.y + t.height - 1);
+        expect(Math.abs(m.x - t.x)).toBeLessThanOrEqual(1);
+        for (const name of [
+            'Alle Sammlungen',
+            DATA.collections.filled.name,
+            DATA.collections.empty.name,
+            'Neue Sammlung',
+        ]) {
             const samples = await samplePoints(
-                page
-                    .locator('.sidebar-submenu__item')
-                    .filter({ hasText: name }),
+                menu.getByRole('link', { name, exact: true }),
             );
             expect(
                 samples.every((x) => x.hitsTarget),
-                name,
+                `${name}: ${JSON.stringify(samples)}`,
             ).toBe(true);
         }
-        // zugeklappt wieder unsichtbar
-        await toggle.click();
-        await expect(submenu).toBeHidden();
+        await Promise.all([
+            page.waitForURL(`**/sammlung/${DATA.collections.filled.id}`),
+            menu
+                .getByRole('link', { name: DATA.collections.filled.name })
+                .click(),
+        ]);
+        await settle(page);
+        // nach der Navigation wieder zu
+        await expect(page.locator('#collections-menu')).toBeHidden();
     });
 });
 
@@ -703,7 +864,7 @@ test.describe('Nutzer 2 (eigene Daten/Session)', () => {
         // Meldung nimmt keinen Fokus
         expect(
             await page.evaluate(
-                () => !!document.activeElement?.closest('.flash-message'),
+                () => !!document.activeElement?.closest('[role="status"]'),
             ),
         ).toBe(false);
         await page.screenshot({
@@ -737,7 +898,9 @@ test.describe('Nutzer 2 (eigene Daten/Session)', () => {
         // naechster Seitenwechsel: Meldung weg
         await page.goto('/home');
         await settle(page);
-        await expect(page.locator('.flash-message')).toHaveCount(0);
+        await expect(
+            page.getByRole('button', { name: 'Meldung schließen' }),
+        ).toHaveCount(0);
         await context.close();
     });
 

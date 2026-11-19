@@ -29,22 +29,34 @@ const MOBILE_390 = {
     hasTouch: true,
 } as const;
 
-const dropdown = (page: Page) => page.locator('.user-menu__dropdown');
+// Gate C: Benutzer-Menue der Kopfnavigation (Panel = aria-controls des Ausloesers)
+const dropdown = (page: Page) => page.locator('#user-menu');
 const trigger = (page: Page) =>
-    page.locator('.user-menu > button.app-header__icon');
-const isMenuOpen = (page: Page) =>
-    dropdown(page).evaluate((el) => el.classList.contains('is-open'));
+    page.getByRole('button', { name: 'Benutzermenü' });
+const isMenuOpen = async (page: Page) =>
+    (await trigger(page).getAttribute('aria-expanded')) === 'true';
+const mainNav = (page: Page) =>
+    page
+        .getByRole('banner')
+        .getByRole('navigation', { name: 'Hauptnavigation' });
+/** Zutatenliste der Rezeptdetailseite (F-13) */
+const ingredientList = (page: Page) =>
+    page.getByRole('list', { name: 'Zutaten', exact: true });
+/** Zutatenzeile mit Alternativen ("oder: …"); ohne Alternativen nicht vorhanden */
+const alternativesOf = (page: Page, ingredient: string) =>
+    ingredientList(page)
+        .getByRole('listitem')
+        .filter({ hasText: ingredient })
+        .filter({ hasText: 'oder:' });
 
 /** Wartet, bis die Schliess-Transition durch ist (visibility wird verzoegert umgeschaltet). */
 async function expectMenuClosed(page: Page) {
-    await expect(dropdown(page)).not.toHaveClass(/is-open/);
     await expect(dropdown(page)).toBeHidden();
     await expect(trigger(page)).toHaveAttribute('aria-expanded', 'false');
 }
 
 async function openMenu(page: Page) {
     await trigger(page).click();
-    await expect(dropdown(page)).toHaveClass(/is-open/);
     await expect(dropdown(page)).toBeVisible();
     await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
 }
@@ -198,32 +210,51 @@ test.describe('Gast', () => {
         await expect(page.locator('.filter-panel--tags')).toHaveCount(0);
     });
 
-    test('F-04 Gast: geschlossenes User-Menue ist nicht klickbar (Anmelden-Position)', async ({
+    // Gate C: Gaeste haben kein verstecktes Menue mehr, sondern sichtbare Links.
+    // Gepruefte Idee bleibt: keine unsichtbare Flaeche faengt Klicks ab.
+    test('F-04 Gast: Anmelden/Registrieren sichtbar und klickbar, kein unsichtbares Menue', async ({
         page,
     }) => {
         await page.goto('/rezepte');
         await settle(page);
-        expect(await isMenuOpen(page)).toBe(false);
-        const login = page.locator('.user-menu__item', { hasText: 'Anmelden' });
-        const hit = await hitTest(login);
-        writeRaw('regression', 'F-04-gast', { hit });
-        expect(
-            hit.hitsTarget,
-            `Element an der Anmelden-Position: ${hit.hit}`,
-        ).toBe(false);
-        expect(hit.hit).not.toContain('user-menu');
+        await expect(dropdown(page)).toHaveCount(0);
+        const banner = page.getByRole('banner');
+        const hits = [];
+        for (const name of ['Anmelden', 'Registrieren']) {
+            const link = banner.getByRole('link', { name, exact: true });
+            await expect(link).toBeVisible();
+            const hit = await hitTest(link);
+            hits.push({ name, hit });
+            expect(hit.hitsTarget, `${name}: ${hit.hit}`).toBe(true);
+        }
+        // keine unsichtbaren, aber klickbaren Flaechen in der Kopfzeile
+        const invisibleClickable = await banner.evaluate((h) =>
+            Array.from(h.querySelectorAll<HTMLElement>('*'))
+                .filter((e) => {
+                    const s = getComputedStyle(e);
+                    return (
+                        (s.visibility === 'hidden' || s.opacity === '0') &&
+                        s.pointerEvents !== 'none' &&
+                        e.getClientRects().length > 0
+                    );
+                })
+                .map((e) => e.tagName),
+        );
+        writeRaw('regression', 'F-04-gast', { hits, invisibleClickable });
+        expect(invisibleClickable).toEqual([]);
     });
 
-    test('F-03 Gast: Sidebar-Eintrag "Meine Zutaten" fuehrt zum Login', async ({
+    test('F-03 Gast: Navigations-Eintrag "Meine Zutaten" fuehrt zum Login', async ({
         page,
     }) => {
         await page.goto('/rezepte');
         await settle(page);
         await Promise.all([
             page.waitForURL('**/login'),
-            page
-                .locator('.sidebar')
-                .getByText('Meine Zutaten', { exact: true })
+            mainNav(page)
+                .getByRole('link', {
+                    name: 'Meine Zutaten (Anmeldung erforderlich)',
+                })
                 .click(),
         ]);
         expect(new URL(page.url()).pathname).toBe('/login');
@@ -232,19 +263,20 @@ test.describe('Gast', () => {
     test.describe('mobil 390', () => {
         test.use(MOBILE_390);
 
-        test('F-04/F-05 unsichtbares User-Dropdown ueberdeckt das Such-Untermenue nicht mehr', async ({
+        // Gate C: das Such-Untermenue ist durch das Mobilmenue ersetzt; gleiche Pruefidee:
+        // nichts aus der Kopfzeile oder einem Menue verdeckt die Eintraege
+        test('F-04/F-05 Kopfzeile und Menues ueberdecken das Mobilmenue nicht', async ({
             page,
         }) => {
             await page.goto('/rezepte');
             await settle(page);
-            await page.locator('.app-header__icon--menu').click();
-            await page.locator('.sidebar-link--submenu-toggle').click();
+            await page.getByRole('button', { name: 'Menü', exact: true }).click();
+            const menu = page.getByRole('dialog', { name: 'Menü' });
+            await expect(menu).toBeVisible();
             await page.waitForTimeout(400);
             const hits: string[] = [];
-            for (const name of ['Rezeptsuche', 'Zutatensuche']) {
-                const link = page
-                    .locator('.sidebar-submenu__item')
-                    .filter({ hasText: name });
+            for (const name of ['Rezepte', 'Zutatensuche', 'Anmelden']) {
+                const link = menu.getByRole('link', { name, exact: true });
                 const samples = await link.evaluate((el) => {
                     const r = el.getBoundingClientRect();
                     return [0.1, 0.5, 0.9].map((f) => {
@@ -252,20 +284,15 @@ test.describe('Gast', () => {
                             Math.round(r.left + r.width * f),
                             Math.round(r.top + r.height / 2),
                         );
-                        return h
-                            ? h.closest('.user-menu')
-                                ? 'user-menu'
-                                : h.tagName.toLowerCase()
-                            : 'null';
+                        if (!h) return 'null';
+                        if (h.closest('header')) return 'header';
+                        return el.contains(h) || h === el ? 'ok' : h.tagName;
                     });
                 });
                 hits.push(...samples);
             }
             writeRaw('regression', 'F-04-F-05', { hits });
-            expect(
-                hits.filter((h) => h === 'user-menu'),
-                'kein Treffer auf dem User-Menue',
-            ).toEqual([]);
+            expect(hits.filter((h) => h !== 'ok')).toEqual([]);
         });
     });
 });
@@ -295,7 +322,7 @@ test.describe('Nutzer', () => {
         await expect(page.locator('.filter-panel--tags')).toHaveCount(0);
     });
 
-    test('F-03 Sidebar-Eintrag "Meine Zutaten" navigiert', async ({
+    test('F-03 Navigations-Eintrag "Meine Zutaten" navigiert', async ({
         page,
         diag,
     }) => {
@@ -303,9 +330,8 @@ test.describe('Nutzer', () => {
         await settle(page);
         await Promise.all([
             page.waitForURL('**/meineZutaten'),
-            page
-                .locator('.sidebar')
-                .getByText('Meine Zutaten', { exact: true })
+            mainNav(page)
+                .getByRole('link', { name: 'Meine Zutaten', exact: true })
                 .click(),
         ]);
         await settle(page);
@@ -342,7 +368,8 @@ test.describe('Nutzer 2 (eigene Session)', () => {
         const page = await context.newPage();
         await page.goto('/home');
         await settle(page);
-        await expect(trigger(page)).toHaveAttribute('aria-haspopup', 'true');
+        // Gate C: Disclosure-Muster (kein role="menu"), daher aria-controls statt aria-haspopup
+        await expect(trigger(page)).toHaveAttribute('aria-controls', 'user-menu');
         await openMenu(page);
         await page.keyboard.press('Escape');
         await expectMenuClosed(page);
@@ -361,7 +388,7 @@ test.describe('Nutzer 2 (eigene Session)', () => {
         await page.goto('/home');
         await settle(page);
         await openMenu(page);
-        await page.locator('.app-header__title').click();
+        await page.locator('h1').click();
         await expectMenuClosed(page);
         await context.close();
     });
@@ -380,9 +407,7 @@ test.describe('Nutzer 2 (eigene Session)', () => {
             inDropdownAfterTab.push(
                 await page.evaluate(
                     () =>
-                        !!document.activeElement?.closest(
-                            '.user-menu__dropdown',
-                        ),
+                        !!document.activeElement?.closest('#user-menu'),
                 ),
             );
         }
@@ -396,16 +421,14 @@ test.describe('Nutzer 2 (eigene Session)', () => {
         await openMenu(page);
         await page.keyboard.press('Tab');
         const focusedText = await page.evaluate(() =>
-            document.activeElement?.closest('.user-menu__dropdown')
+            document.activeElement?.closest('#user-menu')
                 ? document.activeElement.textContent?.trim()
                 : null,
         );
         expect(focusedText).toBe('Einstellungen');
         await Promise.all([
             page.waitForURL('**/settings'),
-            page
-                .locator('.user-menu__item', { hasText: 'Einstellungen' })
-                .click(),
+            dropdown(page).getByRole('link', { name: 'Einstellungen' }).click(),
         ]);
         await context.close();
     });
@@ -434,7 +457,11 @@ async function runF04(
             inert: (el as HTMLElement).inert,
         };
     });
-    const logout = page.locator('.user-menu__item--danger');
+    // geschlossen ist der Eintrag versteckt => includeHidden
+    const logout = dropdown(page).getByRole('button', {
+        name: 'Abmelden',
+        includeHidden: true,
+    });
     const box = await logout.boundingBox();
     const hit = await hitTest(logout);
     let logoutPosts = 0;
@@ -872,9 +899,7 @@ test.describe('Host – Slice 2', () => {
             await page.waitForURL(new RegExp(`/rezept/${recipeId}$`));
             await settle(page);
             await expect(
-                page
-                    .locator('.ingredient-row', { hasText: 'Brokkoli' })
-                    .locator('.ingredient-alternatives'),
+                alternativesOf(page, 'Brokkoli'),
             ).toContainText('Tempeh');
 
             // Wieder entfernen: Modal startet mit den Alternativen aus den Edit-Props (ohne GET)
@@ -903,9 +928,7 @@ test.describe('Host – Slice 2', () => {
             ]);
             await settle(page);
             await expect(
-                page
-                    .locator('.ingredient-row', { hasText: 'Brokkoli' })
-                    .locator('.ingredient-alternatives'),
+                alternativesOf(page, 'Brokkoli'),
             ).toHaveCount(0);
 
             writeRaw('regression', 'F-13-add-remove', { altRequests, fields });
@@ -971,9 +994,11 @@ test.describe('Host – Slice 2', () => {
             ).toEqual([]);
             await page.waitForURL(new RegExp(`/rezept/${recipeId}$`));
             await settle(page);
-            await expect(page.locator('.ingredient-alternatives')).toHaveCount(
-                0,
-            );
+            await expect(
+                ingredientList(page)
+                    .getByRole('listitem')
+                    .filter({ hasText: 'oder:' }),
+            ).toHaveCount(0);
             expect(altRequests).toEqual([]);
         } finally {
             await deleteRecipe(page, recipeId);
@@ -1092,10 +1117,7 @@ test.describe('Host – Slice 2', () => {
             ]);
             await page.waitForURL(new RegExp(`/rezept/${recipeId}$`));
             await settle(page);
-            const alt = (n: string) =>
-                page
-                    .locator('.ingredient-row', { hasText: n })
-                    .locator('.ingredient-alternatives');
+            const alt = (n: string) => alternativesOf(page, n);
             await expect(alt('Quinoa')).toContainText('Basmatireis');
             await expect(alt('Zucchini')).toContainText('Tempeh');
             await expect(alt('Sojasauce')).toContainText('Naturtofu');
@@ -1131,7 +1153,10 @@ test.describe('Host – Slice 2', () => {
         const recipeId = Number(new URL(page.url()).pathname.split('/').pop());
         try {
             await settle(page);
-            const steps = page.locator('.step-item .step-text');
+            const steps = page
+                .getByRole('list', { name: 'Zubereitung', exact: true })
+                .getByRole('listitem')
+                .locator('p');
             await expect(steps).toHaveCount(2);
             expect(
                 await steps
@@ -1300,7 +1325,7 @@ test.describe('Nutzer 2 – Slice 2 (F-39)', () => {
             const card4 = page.locator('.collection-recipe-item', {
                 hasText: R4,
             });
-            await card4.locator('.recipe-card__title').click();
+            await card4.getByRole('heading', { name: R4 }).click();
             await page.waitForTimeout(500);
             expect(requests).toEqual([]);
             await expect(page.locator('.collection-recipe-item')).toHaveCount(

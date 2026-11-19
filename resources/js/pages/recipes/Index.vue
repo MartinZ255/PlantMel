@@ -1,62 +1,88 @@
 <template>
-    <AppLayout page-title="Rezepte">
-        <!-- Suche / Filter in der Mitte -->
-        <RecipeSearchArea
-            ref="searchArea"
-            :tags="tags"
-            :tag-stats="tagStats"
-            :initial-filters="props.filters"
-            @update:filters="onUpdateFilters"
-        />
+    <AppLayout page-title="Rezepte" bleed>
+        <!-- Kopf mit Suche -->
+        <section class="border-b border-line bg-surface">
+            <div
+                class="mx-auto flex w-full max-w-(--content-max) flex-col gap-6 px-4 pt-8 pb-6 sm:px-6 lg:px-8 lg:pt-10"
+            >
+                <PageHeader
+                    title="Rezepte"
+                    description="Finde pflanzenbetonte Gerichte nach Name, Kategorie oder Zutaten."
+                >
+                    <template v-if="props.isHost" #actions>
+                        <Button :href="route('recipes.create')">
+                            <Plus class="size-5" aria-hidden="true" />
+                            Rezept erstellen
+                        </Button>
+                    </template>
+                </PageHeader>
 
-        <a
-            v-if="props.isHost"
-            :href="route('recipes.create')"
-            class="content-section"
+                <RecipeSearchArea
+                    ref="searchArea"
+                    :tags="tags"
+                    :tag-stats="tagStats"
+                    :initial-filters="props.filters"
+                    @update:filters="onUpdateFilters"
+                />
+            </div>
+        </section>
+
+        <!-- Ergebnisse -->
+        <section
+            aria-labelledby="recipe-results-title"
+            class="mx-auto w-full max-w-(--content-max) px-4 py-8 sm:px-6 lg:px-8"
         >
-            Rezept erstellen
-        </a>
-
-        <!-- Grid aus Karten unten -->
-        <section class="content-section">
-            <div class="section-header">
-                <h1 class="section-header__title">Rezepte</h1>
+            <div
+                class="mb-5 flex flex-wrap items-baseline justify-between gap-2"
+            >
+                <h2
+                    id="recipe-results-title"
+                    class="text-xl font-semibold text-ink"
+                >
+                    {{ hasActiveFilters ? 'Suchergebnisse' : 'Alle Rezepte' }}
+                </h2>
                 <!-- F-44: Trefferzahl als Live-Region -->
-                <div class="section-header__meta" role="status">
+                <p class="text-sm font-medium text-ink-muted" role="status">
                     {{
                         recipeCards.length === 1
                             ? '1 Ergebnis'
                             : `${recipeCards.length} Ergebnisse`
                     }}
-                </div>
+                </p>
             </div>
 
             <!-- F-44: Leerzustand -->
-            <div v-if="recipeCards.length === 0" class="recipes-empty">
-                <p class="recipes-empty__text">
-                    {{
-                        hasActiveFilters
-                            ? 'Keine Rezepte passen zu deiner Suche.'
-                            : 'Es gibt noch keine Rezepte.'
-                    }}
-                </p>
-                <button
-                    v-if="hasActiveFilters"
-                    type="button"
-                    class="secondary-pill-button"
-                    @click="resetFilters"
-                >
-                    Filter zurücksetzen
-                </button>
-            </div>
+            <EmptyState
+                v-if="recipeCards.length === 0"
+                :icon="SearchX"
+                :title="
+                    hasActiveFilters
+                        ? 'Keine Rezepte gefunden'
+                        : 'Noch keine Rezepte'
+                "
+                :description="
+                    hasActiveFilters
+                        ? 'Keine Rezepte passen zu deiner Suche. Ändere die Filter oder setze sie zurück.'
+                        : 'Es gibt noch keine Rezepte.'
+                "
+                :heading-level="3"
+            >
+                <template v-if="hasActiveFilters" #actions>
+                    <Button variant="secondary" @click="resetFilters">
+                        Filter zurücksetzen
+                    </Button>
+                </template>
+            </EmptyState>
 
-            <div v-else class="recipes-grid">
-                <RecipeDetailCard
-                    v-for="card in recipeCards"
-                    :key="card.id"
-                    :recipe="card"
-                />
-            </div>
+            <ul
+                v-else
+                class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                aria-labelledby="recipe-results-title"
+            >
+                <li v-for="card in recipeCards" :key="card.id" class="min-w-0">
+                    <RecipeDetailCard :recipe="card" />
+                </li>
+            </ul>
         </section>
     </AppLayout>
 </template>
@@ -65,18 +91,20 @@
 import AppLayout from '@/components/layout/AppLayout.vue';
 import RecipeDetailCard from '@/components/recipes/RecipeDetailCard.vue';
 import RecipeSearchArea from '@/components/recipes/RecipeSearchArea.vue';
+import Button from '@/components/ui/Button.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
 import { router } from '@inertiajs/vue3';
+import { Plus, SearchX } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 
 interface Recipes {
     id: number;
     name: string;
-    rating: number; // 0–5
+    rating: number; // 0–5, ganzzahlig (0 = keine Bewertung)
     tags: string[];
-    time: string; // '20 Min'
-    servings: string | null;
-    summary: string | null;
+    time: string; // '20 Min' oder '–'
     image: string | null;
 }
 
@@ -115,6 +143,7 @@ const props = withDefaults(
 );
 
 const tags = computed(() => props.tags);
+const tagStats = computed(() => props.tagStats);
 
 const searchArea = ref<{ reset: () => void } | null>(null);
 
@@ -131,7 +160,6 @@ const hasActiveFilters = computed(() => {
 const resetFilters = () => {
     searchArea.value?.reset();
 };
-const tagStats = computed(() => props.tagStats);
 
 const recipeCards = computed(() =>
     props.recipes.map((r) => ({
@@ -152,21 +180,18 @@ type FilterPayload = {
 };
 
 const onUpdateFilters = (payload: FilterPayload) => {
-    const params: Record<string, any> = {};
+    const params: Record<string, string | string[]> = {};
 
     if (payload.search && payload.search.trim()) {
         params.search = payload.search.trim();
     }
-
-    if (payload.includeIngredients && payload.includeIngredients.length > 0) {
+    if (payload.includeIngredients.length > 0) {
         params.includeIngredients = payload.includeIngredients;
     }
-
-    if (payload.excludeIngredients && payload.excludeIngredients.length > 0) {
+    if (payload.excludeIngredients.length > 0) {
         params.excludeIngredients = payload.excludeIngredients;
     }
-
-    if (payload.tags && payload.tags.length > 0) {
+    if (payload.tags.length > 0) {
         params.tags = payload.tags;
     }
 

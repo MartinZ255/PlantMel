@@ -75,12 +75,53 @@ export interface UseModalOptions {
     dialog: Ref<HTMLElement | null>;
     /** Optional: Element, das beim Öffnen den Fokus bekommt. */
     initialFocus?: Ref<HTMLElement | null>;
+    /**
+     * Gate C (F-40): Tab/Umschalt+Tab bleiben im Dialog (Fokusfalle).
+     * Standard aus, damit die Bestands-Dialoge unverändert bleiben; der
+     * neue `Dialog`-Baustein und das Mobilmenü schalten sie ein.
+     */
+    trapFocus?: boolean;
+}
+
+/** Sichtbare, fokussierbare Elemente innerhalb von `root` in DOM-Reihenfolge. */
+export function focusableWithin(root: HTMLElement): HTMLElement[] {
+    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) =>
+            !el.closest('[inert]') &&
+            el.getClientRects().length > 0 &&
+            getComputedStyle(el).visibility !== 'hidden',
+    );
 }
 
 export function useModal(options: UseModalOptions) {
     const id = nextId++;
     let returnFocus: HTMLElement | null = null;
     let isOpen = false;
+
+    const onTrapKeydown = (event: KeyboardEvent) => {
+        if (event.key !== 'Tab' || !isOpen) return;
+        // nur der oberste Dialog hält den Fokus
+        if (stack[stack.length - 1]?.id !== id) return;
+        const dialog = options.dialog.value;
+        if (!dialog) return;
+        const items = focusableWithin(dialog);
+        if (items.length === 0) {
+            event.preventDefault();
+            dialog.focus();
+            return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        const inside = !!active && dialog.contains(active);
+        if (event.shiftKey && (active === first || !inside)) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && (active === last || !inside)) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
 
     const open = async () => {
         if (isOpen || typeof document === 'undefined') return;
@@ -96,6 +137,9 @@ export function useModal(options: UseModalOptions) {
         }
         stack.push({ id, close: () => options.onClose() });
         lockBackground();
+        if (options.trapFocus) {
+            document.addEventListener('keydown', onTrapKeydown);
+        }
 
         await nextTick();
         const dialog = options.dialog.value;
@@ -109,6 +153,7 @@ export function useModal(options: UseModalOptions) {
     const close = () => {
         if (!isOpen || typeof document === 'undefined') return;
         isOpen = false;
+        document.removeEventListener('keydown', onTrapKeydown);
         const index = stack.findIndex((entry) => entry.id === id);
         if (index !== -1) stack.splice(index, 1);
 

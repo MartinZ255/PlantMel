@@ -205,13 +205,35 @@ test.describe('Host', () => {
             ]) {
                 await page.goto(`/rezept/${r.id}`);
                 await settle(page);
-                const actions = await page
-                    .locator('.recipe-actions')
-                    .boundingBox();
-                const title = await page.locator('h1.title').boundingBox();
+                // Gate C: Aktionen ueber Rollen; Beschreibung = Absatz direkt nach dem h1
+                const actionBoxes = await Promise.all(
+                    [
+                        page.getByRole('button', {
+                            name: 'Zur Sammlung hinzufügen',
+                        }),
+                        page.getByRole('link', { name: 'Rezept bearbeiten' }),
+                        page.getByRole('button', { name: 'Rezept löschen' }),
+                    ].map((l) => l.boundingBox()),
+                );
+                const valid = actionBoxes.filter(
+                    (b): b is NonNullable<typeof b> => !!b,
+                );
+                const actions = valid.length
+                    ? {
+                          x: Math.min(...valid.map((b) => b.x)),
+                          y: Math.min(...valid.map((b) => b.y)),
+                          width:
+                              Math.max(...valid.map((b) => b.x + b.width)) -
+                              Math.min(...valid.map((b) => b.x)),
+                          height:
+                              Math.max(...valid.map((b) => b.y + b.height)) -
+                              Math.min(...valid.map((b) => b.y)),
+                      }
+                    : null;
+                const title = await page.locator('h1').boundingBox();
                 const desc = await page
-                    .locator('.header-content .description')
-                    .boundingBox()
+                    .locator('h1 + p')
+                    .boundingBox({ timeout: 1000 })
                     .catch(() => null);
                 rows.push({
                     id: r.id,
@@ -265,7 +287,8 @@ test.describe('Host', () => {
                 const hit = await hitTest(title);
                 const titleBox = await title.boundingBox();
                 const headerBox = await page
-                    .locator('.app-header')
+                    .locator('#app header')
+                    .first()
                     .boundingBox();
                 const modalBox = await page
                     .locator('.alternatives-modal')
@@ -302,7 +325,8 @@ test.describe('Host', () => {
                 const hit = await hitTest(title);
                 const titleBox = await title.boundingBox();
                 const headerBox = await page
-                    .locator('.app-header')
+                    .locator('#app header')
+                    .first()
                     .boundingBox();
                 await page.screenshot({
                     path: test

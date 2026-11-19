@@ -1,0 +1,24 @@
+/** Gate C: gemeinsame Klassen der Kopfnavigation (AppHeader, CollectionsMenu). */
+
+export const navLinkBase =
+    'relative inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
+
+export const navLinkState = (active: boolean) =>
+    active
+        ? 'bg-tint text-primary'
+        : 'text-ink hover:bg-canvas hover:text-primary';
+
+export const dropdownPanelBase =
+    'absolute top-full z-(--z-dropdown) mt-2 rounded-xl border border-line bg-surface p-2 shadow-overlay transition-[opacity,visibility,translate] duration-150';
+
+/** Geschlossen: unsichtbar und nicht klickbar (zusätzlich `inert`, F-04). */
+export const dropdownPanelState = (open: boolean) =>
+    open
+        ? 'visible translate-y-0 opacity-100'
+        : 'pointer-events-none invisible -translate-y-1 opacity-0';
+
+export const dropdownItem =
+    'flex min-h-10 w-full items-center rounded-lg px-3 text-left text-[0.9375rem] text-ink hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus';
+
+export const dropdownItemDanger =
+    'flex min-h-10 w-full items-center rounded-lg px-3 text-left text-[0.9375rem] text-danger hover:bg-danger-surface focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus';

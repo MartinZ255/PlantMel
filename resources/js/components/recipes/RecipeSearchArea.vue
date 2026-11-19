@@ -1,142 +1,161 @@
 <template>
-    <section class="content-section">
-        <div class="search-area">
-            <!-- Suchzeile + Zutaten-Filter -->
-            <div class="search-row">
+    <div class="flex flex-col gap-4">
+        <!-- Suchzeile -->
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <div class="relative min-w-0 flex-1">
                 <!-- F-44: echtes Label, Suche entprellt und nur bei Textänderung -->
                 <label for="recipe-search" class="sr-only">
                     Rezepte nach Namen durchsuchen
                 </label>
+                <Search
+                    class="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted"
+                    aria-hidden="true"
+                />
                 <input
                     id="recipe-search"
-                    class="search-row__input"
-                    type="text"
-                    placeholder="Rezeptname eingeben …"
                     v-model="searchTerm"
+                    type="search"
+                    enterkeyhint="search"
+                    autocomplete="off"
+                    placeholder="Rezeptname eingeben …"
+                    class="block min-h-13 w-full min-w-0 rounded-full border border-line-strong bg-surface py-3 pr-4 pl-12 text-base text-ink shadow-card placeholder:text-ink-muted focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus"
                     @keydown.enter.prevent="flushSearch"
                 />
-                <button
-                    class="search-row__filter-button"
-                    type="button"
-                    @click.stop="toggleIngredientFilter"
-                >
-                    ☰ Filter
-                </button>
-
-                <!-- Zutaten-Filterpanel -->
-                <div
-                    class="filter-panel filter-panel--ingredients"
-                    :class="{ 'is-open': showIngredientFilter }"
-                >
-                    <div class="filter-panel__title">Nach Zutaten filtern</div>
-                    <div class="filter-panel__subtitle">
-                        Gib Zutaten an, die enthalten sein sollen.
-                    </div>
-
-                    <div class="filter-panel__field">
-                        <label for="includeIngredients"
-                            >enthaltene Zutaten</label
-                        >
-                        <input
-                            id="includeIngredients"
-                            class="filter-panel__input"
-                            type="text"
-                            v-model="includeIngredients"
-                            placeholder="z.B. Tomaten, Knoblauch"
-                        />
-                    </div>
-
-                    <div class="filter-panel__field">
-                        <label for="excludeIngredients">ausschließen</label>
-                        <input
-                            id="excludeIngredients"
-                            class="filter-panel__input"
-                            type="text"
-                            v-model="excludeIngredients"
-                            placeholder="z.B. Nüsse, Sellerie"
-                        />
-                    </div>
-
-                    <div class="filter-panel__field">
-                        <span class="filter-panel__subtitle"
-                            >häufig genutzte Zutaten:</span
-                        >
-                        <div class="filter-panel__chips">
-                            <button
-                                v-for="chip in frequentIngredients"
-                                :key="chip"
-                                type="button"
-                                class="filter-panel__chip"
-                                @click.stop="appendIngredient(chip)"
-                            >
-                                {{ chip }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="filter-panel__actions">
-                        <button
-                            type="button"
-                            class="filter-panel__btn filter-panel__btn--ghost"
-                            @click.stop="closeIngredientFilter"
-                        >
-                            Abbrechen
-                        </button>
-                        <button
-                            type="button"
-                            class="filter-panel__btn filter-panel__btn--primary"
-                            @click.stop="applyFilters"
-                        >
-                            Anwenden
-                        </button>
-                    </div>
-                </div>
             </div>
-
-            <!-- Tag-Chips; "..." öffnet Kategorien-Panel -->
-            <div class="tag-chips">
-                <button
-                    v-for="tag in visibleTags"
-                    :key="tag.key"
-                    class="tag-chip"
-                    :class="{ 'tag-chip--active': isTagActive(tag.key) }"
-                    type="button"
-                    @click="toggleTag(tag.key)"
-                >
-                    {{ tag.label }}
-                </button>
-
-                <button
-                    class="tag-chip"
-                    type="button"
-                    id="moreFilterToggle"
-                    @click="toggleTagPanel"
-                >
-                    ...
-                </button>
-            </div>
-
-            <!-- Kategorien-Panel (scharf, schnell, glutenfrei, ...) -->
-            <div
-                class="filter-panel filter-panel--tags"
-                :class="{ 'is-open': showTagPanel }"
+            <button
+                ref="filterButton"
+                type="button"
+                class="inline-flex min-h-13 shrink-0 items-center justify-center gap-2 rounded-full border px-5 text-base font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                :class="
+                    isPanelOpen
+                        ? 'border-primary bg-tint text-primary'
+                        : 'border-line-strong bg-surface text-ink hover:bg-tint'
+                "
+                :aria-expanded="
+                    isDesktop ? (isPanelOpen ? 'true' : 'false') : undefined
+                "
+                :aria-controls="isDesktop ? 'recipe-filter-panel' : undefined"
+                :aria-haspopup="isDesktop ? undefined : 'dialog'"
+                @click="togglePanel"
             >
-                <div
-                    v-for="tag in extraTagStats"
-                    :key="tag.key"
-                    class="filter-panel__row"
-                    @click="toggleTag(tag.key)"
+                <SlidersHorizontal class="size-5" aria-hidden="true" />
+                Filter
+                <span
+                    v-if="activeFilterCount > 0"
+                    class="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-sm text-on-primary"
                 >
-                    <span>{{ tag.label }}</span>
-                    <span>{{ tag.count }}</span>
-                </div>
-            </div>
+                    {{ activeFilterCount }}
+                    <span class="sr-only">aktiv</span>
+                </span>
+            </button>
         </div>
-    </section>
+
+        <!-- Filterbereich: ab md aufklappbar im Fluss -->
+        <section
+            v-if="isDesktop"
+            v-show="isPanelOpen"
+            id="recipe-filter-panel"
+            aria-labelledby="recipe-filter-title"
+            class="rounded-2xl border border-line bg-surface p-5 shadow-card lg:p-6"
+            @keydown.esc.stop="closePanel(true)"
+        >
+            <h2
+                id="recipe-filter-title"
+                class="mb-4 text-lg font-semibold text-ink"
+            >
+                Filter
+            </h2>
+            <RecipeFilterFields
+                v-model:include="includeIngredients"
+                v-model:exclude="excludeIngredients"
+                :categories="categoryOptions"
+                :suggestions="frequentIngredients"
+                @toggle-category="toggleTag"
+                @add-suggestion="appendIngredient"
+                @apply="applyFilters"
+            />
+            <div
+                class="mt-6 flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:justify-end"
+            >
+                <Button variant="ghost" @click="closePanel(true)">
+                    Schließen
+                </Button>
+                <Button @click="applyFilters">Zutatenfilter anwenden</Button>
+            </div>
+        </section>
+
+        <!-- mobil: als Panel (Dialog) -->
+        <Dialog
+            v-else
+            :open="isPanelOpen"
+            title="Filter"
+            description="Kategorien wirken sofort, Zutaten nach „Anwenden“."
+            close-label="Filter schließen"
+            @close="closePanel()"
+        >
+            <RecipeFilterFields
+                v-model:include="includeIngredients"
+                v-model:exclude="excludeIngredients"
+                :categories="categoryOptions"
+                :suggestions="frequentIngredients"
+                @toggle-category="toggleTag"
+                @add-suggestion="appendIngredient"
+                @apply="applyFilters"
+            />
+            <template #footer>
+                <Button variant="ghost" @click="closePanel()">Schließen</Button>
+                <Button @click="applyFilters">Zutatenfilter anwenden</Button>
+            </template>
+        </Dialog>
+
+        <!-- F-44: aktive Filter als entfernbare Chips -->
+        <div
+            v-if="activeChips.length"
+            class="flex flex-wrap items-center gap-2"
+        >
+            <span class="text-sm font-medium text-ink-muted"
+                >Aktive Filter:</span
+            >
+            <ul class="contents" aria-label="Aktive Filter">
+                <li
+                    v-for="chip in activeChips"
+                    :key="chip.key"
+                    class="max-w-full"
+                >
+                    <Chip
+                        removable
+                        :remove-label="`Filter entfernen: ${chip.label}`"
+                        @click="removeChip(chip)"
+                    >
+                        {{ chip.label }}
+                    </Chip>
+                </li>
+            </ul>
+            <button
+                type="button"
+                class="min-h-9 rounded-full px-2 text-sm font-semibold text-primary underline underline-offset-4 hover:text-primary-hover"
+                @click="reset"
+            >
+                Alle Filter entfernen
+            </button>
+        </div>
+    </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import RecipeFilterFields from '@/components/recipes/RecipeFilterFields.vue';
+import Button from '@/components/ui/Button.vue';
+import Chip from '@/components/ui/Chip.vue';
+import Dialog from '@/components/ui/Dialog.vue';
+import { Search, SlidersHorizontal } from 'lucide-vue-next';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from 'vue';
 
 interface TagStat {
     key: string;
@@ -152,8 +171,8 @@ interface Filters {
 }
 
 interface Props {
-    tags: string[]; // ['alle', 'Dessert', 'Low Carb', ...]
-    tagStats: TagStat[]; // Stats für Panel (scharf, schnell, glutenfrei, ...)
+    tags: string[]; // alle Kategorienamen
+    tagStats: TagStat[]; // Anzahl Rezepte je Kategorie
     initialFilters?: Filters;
 }
 
@@ -173,7 +192,7 @@ const emit = defineEmits<{
 
 // State aus Initial-Filtern vorbelegen
 const searchTerm = ref(props.initialFilters?.search ?? '');
-const activeTags = ref<string[]>(props.initialFilters?.tags ?? []);
+const activeTags = ref<string[]>([...(props.initialFilters?.tags ?? [])]);
 
 const includeIngredients = ref(
     (props.initialFilters?.includeIngredients ?? []).join(', '),
@@ -182,28 +201,48 @@ const excludeIngredients = ref(
     (props.initialFilters?.excludeIngredients ?? []).join(', '),
 );
 
-const showIngredientFilter = ref(false);
-const showTagPanel = ref(false);
-
 const frequentIngredients = ['Tomaten', 'Knoblauch', 'Zwiebeln', 'Paprika'];
 
-const visibleTags = computed(() =>
-    props.tags.filter((t) => t !== '...').map((t) => ({ key: t, label: t })),
+// --- Panel: ab md im Fluss, darunter als Dialog ---------------------------
+const DESKTOP_QUERY = '(min-width: 48rem)';
+const isDesktop = ref(true);
+const isPanelOpen = ref(false);
+const filterButton = ref<HTMLButtonElement | null>(null);
+let mediaQuery: MediaQueryList | null = null;
+const onMediaChange = (e: MediaQueryListEvent) => {
+    isDesktop.value = e.matches;
+};
+
+onMounted(() => {
+    mediaQuery = window.matchMedia(DESKTOP_QUERY);
+    isDesktop.value = mediaQuery.matches;
+    mediaQuery.addEventListener('change', onMediaChange);
+});
+
+const togglePanel = () => {
+    isPanelOpen.value = !isPanelOpen.value;
+};
+
+const closePanel = (restoreFocus = false) => {
+    isPanelOpen.value = false;
+    if (restoreFocus) nextTick(() => filterButton.value?.focus());
+};
+
+// --- Kategorien -------------------------------------------------------------
+const countByLabel = computed(
+    () => new Map(props.tagStats.map((t) => [t.label, t.count])),
 );
 
-const extraTagStats = computed(() => props.tagStats);
-
-const toggleIngredientFilter = () => {
-    showIngredientFilter.value = !showIngredientFilter.value;
-};
-
-const closeIngredientFilter = () => {
-    showIngredientFilter.value = false;
-};
-
-const toggleTagPanel = () => {
-    showTagPanel.value = !showTagPanel.value;
-};
+const categoryOptions = computed(() =>
+    props.tags
+        .filter((t) => t !== '...' && t !== 'alle')
+        .map((t) => ({
+            key: t,
+            label: t,
+            count: countByLabel.value.get(t) ?? null,
+            active: activeTags.value.includes(t),
+        })),
+);
 
 const parseIngredientList = (value: string): string[] =>
     value
@@ -211,27 +250,72 @@ const parseIngredientList = (value: string): string[] =>
         .map((v) => v.trim())
         .filter((v) => v.length > 0);
 
-const isTagActive = (key: string): boolean => {
-    return activeTags.value.includes(key);
+const toggleTag = (key: string) => {
+    const current = activeTags.value;
+    activeTags.value = current.includes(key)
+        ? current.filter((t) => t !== key)
+        : [...current, key];
+    emitFilters();
 };
 
-const toggleTag = (key: string) => {
-    // Optional: spezieller "alle"-Tag, der alle anderen zurücksetzt
-    if (key === 'alle') {
-        activeTags.value = [];
-        emitFilters();
-        return;
-    }
+// --- Aktive Filter (vom Server bestätigt) --------------------------------------
+type ActiveChip = {
+    key: string;
+    label: string;
+    kind: 'search' | 'tag' | 'include' | 'exclude';
+    value: string;
+};
 
-    const current = activeTags.value;
-    if (current.includes(key)) {
-        activeTags.value = current.filter((t) => t !== key);
+const activeChips = computed<ActiveChip[]>(() => {
+    const f = props.initialFilters ?? {};
+    const chips: ActiveChip[] = [];
+    const search = (f.search ?? '').trim();
+    if (search)
+        chips.push({
+            key: 'search',
+            label: `Suche: „${search}“`,
+            kind: 'search',
+            value: search,
+        });
+    for (const t of f.tags ?? [])
+        chips.push({ key: `tag-${t}`, label: t, kind: 'tag', value: t });
+    for (const i of f.includeIngredients ?? [])
+        chips.push({
+            key: `inc-${i}`,
+            label: `mit ${i}`,
+            kind: 'include',
+            value: i,
+        });
+    for (const e of f.excludeIngredients ?? [])
+        chips.push({
+            key: `exc-${e}`,
+            label: `ohne ${e}`,
+            kind: 'exclude',
+            value: e,
+        });
+    return chips;
+});
+
+const activeFilterCount = computed(
+    () => activeChips.value.filter((c) => c.kind !== 'search').length,
+);
+
+const removeChip = (chip: ActiveChip) => {
+    if (chip.kind === 'search') {
+        searchTerm.value = '';
+    } else if (chip.kind === 'tag') {
+        activeTags.value = activeTags.value.filter((t) => t !== chip.value);
     } else {
-        activeTags.value = [...current, key];
+        const model =
+            chip.kind === 'include' ? includeIngredients : excludeIngredients;
+        model.value = parseIngredientList(model.value)
+            .filter((v) => v !== chip.value)
+            .join(', ');
     }
     emitFilters();
 };
 
+// --- Suche (entprellt, F-44) -------------------------------------------------
 // Zuletzt gesendeter Suchtext: nur echte Änderungen lösen eine Anfrage aus
 let lastSearch = (props.initialFilters?.search ?? '').trim();
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -255,7 +339,10 @@ watch(searchTerm, () => {
     searchTimer = setTimeout(flushSearch, SEARCH_DEBOUNCE_MS);
 });
 
-onBeforeUnmount(clearSearchTimer);
+onBeforeUnmount(() => {
+    clearSearchTimer();
+    mediaQuery?.removeEventListener('change', onMediaChange);
+});
 
 /** Alle Filter leeren und neu laden (Leerzustand „Filter zurücksetzen“). */
 const reset = () => {
@@ -283,12 +370,13 @@ const emitFilters = () => {
 };
 
 const appendIngredient = (name: string) => {
-    const current = includeIngredients.value.trim();
-    includeIngredients.value = current ? `${current}, ${name}` : name;
+    const current = parseIngredientList(includeIngredients.value);
+    if (current.includes(name)) return;
+    includeIngredients.value = [...current, name].join(', ');
 };
 
 const applyFilters = () => {
     emitFilters();
-    closeIngredientFilter();
+    if (!isDesktop.value) closePanel();
 };
 </script>
