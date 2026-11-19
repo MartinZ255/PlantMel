@@ -72,3 +72,17 @@ Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren
 **Risiken.** Viele Browser-Tests nutzen CSS-Klassen der alten Oberfläche; sie werden auf rollen- und textbasierte Selektoren umgestellt. Alle Screenshot-Baselines ändern sich. Barrierefreiheits-Verbesserungen aus Slice 1–4 dürfen nicht verloren gehen (Regressionstests bleiben der Maßstab).
 
 **Rollback.** Branch nicht mergen; der Stand von Slice 4 bleibt unverändert.
+
+### ADR-003, Revision 1 (2026-11-19): Konzept „Natur & organisch“
+
+**Anlass.** Der Auftraggeber hat die Musterseiten aus Gate C1 abgelehnt: „viel zu basic … ich will ein besonderes design und nicht so ein basic 0815 design“. Neu gewählt: Konzept **„Natur & organisch“**; die Farbpalette darf der Lead neu festlegen.
+
+**Neue Gestaltungsrichtung (verbindlich für Gate C).**
+- **Charakter:** hochwertig, warm und lebendig statt neutral; organische Formen, Tiefe durch Ebenen, sanfte Bewegung. Jede Seite braucht mindestens ein unverwechselbares Gestaltungselement – keine Standard-Karten-Raster ohne eigene Handschrift.
+- **Palette (neu, ersetzt „Frisch & klar“):** dunkles Waldgrün als tragender Ton für große Flächen (Hero, Bänder, Footer), Moosgrün und ein heller Matcha-/Limettenton als lebendige Begleiter, ein warmer Beeren-/Rote-Bete-Ton als Akzent, ein heller, leicht grünlicher Naturgrund statt Reinweiß. Kein Creme/Salbei/Pfirsich-Dreiklang wie im alten Design. Genaue Werte legt der Design-Agent fest; WCAG 2.2 AA bleibt Pflicht.
+- **Formen:** organische Blob-Masken für Bilder (auch Rezeptkarten), wellige Abschnittsübergänge (SVG), weiche mehrschichtige Verläufe und Blob-Hintergründe, Blatt- und Kräuter-Ornamente als SVG, feine Körnung (Grain) über Flächen.
+- **Typografie:** ausdrucksstarke Display-Serif für Überschriften (Fraunces, OFL, selbst gehostet über Fontsource), Instrument Sans für Fließtext.
+- **Bewegung:** sanftes Einblenden beim Scrollen, schwebende Elemente, Formwechsel der Bildmasken beim Hover – alles abgeschaltet bei `prefers-reduced-motion`.
+- **Bilder:** Die Startseite zeigt echte Rezeptbilder aus der Datenbank (neue Prop `featuredRecipes`, kleine Backend-Ergänzung), statt nur Formen.
+
+**Unverändert aus ADR-003:** Tailwind-v4-Tokens, Bausteine unter `components/ui/`, Navigation oben, Barrierefreiheit, Vorgehen in zwei Schritten (Musterseiten zur Abnahme, dann Ausrollen).
