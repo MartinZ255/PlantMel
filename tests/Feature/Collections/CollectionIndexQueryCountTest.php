@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\KnownDefects\Backend;
+namespace Tests\Feature\Collections;
 
 use App\Models\Collection;
 use App\Models\Recipe;
@@ -11,14 +11,14 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Bekannter Defekt F-23 (N+1): CollectionController::index ruft trotz
- * withCount('recipes') pro Sammlung $collection->recipes()->count() auf
- * (app/Http/Controllers/CollectionController.php:28).
+ * Regressionstest F-23 (N+1 in collections.index), behoben mit Merge 723badb:
+ * CollectionController::index nutzt recipes_count aus withCount('recipes') und
+ * lädt die Collage-Bilder per Eager Loading mit Limit je Sammlung.
+ * Bis Gate C2 lag der Test in tests/KnownDefects (dort rot).
  *
  * Sollverhalten: Die Anzahl der Queries für collections.index ist
  * unabhängig von der Anzahl der Sammlungen.
  */
-#[Group('known-defect')]
 #[Group('F-23')]
 class CollectionIndexQueryCountTest extends TestCase
 {
