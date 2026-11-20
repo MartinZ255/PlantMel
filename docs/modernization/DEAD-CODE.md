@@ -49,6 +49,14 @@ Bewertung: **sicher tot** = keine statische oder dynamische Verwendung, kein Dat
 | U11 | `config/services.php` Einträge `postmark`, `resend`, `ses`, `slack` | Laravel-Standard; nur über `MAIL_MAILER` bzw. Kanäle aktivierbar. | Konfigurationsoption, kein Code. |
 | U12 | `useReveal.ts` Export `REDUCED_MOTION_QUERY` | nur intern genutzt. | harmlos, Export kostet nichts. |
 | U13 | `@types/node` (dev) | kein direkter Treffer, aber `node:`-Importe in `tests/e2e/**`, `playwright.config.ts`, `vite.config.ts` brauchen die Typen. | in Benutzung (Typen), nicht tot. |
+| U14 | `.prettierignore`: `resources/js/components/ui/*`, `resources/views/mail/*` | `ui/*` war die shadcn-Ausnahme; seit Gate C liegen dort eigene Design-System-Bausteine, die damit nicht Prettier-geprüft werden. `resources/views/mail/` existiert nicht. | Entfernen der `ui/*`-Zeile würde Formatierungsänderungen in `components/ui/` nach sich ziehen (keine Massenformatierung in D3). |
+| U15 | `eslint.config.js` Ignore-Eintrag `tailwind.config.js` | Datei existiert nicht. | harmlos; bei nächster Änderung an `eslint.config.js` mit entfernen. |
+
+## npm audit (Dev-Abhängigkeiten, Gate D3)
+
+- Vorher: 9 moderate (GHSA-g3hv-75wg-m249, `minimatch` 7.0.0–11.0.0) über `typescript-eslint` und `vue-tsc`.
+- `npm audit fix` (ohne `--force`): `typescript-eslint` und `@typescript-eslint/*` 8.72.2 → 8.73.0 (nur Lockfile), `minimatch` 10.2.6 → 11.0.9. ESLint, vue-tsc, Build grün.
+- Rest: 3 moderate über `vue-tsc` 2.2.12 → `@vue/language-core` 2.2.12 → `minimatch` 9.0.9. Kein 2.x-Release mit behobenem `minimatch`; Behebung nur mit `vue-tsc` 3 (Major) – nicht übernommen. Nur Dev/Typecheck, nicht im Produktions-Bundle (`npm audit --omit=dev`: 0).
 
 ## Nicht geprüft
 
