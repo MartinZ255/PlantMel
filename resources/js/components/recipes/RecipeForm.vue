@@ -1,337 +1,858 @@
 <template>
     <!-- novalidate: Pflichtfelder sind markiert, geprüft wird auf dem Server
          (die Meldungen erscheinen am Feld und in der Zusammenfassung) -->
-    <form class="recipe-form" novalidate @submit.prevent="submit">
-        <!-- F-06/F-74: Fehlerzusammenfassung mit Sprunglinks -->
+    <form class="min-w-0" data-recipe-form novalidate @submit.prevent="submit">
         <div
-            v-if="errorEntries.length"
-            ref="summaryEl"
-            class="form-error-summary"
-            role="alert"
-            tabindex="-1"
-            aria-labelledby="form-error-summary-title"
+            class="lg:grid lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-10 xl:gap-14"
         >
-            <h2 id="form-error-summary-title" class="form-error-summary__title">
-                {{
-                    errorEntries.length === 1
-                        ? 'Bitte prüfe 1 Angabe:'
-                        : `Bitte prüfe ${errorEntries.length} Angaben:`
-                }}
-            </h2>
-            <ul class="form-error-summary__list">
-                <li v-for="entry in errorEntries" :key="entry.key">
-                    <a
-                        v-if="entry.target"
-                        :href="`#${entry.target}`"
-                        class="form-error-summary__link"
-                        @click.prevent="focusField(entry.target)"
-                    >
-                        {{ entry.label }}: {{ entry.message }}
-                    </a>
-                    <span v-else>{{ entry.label }}: {{ entry.message }}</span>
-                </li>
-            </ul>
-        </div>
-
-        <div class="recipe-form__grid">
-            <!-- Stammdaten links -->
-            <div class="recipe-form__section">
-                <h2 class="recipe-form__section-title">Stammdaten</h2>
-                <p class="recipe-form__required-hint">
-                    Mit <span aria-hidden="true">*</span> markierte Angaben sind
-                    Pflicht.
-                </p>
-
-                <div class="form-field">
-                    <label class="form-field__label" for="name">
-                        Titel
-                        <span class="form-field__required" aria-hidden="true"
-                            >*</span
-                        >
-                    </label>
-                    <input
-                        id="name"
-                        v-model="form.name"
-                        type="text"
-                        class="form-field__input"
-                        placeholder="z. B. Cremige One-Pot Pasta mit Spinat"
-                        required
-                        aria-required="true"
-                        v-bind="invalidAttrs('name', 'name-error')"
-                    />
+            <!-- Kapitelnavigation (nur breite Bildschirme): Sprunglinks zu den Abschnitten -->
+            <nav aria-label="Abschnitte des Formulars" class="hidden lg:block">
+                <div
+                    class="sticky top-[calc(var(--header-height)+1.5rem)] pt-2"
+                >
                     <p
-                        v-if="errorFor('name')"
-                        id="name-error"
-                        class="form-field__error"
+                        class="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold tracking-[0.14em] text-primary uppercase"
                     >
-                        {{ errorFor('name') }}
-                    </p>
-                </div>
-
-                <div class="form-field">
-                    <label class="form-field__label" for="description"
-                        >Kurzbeschreibung</label
-                    >
-                    <textarea
-                        id="description"
-                        v-model="form.description"
-                        class="form-field__textarea"
-                        rows="2"
-                        placeholder="Kurze Beschreibung, wann und wofür das Rezept ideal ist …"
-                        v-bind="
-                            invalidAttrs('description', 'description-error')
-                        "
-                    ></textarea>
-                    <p
-                        v-if="errorFor('description')"
-                        id="description-error"
-                        class="form-field__error"
-                    >
-                        {{ errorFor('description') }}
-                    </p>
-                </div>
-
-                <div class="form-row-split">
-                    <div class="form-field">
-                        <label class="form-field__label" for="cook_time"
-                            >Zubereitungsdauer (Min.)</label
-                        >
-                        <input
-                            id="cook_time"
-                            v-model="form.duration_minutes"
-                            type="number"
-                            min="0"
-                            class="form-field__input form-field__input--sm"
-                            placeholder="20"
-                            v-bind="
-                                invalidAttrs(
-                                    'duration_minutes',
-                                    'cook_time-error',
-                                )
-                            "
+                        <LeafOrnament
+                            variant="sprout"
+                            class="size-4 text-moss"
                         />
-                        <p
-                            v-if="errorFor('duration_minutes')"
-                            id="cook_time-error"
-                            class="form-field__error"
-                        >
-                            {{ errorFor('duration_minutes') }}
-                        </p>
-                    </div>
-
-                    <div class="form-field">
-                        <label class="form-field__label" for="servings"
-                            >Portionen</label
-                        >
-                        <input
-                            id="servings"
-                            v-model="form.servings"
-                            type="number"
-                            min="1"
-                            class="form-field__input form-field__input--sm"
-                            placeholder="2"
-                            v-bind="invalidAttrs('servings', 'servings-error')"
-                        />
-                        <p
-                            v-if="errorFor('servings')"
-                            id="servings-error"
-                            class="form-field__error"
-                        >
-                            {{ errorFor('servings') }}
-                        </p>
+                        Kapitel
+                    </p>
+                    <div class="relative">
+                        <span
+                            class="pointer-events-none absolute top-4 bottom-4 left-[1.05rem] border-l-2 border-dashed border-tint-strong"
+                            aria-hidden="true"
+                        ></span>
+                        <ol class="relative flex flex-col gap-1">
+                            <li
+                                v-for="(chapter, i) in chapters"
+                                :key="chapter.id"
+                                class="relative"
+                            >
+                                <a
+                                    :href="`#${chapter.id}`"
+                                    class="group flex min-h-11 items-center gap-3 rounded-pebble py-1 pr-2 text-base font-medium text-ink-muted hover:bg-tint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                                >
+                                    <span
+                                        class="inline-flex size-[2.1rem] shrink-0 items-center justify-center rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-surface font-display text-base font-semibold text-primary shadow-card ring-1 ring-line group-hover:bg-matcha group-hover:text-forest"
+                                        aria-hidden="true"
+                                        >{{ i + 1 }}</span
+                                    >
+                                    <span class="min-w-0">{{
+                                        chapter.label
+                                    }}</span>
+                                </a>
+                            </li>
+                        </ol>
                     </div>
                 </div>
+            </nav>
 
-                <!-- Sternebewertung pro Dimension -->
-                <div class="recipe-form__ratings">
-                    <div class="form-field">
-                        <div
-                            id="ratings-title"
-                            class="recipe-form__section-title"
+            <div class="flex min-w-0 flex-col gap-10 sm:gap-14">
+                <!-- F-06/F-74: Fehlerzusammenfassung mit Sprunglinks -->
+                <div
+                    v-if="errorEntries.length"
+                    ref="summaryEl"
+                    data-error-summary
+                    class="relative overflow-hidden rounded-[2rem_1.5rem_2.25rem_1.75rem] border-[1.5px] border-danger bg-danger-surface p-5 shadow-card focus:outline-2 focus:outline-offset-4 focus:outline-focus sm:p-7"
+                    role="alert"
+                    tabindex="-1"
+                    aria-labelledby="form-error-summary-title"
+                >
+                    <div class="flex items-start gap-3">
+                        <span
+                            class="blob-mask inline-flex size-11 shrink-0 items-center justify-center bg-danger text-white blob-3"
+                            aria-hidden="true"
                         >
-                            Bewertung
+                            <CircleAlert class="size-6" />
+                        </span>
+                        <div class="min-w-0">
+                            <h2
+                                id="form-error-summary-title"
+                                class="font-display-wonk text-2xl font-semibold text-ink sm:text-3xl"
+                            >
+                                {{
+                                    errorEntries.length === 1
+                                        ? 'Bitte prüfe 1 Angabe:'
+                                        : `Bitte prüfe ${errorEntries.length} Angaben:`
+                                }}
+                            </h2>
+                            <ul
+                                class="mt-3 flex flex-col gap-1.5 text-base text-ink"
+                            >
+                                <li
+                                    v-for="entry in errorEntries"
+                                    :key="entry.key"
+                                    class="flex items-start gap-2 text-wrap-anywhere"
+                                >
+                                    <span
+                                        class="mt-2.5 size-1.5 shrink-0 rounded-[60%_40%_55%_45%] bg-danger"
+                                        aria-hidden="true"
+                                    ></span>
+                                    <a
+                                        v-if="entry.target"
+                                        :href="`#${entry.target}`"
+                                        class="min-w-0 py-0.5 font-medium text-danger underline decoration-2 underline-offset-4 hover:text-danger-hover"
+                                        @click.prevent="
+                                            focusField(entry.target)
+                                        "
+                                    >
+                                        {{ entry.label }}: {{ entry.message }}
+                                    </a>
+                                    <span v-else class="min-w-0 py-0.5"
+                                        >{{ entry.label }}:
+                                        {{ entry.message }}</span
+                                    >
+                                </li>
+                            </ul>
                         </div>
-                        <p
-                            v-if="errorFor('ratings')"
-                            id="ratings-error"
-                            class="form-field__error"
-                        >
-                            {{ errorFor('ratings') }}
-                        </p>
                     </div>
+                </div>
 
-                    <div class="rating-grid">
-                        <div
-                            v-for="dimension in ratingDimensions"
-                            :key="dimension.id"
-                            class="rating-row"
+                <!-- 1 · Grunddaten -->
+                <FormSection
+                    id="abschnitt-grunddaten"
+                    name="basics"
+                    title-id="basics-title"
+                    title="Grunddaten"
+                    :number="1"
+                >
+                    <template #hint>
+                        Mit <span aria-hidden="true" class="text-danger">*</span
+                        ><span class="sr-only">Stern</span> markierte Angaben
+                        sind Pflicht.
+                    </template>
+
+                    <div class="flex flex-col gap-6">
+                        <div class="flex min-w-0 flex-col gap-1.5">
+                            <label
+                                for="name"
+                                class="text-sm font-semibold text-ink"
+                            >
+                                Titel
+                                <span class="text-danger" aria-hidden="true"
+                                    >*</span
+                                >
+                            </label>
+                            <input
+                                id="name"
+                                v-model="form.name"
+                                type="text"
+                                class="block min-h-14 w-full min-w-0 rounded-[1.1rem_0.9rem_1.2rem_1rem] border-[1.5px] border-line-strong bg-canvas px-4 py-2 font-display text-2xl font-semibold text-ink placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus aria-[invalid=true]:border-danger sm:text-3xl"
+                                placeholder="z. B. Cremige One-Pot Pasta mit Spinat"
+                                required
+                                aria-required="true"
+                                v-bind="invalidAttrs('name', 'name-error')"
+                            />
+                            <p
+                                v-if="errorFor('name')"
+                                id="name-error"
+                                data-field-error
+                                class="text-sm font-medium text-danger"
+                            >
+                                {{ errorFor('name') }}
+                            </p>
+                        </div>
+
+                        <Field
+                            id="description"
+                            label="Kurzbeschreibung"
+                            :error="errorFor('description')"
+                            v-slot="field"
                         >
-                            <div class="rating-row__label">
-                                <div
-                                    :id="`rating-${dimension.id}-label`"
-                                    class="rating-row__name"
-                                >
-                                    {{ dimension.name }}
-                                </div>
-                                <div
-                                    v-if="dimension.description"
-                                    class="rating-row__hint"
-                                >
-                                    {{ dimension.description }}
-                                </div>
-                                <p
-                                    v-if="ratingError(dimension.id)"
-                                    :id="`rating-${dimension.id}-error`"
-                                    class="form-field__error"
-                                >
-                                    {{ ratingError(dimension.id) }}
-                                </p>
-                            </div>
+                            <Textarea
+                                v-model="form.description"
+                                :rows="3"
+                                placeholder="Kurze Beschreibung, wann und wofür das Rezept ideal ist …"
+                                v-bind="field.inputAttrs"
+                            />
+                        </Field>
 
+                        <div class="grid gap-5 sm:grid-cols-2">
+                            <Field
+                                id="cook_time"
+                                label="Zubereitungsdauer (Min.)"
+                                :error="errorFor('duration_minutes')"
+                                v-slot="field"
+                            >
+                                <div class="relative">
+                                    <Clock
+                                        class="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-moss"
+                                        aria-hidden="true"
+                                    />
+                                    <input
+                                        v-model="form.duration_minutes"
+                                        type="number"
+                                        min="0"
+                                        inputmode="numeric"
+                                        :class="numberInputClass"
+                                        placeholder="20"
+                                        v-bind="field.inputAttrs"
+                                    />
+                                </div>
+                            </Field>
+
+                            <Field
+                                id="servings"
+                                label="Portionen"
+                                :error="errorFor('servings')"
+                                v-slot="field"
+                            >
+                                <div class="relative">
+                                    <Users
+                                        class="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-moss"
+                                        aria-hidden="true"
+                                    />
+                                    <input
+                                        v-model="form.servings"
+                                        type="number"
+                                        min="1"
+                                        inputmode="numeric"
+                                        :class="numberInputClass"
+                                        placeholder="2"
+                                        v-bind="field.inputAttrs"
+                                    />
+                                </div>
+                            </Field>
+                        </div>
+                    </div>
+                </FormSection>
+
+                <!-- 2 · Bild -->
+                <FormSection
+                    id="abschnitt-bild"
+                    name="image"
+                    title-id="image-title"
+                    title="Bild"
+                    :number="2"
+                    tone="plain"
+                >
+                    <div
+                        class="grid items-center gap-8 sm:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]"
+                    >
+                        <!-- F-56: Vorschau des neuen bzw. aktuellen Bildes -->
+                        <figure
+                            class="relative mx-auto w-full max-w-[17rem] px-3 pt-3 pb-1 sm:max-w-none"
+                            :data-image-preview="shownImage ? '' : undefined"
+                        >
+                            <span
+                                class="pointer-events-none absolute inset-[8%_-4%_-5%_9%] animate-morph bg-matcha/80"
+                                aria-hidden="true"
+                            ></span>
+                            <span
+                                class="pointer-events-none absolute -top-2 left-[4%] size-[14%] rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-berry shadow-berry"
+                                aria-hidden="true"
+                            ></span>
+                            <BlobImage
+                                :src="shownImage"
+                                alt=""
+                                :shape="3"
+                                ratio="1/1"
+                                eager
+                                class="relative shadow-float"
+                            >
+                                <template #fallback>
+                                    <div
+                                        class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-tint-strong via-tint to-surface"
+                                        aria-hidden="true"
+                                    >
+                                        <LeafOrnament
+                                            variant="sprig"
+                                            class="absolute -bottom-2 left-[14%] h-[56%] rotate-[-18deg] text-moss/70"
+                                        />
+                                        <span
+                                            class="relative flex size-[38%] items-center justify-center rounded-full bg-surface shadow-float ring-8 ring-tint-strong"
+                                        >
+                                            <ImagePlus
+                                                class="size-[44%] text-primary"
+                                            />
+                                        </span>
+                                    </div>
+                                </template>
+                            </BlobImage>
+                            <figcaption
+                                class="relative mt-4 text-center text-sm font-medium text-ink-muted"
+                            >
+                                {{
+                                    previewUrl
+                                        ? 'Neues Bild – wird beim Speichern übernommen.'
+                                        : shownImage
+                                          ? 'Aktuelles Bild'
+                                          : 'Noch kein Bild ausgewählt'
+                                }}
+                            </figcaption>
+                        </figure>
+
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <label
+                                for="image"
+                                class="font-display text-2xl font-semibold text-ink"
+                            >
+                                Bild hochladen
+                            </label>
+                            <p
+                                id="image-hint"
+                                data-field-hint
+                                class="text-base text-ink-muted"
+                            >
+                                Optional – wird z. B. für die Vorschaukarte oder
+                                Detailseite verwendet.
+                            </p>
+                            <input
+                                id="image"
+                                ref="imageInput"
+                                type="file"
+                                accept="image/*"
+                                class="mt-2 block w-full min-w-0 cursor-pointer rounded-[1.1rem_0.9rem_1.2rem_1rem] border-[1.5px] border-dashed border-line-strong bg-surface p-2 text-base text-ink-muted file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-pebble file:border-0 file:bg-primary file:px-5 file:font-semibold file:text-on-primary hover:border-primary hover:file:bg-primary-hover focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus aria-[invalid=true]:border-danger"
+                                v-bind="
+                                    invalidAttrs(
+                                        'image',
+                                        'image-error',
+                                        'image-hint',
+                                    )
+                                "
+                                @change="onImageChange"
+                            />
+                            <p
+                                v-if="errorFor('image')"
+                                id="image-error"
+                                data-field-error
+                                class="text-sm font-medium text-danger"
+                            >
+                                {{ errorFor('image') }}
+                            </p>
+                        </div>
+                    </div>
+                </FormSection>
+
+                <!-- 3 · Zutaten (Papierblatt) -->
+                <FormSection
+                    id="abschnitt-zutaten"
+                    name="ingredients"
+                    title-id="ingredients-title"
+                    title="Zutaten"
+                    :number="3"
+                    required
+                >
+                    <template #hint>
+                        <p id="ingredients-hint">
+                            Jede Zeile entspricht einer Zutat: erst die Menge,
+                            dann die Bezeichnung. Mindestens eine Zutat ist
+                            Pflicht; leere Zeilen werden beim Speichern
+                            ignoriert.
+                        </p>
+                    </template>
+                    <p
+                        v-if="errorFor('ingredients')"
+                        id="ingredients-error"
+                        data-field-error
+                        class="mb-4 text-sm font-medium text-danger"
+                    >
+                        {{ errorFor('ingredients') }}
+                    </p>
+
+                    <div
+                        ref="ingredientsListEl"
+                        data-ingredients-list
+                        class="flex flex-col gap-3"
+                    >
+                        <div
+                            v-for="(ingredient, index) in form.ingredients"
+                            :key="ingredientIds[index]"
+                            class="min-w-0"
+                        >
                             <div
-                                class="rating-stars-input"
-                                role="group"
-                                :aria-labelledby="`rating-${dimension.id}-label`"
-                                :aria-describedby="
-                                    ratingDescribedBy(dimension.id)
+                                data-ingredient-row
+                                :data-dragging="
+                                    draggedIngredientIndex === index
+                                        ? ''
+                                        : undefined
+                                "
+                                class="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 gap-y-2 rounded-[1.25rem_1rem_1.4rem_1.1rem] p-2 transition-[background-color,box-shadow] duration-200 sm:grid-cols-[2.75rem_7.5rem_minmax(0,1fr)_auto] sm:items-center"
+                                :class="
+                                    draggedIngredientIndex === index
+                                        ? 'bg-tint shadow-raised ring-2 ring-primary'
+                                        : index % 2 === 0
+                                          ? 'bg-canvas/70'
+                                          : 'bg-transparent'
                                 "
                             >
                                 <button
-                                    v-for="star in 5"
-                                    :id="`rating-${dimension.id}-star-${star}`"
-                                    :key="star"
+                                    v-if="form.ingredients.length > 1"
                                     type="button"
-                                    class="rating-star-btn"
-                                    :class="{
-                                        'rating-star-btn--active':
-                                            (form.ratings[dimension.id] ?? 0) >=
-                                            star,
-                                    }"
-                                    :aria-label="`${star} von 5 Sternen`"
-                                    :aria-pressed="
-                                        form.ratings[dimension.id] === star
-                                            ? 'true'
-                                            : 'false'
+                                    data-ingredient-handle
+                                    class="row-span-3 inline-flex size-11 cursor-grab touch-none items-center justify-center self-start rounded-pebble text-ink-muted hover:bg-tint-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:cursor-grabbing sm:row-span-1 sm:self-center"
+                                    aria-label="Zutat verschieben"
+                                    title="Gedrückt halten und ziehen, um die Zutat zu verschieben"
+                                    @pointerdown="
+                                        startIngredientDrag(index, $event)
                                     "
-                                    @click="setRating(dimension.id, star)"
+                                    @contextmenu.prevent
                                 >
-                                    ★
+                                    <GripVertical
+                                        class="size-5"
+                                        aria-hidden="true"
+                                    />
                                 </button>
-                                <span
-                                    v-if="form.ratings[dimension.id]"
-                                    class="rating-stars-input__value"
+
+                                <input
+                                    :id="`ingredient-${ingredientIds[index]}-amount`"
+                                    v-model="ingredient.amount"
+                                    type="text"
+                                    data-ingredient-amount
+                                    :class="[rowInputClass, 'col-start-2']"
+                                    placeholder="z. B. 200 g"
+                                    :aria-label="`Menge, Zutat ${index + 1}`"
+                                    v-bind="
+                                        rowInvalidAttrs(
+                                            ingredientError(index, 'amount'),
+                                            `ingredient-${ingredientIds[index]}-amount-error`,
+                                        )
+                                    "
+                                />
+
+                                <!-- Autocomplete für die Bezeichnung (F-36: schließt bei Blur/Escape) -->
+                                <div
+                                    class="relative col-start-2 min-w-0 sm:col-start-3"
                                 >
-                                    {{ form.ratings[dimension.id] }} / 5
-                                </span>
+                                    <input
+                                        :id="`ingredient-${ingredientIds[index]}-name`"
+                                        v-model="ingredient.name"
+                                        type="text"
+                                        data-ingredient-name
+                                        :class="rowInputClass"
+                                        placeholder="z. B. Pasta (Penne)"
+                                        autocomplete="off"
+                                        :aria-label="`Bezeichnung, Zutat ${index + 1}`"
+                                        :required="index === 0"
+                                        :aria-required="
+                                            index === 0 ? 'true' : undefined
+                                        "
+                                        v-bind="ingredientNameAttrs(index)"
+                                        @focus="openIngredientDropdown(index)"
+                                        @input="onIngredientNameInput(index)"
+                                        @blur="closeIngredientDropdown"
+                                        @keydown.esc="closeIngredientDropdown"
+                                    />
+
+                                    <div
+                                        v-if="
+                                            ingredientDropdownOpenIndex ===
+                                                index &&
+                                            getIngredientOptions(index).length
+                                        "
+                                        data-ingredient-suggestions
+                                        class="absolute inset-x-0 top-full z-(--z-dropdown) mt-1.5 max-h-64 scrollbar-thin overflow-y-auto rounded-[1.25rem_1rem_1.4rem_1.1rem] bg-surface p-1.5 shadow-raised ring-1 ring-line"
+                                    >
+                                        <button
+                                            v-for="option in getIngredientOptions(
+                                                index,
+                                            )"
+                                            :key="option.id"
+                                            type="button"
+                                            class="flex min-h-11 w-full items-center gap-2 rounded-[0.9rem_0.75rem_0.95rem_0.8rem] px-3 text-left text-base text-ink hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus"
+                                            @mousedown.prevent="
+                                                selectIngredient(
+                                                    index,
+                                                    option.name,
+                                                )
+                                            "
+                                        >
+                                            <LeafOrnament
+                                                variant="leaf"
+                                                class="h-3.5 shrink-0 rotate-[30deg] text-moss"
+                                            />
+                                            <span
+                                                class="min-w-0 text-wrap-anywhere"
+                                                >{{ option.name }}</span
+                                            >
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="col-start-2 flex flex-wrap items-center gap-1.5 sm:col-start-4"
+                                >
+                                    <!-- + oder Stift abhängig davon, ob die Zutat existiert -->
+                                    <button
+                                        v-if="
+                                            ingredient.name.trim() &&
+                                            !findIngredientByName(
+                                                ingredient.name,
+                                            )
+                                        "
+                                        type="button"
+                                        :class="rowActionClass"
+                                        aria-label="Zutat neu anlegen"
+                                        title="Zutat neu anlegen"
+                                        :disabled="
+                                            creatingIngredientRowId ===
+                                            ingredientIds[index]
+                                        "
+                                        @click="createIngredientFromRow(index)"
+                                    >
+                                        <Plus
+                                            class="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+
+                                    <button
+                                        v-else-if="
+                                            findIngredientByName(
+                                                ingredient.name,
+                                            )
+                                        "
+                                        type="button"
+                                        :class="rowActionClass"
+                                        aria-haspopup="dialog"
+                                        aria-label="Zutat bearbeiten"
+                                        title="Zutat bearbeiten"
+                                        @click="
+                                            openEditIngredientModal(
+                                                findIngredientByName(
+                                                    ingredient.name,
+                                                )!,
+                                            )
+                                        "
+                                    >
+                                        <Pencil
+                                            class="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+
+                                    <!-- Alternativen: Anzahl als Plakette NEBEN dem Knopf (rein grafisch),
+                                         damit der zugängliche Name stabil bleibt -->
+                                    <span class="relative inline-flex">
+                                        <button
+                                            :id="`ingredient-${ingredientIds[index]}-alternatives`"
+                                            type="button"
+                                            :class="rowActionClass"
+                                            aria-haspopup="dialog"
+                                            aria-label="Alternativzutaten bearbeiten"
+                                            title="Alternativzutaten bearbeiten"
+                                            v-bind="
+                                                rowInvalidAttrs(
+                                                    ingredientError(
+                                                        index,
+                                                        'alternatives',
+                                                    ),
+                                                    `ingredient-${ingredientIds[index]}-alternatives-error`,
+                                                )
+                                            "
+                                            @click="
+                                                openIngredientAlternatives(
+                                                    index,
+                                                )
+                                            "
+                                        >
+                                            <ArrowLeftRight
+                                                class="size-5"
+                                                aria-hidden="true"
+                                            />
+                                        </button>
+                                        <span
+                                            v-if="
+                                                ingredient
+                                                    .alternativeIngredientIds
+                                                    .length
+                                            "
+                                            data-alternatives-count
+                                            class="pointer-events-none absolute -top-1 -right-1 inline-flex min-w-5 items-center justify-center rounded-[60%_40%_55%_45%] bg-berry px-1 text-xs font-semibold text-white"
+                                            aria-hidden="true"
+                                            >{{
+                                                ingredient
+                                                    .alternativeIngredientIds
+                                                    .length
+                                            }}</span
+                                        >
+                                    </span>
+
+                                    <button
+                                        v-if="form.ingredients.length > 1"
+                                        type="button"
+                                        :class="[
+                                            rowActionClass,
+                                            'text-danger hover:bg-danger-surface hover:text-danger-hover',
+                                        ]"
+                                        :aria-label="`Zutat ${index + 1} entfernen`"
+                                        title="Zutat entfernen"
+                                        @click="removeIngredient(index)"
+                                    >
+                                        <Trash2
+                                            class="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="rowMessages(index).length"
+                                data-ingredient-errors
+                                class="mt-1 flex flex-col gap-1 pl-2 sm:pl-[3.75rem]"
+                            >
+                                <p
+                                    v-for="msg in rowMessages(index)"
+                                    :id="msg.id"
+                                    :key="msg.id"
+                                    data-field-error
+                                    class="text-sm font-medium text-danger"
+                                    :role="msg.live ? 'alert' : undefined"
+                                >
+                                    {{ msg.text }}
+                                </p>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Meta rechts -->
-            <div class="recipe-form__section">
-                <h2 class="recipe-form__section-title">Meta & Tags</h2>
-
-                <!-- Bild-Upload -->
-                <div class="form-field">
-                    <label class="form-field__label" for="image">
-                        Bild hochladen
-                    </label>
-                    <!-- F-56: Vorschau des neuen bzw. aktuellen Bildes -->
-                    <figure
-                        v-if="shownImage"
-                        class="recipe-form__image-preview"
+                    <Button
+                        variant="secondary"
+                        class="mt-5"
+                        @click="addIngredient"
                     >
-                        <img
-                            :src="shownImage"
-                            alt=""
-                            class="recipe-form__image-preview-img"
-                        />
-                        <figcaption class="form-field__hint">
-                            {{
-                                previewUrl
-                                    ? 'Neues Bild – wird beim Speichern übernommen.'
-                                    : 'Aktuelles Bild'
-                            }}
-                        </figcaption>
-                    </figure>
-                    <input
-                        id="image"
-                        ref="imageInput"
-                        type="file"
-                        accept="image/*"
-                        class="form-field__input"
-                        v-bind="
-                            invalidAttrs('image', 'image-error', 'image-hint')
-                        "
-                        @change="onImageChange"
-                    />
-                    <p id="image-hint" class="form-field__hint">
-                        Optional – wird z. B. für die Vorschaukarte oder
-                        Detailseite verwendet.
-                    </p>
+                        <Plus class="size-5" aria-hidden="true" />
+                        <span class="sr-only">+ </span>weitere Zutat
+                    </Button>
+                </FormSection>
+
+                <!-- 4 · Zubereitung: Schritte mit großen Ziffern und Ranke -->
+                <FormSection
+                    id="abschnitt-zubereitung"
+                    name="steps"
+                    title-id="steps-title"
+                    title="Zubereitung"
+                    :number="4"
+                    tone="plain"
+                    required
+                >
+                    <template #hint>
+                        Die Reihenfolge der Schritte entspricht der Darstellung
+                        im Rezept. Ein Schritt darf mehrere Zeilen haben.
+                        Mindestens ein Schritt ist Pflicht.
+                    </template>
                     <p
-                        v-if="errorFor('image')"
-                        id="image-error"
-                        class="form-field__error"
+                        v-if="errorFor('steps')"
+                        id="steps-error"
+                        data-field-error
+                        class="mb-4 text-sm font-medium text-danger"
                     >
-                        {{ errorFor('image') }}
+                        {{ errorFor('steps') }}
                     </p>
-                </div>
 
-                <!-- TAGS -->
-                <div class="form-field">
-                    <div id="tags-label" class="form-field__label">
-                        Tags
-                        <span class="inline-badge">optional</span>
-                    </div>
-                    <div class="chips-input">
-                        <div
-                            class="chips-input__chips"
-                            role="group"
-                            aria-labelledby="tags-label"
-                        >
-                            <button
-                                v-for="category in categoryOptions"
-                                :key="category.id"
-                                type="button"
-                                class="tag-chip"
-                                :class="{
-                                    'tag-chip--active': form.tags.includes(
-                                        category.name,
-                                    ),
-                                }"
-                                :aria-pressed="
-                                    form.tags.includes(category.name)
-                                        ? 'true'
-                                        : 'false'
-                                "
-                                @click="toggleTag(category.name)"
-                                @dblclick.stop="openTagEditModal(category)"
-                            >
-                                {{ category.name }}
-                            </button>
-                        </div>
-                        <input
-                            id="tag-draft"
-                            v-model="tagDraft"
-                            type="text"
-                            class="chips-input__input"
-                            placeholder="Weitere Tags mit Enter hinzufügen …"
-                            aria-label="Weiteren Tag hinzufügen"
-                            :aria-invalid="
-                                tagDraftError || tagsError ? 'true' : undefined
+                    <ol
+                        ref="stepsListEl"
+                        data-steps-list
+                        class="flex flex-col gap-6"
+                    >
+                        <li
+                            v-for="(step, index) in form.steps"
+                            :key="stepIds[index]"
+                            data-step-row
+                            :data-dragging="
+                                draggedStepIndex === index ? '' : undefined
                             "
-                            :aria-describedby="tagDescribedBy"
-                            :disabled="tagDraftBusy"
-                            @input="tagDraftError = null"
-                            @keydown.enter.prevent="addTagFromDraft"
-                        />
+                            class="relative grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 rounded-[1.75rem_1.4rem_2rem_1.5rem] p-1.5 transition-[background-color,box-shadow] duration-200 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-x-5"
+                            :class="
+                                draggedStepIndex === index &&
+                                'bg-tint shadow-raised ring-2 ring-primary'
+                            "
+                        >
+                            <!-- Ranke zum nächsten Schritt -->
+                            <span
+                                v-if="index < form.steps.length - 1"
+                                class="pointer-events-none absolute top-16 -bottom-7 left-[2.2rem] border-l-2 border-dashed border-tint-strong sm:left-[2.45rem]"
+                                aria-hidden="true"
+                            ></span>
+
+                            <div
+                                class="relative flex flex-col items-center gap-1.5"
+                            >
+                                <span
+                                    class="blob-mask inline-flex size-14 shrink-0 items-center justify-center font-display-wonk text-3xl font-semibold shadow-card sm:size-16 sm:text-4xl"
+                                    :class="[
+                                        stepShape(index),
+                                        index % 2 === 0
+                                            ? 'bg-matcha text-forest'
+                                            : 'bg-forest text-matcha',
+                                    ]"
+                                    aria-hidden="true"
+                                    >{{ index + 1 }}</span
+                                >
+                                <button
+                                    v-if="form.steps.length > 1"
+                                    type="button"
+                                    data-step-handle
+                                    class="relative inline-flex size-11 cursor-grab touch-none items-center justify-center rounded-pebble bg-canvas text-ink-muted hover:bg-tint-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:cursor-grabbing"
+                                    aria-label="Schritt verschieben"
+                                    title="Gedrückt halten und ziehen, um den Schritt zu verschieben"
+                                    @pointerdown="startStepDrag(index, $event)"
+                                    @contextmenu.prevent
+                                >
+                                    <GripVertical
+                                        class="size-5"
+                                        aria-hidden="true"
+                                    />
+                                </button>
+                            </div>
+
+                            <div class="min-w-0 pt-1">
+                                <!-- ADR-001: ein Schritt = ein mehrzeiliger Text -->
+                                <textarea
+                                    :id="`step-${stepIds[index]}`"
+                                    v-model="form.steps[index]"
+                                    rows="3"
+                                    data-step-text
+                                    class="block w-full min-w-0 resize-y rounded-[1.25rem_1rem_1.4rem_1.1rem] border-[1.5px] border-line-strong bg-surface px-4 py-3 text-lg leading-relaxed text-ink shadow-card placeholder:text-base placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus aria-[invalid=true]:border-danger"
+                                    placeholder="Beschreibe hier den Schritt …"
+                                    :aria-label="`Schritt ${index + 1}`"
+                                    :required="index === 0"
+                                    :aria-required="
+                                        index === 0 ? 'true' : undefined
+                                    "
+                                    v-bind="stepAttrs(index)"
+                                ></textarea>
+                                <div
+                                    class="mt-1.5 flex flex-wrap items-start justify-between gap-2"
+                                >
+                                    <p
+                                        v-if="stepError(index)"
+                                        :id="`step-${stepIds[index]}-error`"
+                                        data-field-error
+                                        class="min-w-0 py-2 text-sm font-medium text-danger"
+                                    >
+                                        {{ stepError(index) }}
+                                    </p>
+                                    <Button
+                                        v-if="form.steps.length > 1"
+                                        variant="ghost"
+                                        size="sm"
+                                        class="ml-auto min-h-11 text-danger hover:bg-danger-surface"
+                                        :aria-label="`Schritt ${index + 1} entfernen`"
+                                        @click="removeStep(index)"
+                                    >
+                                        <Trash2
+                                            class="size-4"
+                                            aria-hidden="true"
+                                        />
+                                        entfernen
+                                    </Button>
+                                </div>
+                            </div>
+                        </li>
+                    </ol>
+
+                    <Button variant="secondary" class="mt-6" @click="addStep">
+                        <Plus class="size-5" aria-hidden="true" />
+                        <span class="sr-only">+ </span>weiteren Schritt
+                        hinzufügen
+                    </Button>
+                </FormSection>
+
+                <!-- 5 · Notizen -->
+                <FormSection
+                    id="abschnitt-notizen"
+                    name="notes"
+                    title-id="notes-title"
+                    title="Notizen & Varianten"
+                    :number="5"
+                    tone="tint"
+                >
+                    <template #hint>
+                        Optionale Hinweise, Varianten oder Aufbewahrungstipps.
+                    </template>
+                    <textarea
+                        id="notes"
+                        v-model="form.notes"
+                        rows="4"
+                        class="block w-full min-w-0 resize-y rounded-[1.25rem_1rem_1.4rem_1.1rem] border-[1.5px] border-line-strong bg-surface px-4 py-3 text-base leading-relaxed text-ink placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus aria-[invalid=true]:border-danger"
+                        placeholder="z. B. Hält sich abgedeckt zwei Tage im Kühlschrank …"
+                        aria-labelledby="notes-title"
+                        v-bind="invalidAttrs('notes', 'notes-error')"
+                    ></textarea>
+                    <p
+                        v-if="errorFor('notes')"
+                        id="notes-error"
+                        data-field-error
+                        class="mt-1.5 text-sm font-medium text-danger"
+                    >
+                        {{ errorFor('notes') }}
+                    </p>
+                </FormSection>
+
+                <!-- 6 · Kategorien (Tags) -->
+                <FormSection
+                    id="abschnitt-kategorien"
+                    name="categories"
+                    title-id="tags-label"
+                    title="Kategorien"
+                    :number="6"
+                    tone="plain"
+                >
+                    <template #hint>
+                        Optional. Antippen wählt eine Kategorie aus; Doppelklick
+                        öffnet das Bearbeiten.
+                    </template>
+                    <div
+                        class="flex flex-wrap gap-2.5"
+                        role="group"
+                        aria-labelledby="tags-label"
+                    >
+                        <SeedToggle
+                            v-for="category in categoryOptions"
+                            :key="category.id"
+                            data-tag-chip
+                            :pressed="form.tags.includes(category.name)"
+                            @click="toggleTag(category.name)"
+                            @dblclick.stop="openTagEditModal(category)"
+                        >
+                            {{ category.name }}
+                        </SeedToggle>
+                    </div>
+
+                    <div class="mt-6 flex max-w-xl min-w-0 flex-col gap-1.5">
+                        <label
+                            for="tag-draft"
+                            class="text-sm font-semibold text-ink"
+                        >
+                            Neue Kategorie
+                        </label>
+                        <div class="relative">
+                            <Tag
+                                class="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-moss"
+                                aria-hidden="true"
+                            />
+                            <input
+                                id="tag-draft"
+                                v-model="tagDraft"
+                                type="text"
+                                :class="[numberInputClass]"
+                                placeholder="Weitere Tags mit Enter hinzufügen …"
+                                :aria-invalid="
+                                    tagDraftError || tagsError
+                                        ? 'true'
+                                        : undefined
+                                "
+                                :aria-describedby="tagDescribedBy"
+                                :disabled="tagDraftBusy"
+                                @input="tagDraftError = null"
+                                @keydown.enter.prevent="addTagFromDraft"
+                            />
+                        </div>
+                        <p
+                            id="tag-draft-hint"
+                            data-field-hint
+                            class="text-sm text-ink-muted"
+                        >
+                            Mit Enter anlegen und gleich auswählen.
+                        </p>
                         <p
                             v-if="tagDraftError"
                             id="tag-draft-error"
-                            class="form-field__error"
+                            data-field-error
+                            class="text-sm font-medium text-danger"
                             role="alert"
                         >
                             {{ tagDraftError }}
@@ -339,401 +860,178 @@
                         <p
                             v-if="tagsError"
                             id="tags-error"
-                            class="form-field__error"
+                            data-field-error
+                            class="text-sm font-medium text-danger"
                         >
                             {{ tagsError }}
                         </p>
                     </div>
-                </div>
-            </div>
-        </div>
+                </FormSection>
 
-        <!-- Zutaten -->
-        <div class="recipe-form__section recipe-form__section--wide">
-            <h2 id="ingredients-title" class="recipe-form__section-title">
-                Zutaten
-                <span class="form-field__required" aria-hidden="true">*</span>
-            </h2>
-            <p id="ingredients-hint" class="recipe-form__section-hint">
-                Jede Zeile entspricht einer Zutat. Menge links, Bezeichnung
-                rechts. Mindestens eine Zutat ist Pflicht; leere Zeilen werden
-                beim Speichern ignoriert.
-            </p>
-            <p
-                v-if="errorFor('ingredients')"
-                id="ingredients-error"
-                class="form-field__error"
-            >
-                {{ errorFor('ingredients') }}
-            </p>
-
-            <div class="ingredients-builder" ref="ingredientsListEl">
-                <div
-                    v-for="(ingredient, index) in form.ingredients"
-                    :key="ingredientIds[index]"
-                    class="ingredients-builder__item"
+                <!-- 7 · Bewertung: EINE Sterne-Eingabe „Geschmack“ (optional, zurücksetzbar) -->
+                <FormSection
+                    v-if="tasteDimension"
+                    id="abschnitt-bewertung"
+                    name="ratings"
+                    title-id="ratings-title"
+                    title="Bewertung"
+                    :number="7"
+                    tone="berry"
                 >
-                    <div
-                        class="ingredients-builder__row"
-                        :class="{
-                            'ingredients-builder__row--dragging':
-                                draggedIngredientIndex === index,
-                        }"
+                    <template #hint>
+                        Optional – wie hat es geschmeckt? 1 bis 5 Sterne;
+                        Pfeiltasten wählen den Wert.
+                    </template>
+                    <p
+                        v-if="errorFor('ratings')"
+                        id="ratings-error"
+                        data-field-error
+                        class="mb-4 text-sm font-medium text-danger"
                     >
-                        <button
-                            v-if="form.ingredients.length > 1"
-                            type="button"
-                            class="ingredients-builder__handle"
-                            aria-label="Zutat verschieben"
-                            title="Gedrückt halten und ziehen, um die Zutat zu verschieben"
-                            @pointerdown="startIngredientDrag(index, $event)"
-                            @contextmenu.prevent
+                        {{ errorFor('ratings') }}
+                    </p>
+                    <div
+                        class="relative flex max-w-xl min-w-0 flex-col gap-2 overflow-hidden rounded-[1.75rem_1.4rem_2rem_1.5rem] bg-surface/90 p-5 shadow-card sm:flex-row sm:items-center sm:gap-6 sm:p-6"
+                    >
+                        <!-- große Zahl rein grafisch; ohne Wert ein leerer Stern -->
+                        <span
+                            v-if="form.ratings[tasteDimension.id]"
+                            class="font-display-wonk text-6xl leading-none font-semibold text-berry sm:text-7xl"
+                            aria-hidden="true"
+                            >{{ form.ratings[tasteDimension.id] }}</span
                         >
-                            <GripVertical :size="16" />
-                        </button>
-
-                        <input
-                            :id="`ingredient-${ingredientIds[index]}-amount`"
-                            v-model="ingredient.amount"
-                            type="text"
-                            class="form-field__input ingredients-builder__amount"
-                            placeholder="z. B. 200 g"
-                            :aria-label="`Menge, Zutat ${index + 1}`"
-                            v-bind="
-                                rowInvalidAttrs(
-                                    ingredientError(index, 'amount'),
-                                    `ingredient-${ingredientIds[index]}-amount-error`,
-                                )
-                            "
-                        />
-
-                        <!-- Autocomplete-Wrapper für den Zutaten-Namen -->
-                        <div class="ingredients-autocomplete">
-                            <input
-                                :id="`ingredient-${ingredientIds[index]}-name`"
-                                v-model="ingredient.name"
-                                type="text"
-                                class="form-field__input ingredients-builder__name"
-                                placeholder="z. B. Pasta (Penne)"
-                                :aria-label="`Bezeichnung, Zutat ${index + 1}`"
-                                :required="index === 0"
-                                :aria-required="
-                                    index === 0 ? 'true' : undefined
+                        <span
+                            v-else
+                            class="blob-mask inline-flex size-16 shrink-0 items-center justify-center bg-berry-surface text-berry blob-2"
+                            aria-hidden="true"
+                        >
+                            <Star class="size-8" />
+                        </span>
+                        <div class="min-w-0">
+                            <StarRating
+                                :id="`rating-${tasteDimension.id}`"
+                                v-model="form.ratings[tasteDimension.id]"
+                                mode="input"
+                                label="Geschmack"
+                                :aria-describedby="
+                                    ratingDescribedBy(tasteDimension.id)
                                 "
-                                v-bind="ingredientNameAttrs(index)"
-                                @focus="openIngredientDropdown(index)"
-                                @input="onIngredientNameInput(index)"
-                                @blur="closeIngredientDropdown"
-                                @keydown.esc="closeIngredientDropdown"
+                                class="w-full"
                             />
-
-                            <div
-                                v-if="ingredientDropdownOpenIndex === index"
-                                class="ingredients-dropdown"
+                            <p
+                                v-if="tasteDimension.description"
+                                :id="`rating-${tasteDimension.id}-hint`"
+                                class="mt-1 text-sm text-ink-muted"
                             >
-                                <button
-                                    v-for="option in getIngredientOptions(
-                                        index,
-                                    )"
-                                    :key="option.id"
-                                    type="button"
-                                    class="ingredients-dropdown__item"
-                                    @mousedown.prevent="
-                                        selectIngredient(index, option.name)
-                                    "
+                                {{ tasteDimension.description }}
+                            </p>
+                            <p
+                                v-if="ratingError(tasteDimension.id)"
+                                :id="`rating-${tasteDimension.id}-error`"
+                                data-field-error
+                                class="mt-1 text-sm font-medium text-danger"
+                            >
+                                {{ ratingError(tasteDimension.id) }}
+                            </p>
+                        </div>
+                    </div>
+                </FormSection>
+
+                <!-- Abschluss: Aktionen auf Waldgrün -->
+                <div
+                    class="relative overflow-hidden rounded-[2.5rem_2rem_2.75rem_2.25rem] bg-forest-deep grain-light p-6 on-forest sm:p-9"
+                >
+                    <LeafOrnament
+                        variant="sprig"
+                        class="pointer-events-none absolute -right-4 -bottom-8 h-36 rotate-[-24deg] text-forest-soft"
+                    />
+                    <div
+                        class="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between"
+                    >
+                        <div class="min-w-0">
+                            <p
+                                class="font-display-wonk text-3xl font-semibold text-on-forest"
+                            >
+                                {{
+                                    mode === 'edit'
+                                        ? 'Alles angepasst?'
+                                        : 'Fertig gesammelt?'
+                                }}
+                            </p>
+                            <p class="mt-1 text-base text-on-forest-muted">
+                                Felder können jederzeit später bearbeitet
+                                werden.
+                            </p>
+                        </div>
+
+                        <!-- F-56: Zurücksetzen nur nach Rückfrage -->
+                        <div
+                            v-if="confirmingReset"
+                            class="flex min-w-0 flex-col gap-3 rounded-[1.5rem_1.2rem_1.6rem_1.3rem] bg-forest-soft p-4 sm:flex-row sm:flex-wrap sm:items-center"
+                            role="group"
+                            aria-labelledby="reset-confirm-text"
+                        >
+                            <span
+                                id="reset-confirm-text"
+                                class="min-w-0 font-semibold text-on-forest"
+                            >
+                                Alle ungespeicherten Änderungen verwerfen?
+                            </span>
+                            <div class="flex flex-wrap gap-2">
+                                <Button
+                                    ref="resetKeepButton"
+                                    variant="lime"
+                                    @click="cancelReset"
                                 >
-                                    {{ option.name }}
-                                </button>
+                                    Behalten
+                                </Button>
+                                <Button
+                                    variant="outline-light"
+                                    class="text-danger-on-forest"
+                                    @click="confirmReset"
+                                >
+                                    Ja, zurücksetzen
+                                </Button>
                             </div>
                         </div>
 
-                        <!-- + oder Stift abhängig davon, ob Zutat existiert -->
-                        <button
-                            v-if="
-                                ingredient.name.trim() &&
-                                !findIngredientByName(ingredient.name)
-                            "
-                            type="button"
-                            class="secondary-pill-button ingredients-builder__action"
-                            title="Zutat neu anlegen"
-                            :disabled="
-                                creatingIngredientRowId === ingredientIds[index]
-                            "
-                            @click="createIngredientFromRow(index)"
+                        <div
+                            v-else
+                            class="flex flex-col-reverse gap-2.5 sm:flex-row sm:flex-wrap sm:items-center md:justify-end"
                         >
-                            +
-                        </button>
-
-                        <button
-                            v-else-if="findIngredientByName(ingredient.name)"
-                            type="button"
-                            class="secondary-pill-button ingredients-builder__action"
-                            aria-haspopup="dialog"
-                            @click="
-                                openEditIngredientModal(
-                                    findIngredientByName(ingredient.name)!,
-                                )
-                            "
-                            aria-label="Zutat bearbeiten"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="size-6"
-                                aria-hidden="true"
+                            <Button
+                                v-if="cancelHref"
+                                :href="cancelHref"
+                                variant="ghost"
+                                class="text-on-forest hover:bg-forest-soft active:bg-forest"
                             >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-                                />
-                            </svg>
-                        </button>
-
-                        <!-- Alternatives-Icon: Buch -->
-                        <button
-                            :id="`ingredient-${ingredientIds[index]}-alternatives`"
-                            type="button"
-                            class="secondary-pill-button ingredients-builder__action"
-                            aria-haspopup="dialog"
-                            @click="openIngredientAlternatives(index)"
-                            aria-label="Alternativzutaten bearbeiten"
-                            v-bind="
-                                rowInvalidAttrs(
-                                    ingredientError(index, 'alternatives'),
-                                    `ingredient-${ingredientIds[index]}-alternatives-error`,
-                                )
-                            "
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="size-6"
-                                aria-hidden="true"
+                                Abbrechen
+                            </Button>
+                            <Button
+                                ref="resetButton"
+                                variant="outline-light"
+                                :disabled="form.processing"
+                                @click="askReset"
                             >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
-                                />
-                            </svg>
-                        </button>
-
-                        <button
-                            v-if="form.ingredients.length > 1"
-                            type="button"
-                            class="secondary-pill-button ingredients-builder__remove"
-                            @click="removeIngredient(index)"
-                        >
-                            entfernen
-                        </button>
-                    </div>
-
-                    <div
-                        v-if="rowMessages(index).length"
-                        class="ingredients-builder__errors"
-                    >
-                        <p
-                            v-for="msg in rowMessages(index)"
-                            :id="msg.id"
-                            :key="msg.id"
-                            class="form-field__error"
-                            :role="msg.live ? 'alert' : undefined"
-                        >
-                            {{ msg.text }}
-                        </p>
+                                <RotateCcw class="size-4" aria-hidden="true" />
+                                Zurücksetzen
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="lime"
+                                size="lg"
+                                :loading="form.processing"
+                            >
+                                <Check class="size-5" aria-hidden="true" />
+                                {{
+                                    mode === 'edit'
+                                        ? 'Rezept aktualisieren'
+                                        : 'Rezept speichern'
+                                }}
+                            </Button>
+                        </div>
                     </div>
                 </div>
-
-                <button
-                    type="button"
-                    class="primary-pill-button ingredients-builder__add"
-                    @click="addIngredient"
-                >
-                    + weitere Zutat
-                </button>
-            </div>
-        </div>
-
-        <!-- Zubereitungsschritte -->
-        <div class="recipe-form__section recipe-form__section--wide">
-            <h2 id="steps-title" class="recipe-form__section-title">
-                Zubereitung
-                <span class="form-field__required" aria-hidden="true">*</span>
-            </h2>
-            <p class="recipe-form__section-hint">
-                Die Reihenfolge der Schritte entspricht der Darstellung im
-                Rezept. Mindestens ein Schritt ist Pflicht.
-            </p>
-            <p
-                v-if="errorFor('steps')"
-                id="steps-error"
-                class="form-field__error"
-            >
-                {{ errorFor('steps') }}
-            </p>
-
-            <ol class="steps-builder" ref="stepsListEl">
-                <li
-                    v-for="(step, index) in form.steps"
-                    :key="stepIds[index]"
-                    class="steps-builder__row"
-                    :class="{
-                        'steps-builder__row--dragging':
-                            draggedStepIndex === index,
-                    }"
-                >
-                    <button
-                        v-if="form.steps.length > 1"
-                        type="button"
-                        class="steps-builder__handle"
-                        aria-label="Schritt verschieben"
-                        title="Gedrückt halten und ziehen, um den Schritt zu verschieben"
-                        @pointerdown="startStepDrag(index, $event)"
-                        @contextmenu.prevent
-                    >
-                        <GripVertical :size="16" />
-                    </button>
-
-                    <div class="steps-builder__badge" aria-hidden="true">
-                        {{ index + 1 }}
-                    </div>
-                    <div class="steps-builder__field">
-                        <textarea
-                            :id="`step-${stepIds[index]}`"
-                            v-model="form.steps[index]"
-                            rows="2"
-                            class="form-field__textarea steps-builder__textarea"
-                            placeholder="Beschreibe hier die Schritte …"
-                            :aria-label="`Schritt ${index + 1}`"
-                            :required="index === 0"
-                            :aria-required="index === 0 ? 'true' : undefined"
-                            v-bind="stepAttrs(index)"
-                        ></textarea>
-                        <p
-                            v-if="stepError(index)"
-                            :id="`step-${stepIds[index]}-error`"
-                            class="form-field__error"
-                        >
-                            {{ stepError(index) }}
-                        </p>
-                    </div>
-
-                    <button
-                        v-if="form.steps.length > 1"
-                        type="button"
-                        class="secondary-pill-button steps-builder__remove"
-                        @click="removeStep(index)"
-                    >
-                        entfernen
-                    </button>
-                </li>
-            </ol>
-
-            <button
-                type="button"
-                class="primary-pill-button steps-builder__add"
-                @click="addStep"
-            >
-                + weiteren Schritt hinzufügen
-            </button>
-        </div>
-
-        <!-- Notizen -->
-        <div class="recipe-form__section recipe-form__section--wide">
-            <h2 id="notes-title" class="recipe-form__section-title">
-                Notizen & Varianten
-            </h2>
-            <textarea
-                id="notes"
-                v-model="form.notes"
-                rows="3"
-                class="form-field__textarea"
-                placeholder="Optionale Hinweise, Varianten, Aufbewahrungstipps …"
-                aria-labelledby="notes-title"
-                v-bind="invalidAttrs('notes', 'notes-error')"
-            ></textarea>
-            <p
-                v-if="errorFor('notes')"
-                id="notes-error"
-                class="form-field__error"
-            >
-                {{ errorFor('notes') }}
-            </p>
-        </div>
-
-        <!-- Aktionen unten -->
-        <div class="form-actions">
-            <div class="form-actions__left">
-                <span class="form-actions__meta">
-                    Felder können jederzeit später bearbeitet werden.
-                </span>
-            </div>
-
-            <!-- F-56: Zurücksetzen nur nach Rückfrage -->
-            <div
-                v-if="confirmingReset"
-                class="form-actions__confirm"
-                role="group"
-                aria-labelledby="reset-confirm-text"
-            >
-                <span
-                    id="reset-confirm-text"
-                    class="form-actions__confirm-text"
-                >
-                    Alle ungespeicherten Änderungen verwerfen?
-                </span>
-                <button
-                    ref="resetKeepButton"
-                    type="button"
-                    class="secondary-pill-button"
-                    @click="cancelReset"
-                >
-                    Behalten
-                </button>
-                <button
-                    type="button"
-                    class="primary-pill-button form-actions__confirm-reset"
-                    @click="confirmReset"
-                >
-                    Ja, zurücksetzen
-                </button>
-            </div>
-
-            <div v-else class="form-actions__right">
-                <Link
-                    v-if="cancelHref"
-                    :href="cancelHref"
-                    class="secondary-pill-button form-actions__cancel"
-                >
-                    Abbrechen
-                </Link>
-                <button
-                    ref="resetButton"
-                    type="button"
-                    class="secondary-pill-button"
-                    @click="askReset"
-                    :disabled="form.processing"
-                >
-                    Zurücksetzen
-                </button>
-                <button
-                    type="submit"
-                    class="primary-pill-button"
-                    :disabled="form.processing"
-                >
-                    {{
-                        mode === 'edit'
-                            ? 'Rezept aktualisieren'
-                            : 'Rezept speichern'
-                    }}
-                </button>
             </div>
         </div>
 
@@ -773,14 +1071,35 @@
         />
     </form>
 </template>
-
 <script setup lang="ts">
+import FormSection from '@/components/recipes/form/FormSection.vue';
+import SeedToggle from '@/components/recipes/form/SeedToggle.vue';
+import BlobImage from '@/components/ui/BlobImage.vue';
+import Button from '@/components/ui/Button.vue';
+import Field from '@/components/ui/Field.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import StarRating from '@/components/ui/StarRating.vue';
+import Textarea from '@/components/ui/Textarea.vue';
 import IngredientAlternativesModal from '@/components/widgets/IngredientAlternativesModal.vue';
 import IngredientEditModal from '@/components/widgets/IngredientEditModal.vue';
 import TagEditModal from '@/components/widgets/TagEditModal.vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import axios from 'axios';
-import { GripVertical } from 'lucide-vue-next';
+import {
+    ArrowLeftRight,
+    Check,
+    CircleAlert,
+    Clock,
+    GripVertical,
+    ImagePlus,
+    Pencil,
+    Plus,
+    RotateCcw,
+    Star,
+    Tag,
+    Trash2,
+    Users,
+} from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -852,6 +1171,48 @@ const props = defineProps<{
     // F-56: URL des aktuellen Bildes für die Vorschau (falls vorhanden)
     currentImage?: string | null;
 }>();
+
+// Gate C2: gemeinsame Klassen der Eingabefelder (Kiesel-Ecken, 16 px+, 44 px hoch)
+const fieldBase =
+    'block min-h-11 w-full min-w-0 rounded-[0.9rem_0.75rem_0.95rem_0.8rem] border-[1.5px] border-line-strong bg-surface py-2 text-base text-ink placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-canvas aria-[invalid=true]:border-danger';
+/** Feld mit Symbol links (Dauer, Portionen, neue Kategorie) */
+const numberInputClass = `${fieldBase} pr-3.5 pl-11`;
+/** Felder einer Zutatenzeile */
+const rowInputClass = `${fieldBase} px-3.5`;
+/** Symbol-Knöpfe einer Zutatenzeile (44 × 44 px) */
+const rowActionClass =
+    'inline-flex size-11 shrink-0 items-center justify-center rounded-pebble border-[1.5px] border-line bg-surface text-primary transition-[background-color,border-color,border-radius] duration-200 hover:border-primary hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60';
+
+/** Schritt-Ziffern in wechselnden Blob-Formen (wie auf der Detailseite) */
+const stepShape = (index: number) =>
+    ['blob-1', 'blob-4', 'blob-2', 'blob-5', 'blob-3', 'blob-6'][index % 6];
+
+/**
+ * Bewertung nur noch nach Geschmack (Entscheidung des Auftraggebers): der
+ * Server liefert höchstens EINE Dimension. Kommen doch mehrere an, gilt der
+ * Eintrag „Geschmack“, sonst der erste. Ohne Dimension entfällt der Abschnitt.
+ */
+const tasteDimension = computed<RatingDimension | null>(
+    () =>
+        props.ratingDimensions.find(
+            (d) => d.name.trim().toLowerCase() === 'geschmack',
+        ) ??
+        props.ratingDimensions[0] ??
+        null,
+);
+
+/** Kapitel der Navigation (gleiche Reihenfolge wie die Abschnitte) */
+const chapters = computed(() => [
+    { id: 'abschnitt-grunddaten', label: 'Grunddaten' },
+    { id: 'abschnitt-bild', label: 'Bild' },
+    { id: 'abschnitt-zutaten', label: 'Zutaten' },
+    { id: 'abschnitt-zubereitung', label: 'Zubereitung' },
+    { id: 'abschnitt-notizen', label: 'Notizen' },
+    { id: 'abschnitt-kategorien', label: 'Kategorien' },
+    ...(tasteDimension.value
+        ? [{ id: 'abschnitt-bewertung', label: 'Bewertung' }]
+        : []),
+]);
 
 const ingredientOptions = ref<IngredientOption[]>(props.ingredients ?? []);
 const ingredientBeingEdited = ref<IngredientOption | null>(null);
@@ -967,6 +1328,9 @@ const ratingError = (dimensionId: number) =>
 
 const ratingDescribedBy = (dimensionId: number) =>
     [
+        props.ratingDimensions.find((d) => d.id === dimensionId)?.description
+            ? `rating-${dimensionId}-hint`
+            : undefined,
         ratingError(dimensionId) ? `rating-${dimensionId}-error` : undefined,
         errorFor('ratings') ? 'ratings-error' : undefined,
     ]
@@ -1036,6 +1400,7 @@ const tagDraftBusy = ref(false);
 const tagDescribedBy = computed(
     () =>
         [
+            'tag-draft-hint',
             tagDraftError.value ? 'tag-draft-error' : undefined,
             tagsError.value ? 'tags-error' : undefined,
         ]
@@ -1066,23 +1431,7 @@ const errorEntries = computed<ErrorEntry[]>(() => {
     add('description', 'Kurzbeschreibung', 'description');
     add('duration_minutes', 'Zubereitungsdauer', 'cook_time');
     add('servings', 'Portionen', 'servings');
-    const firstDimension = props.ratingDimensions[0]?.id;
-    add(
-        'ratings',
-        'Bewertung',
-        firstDimension !== undefined ? `rating-${firstDimension}-star-1` : null,
-    );
-    props.ratingDimensions.forEach((dimension) =>
-        add(
-            `ratings.${dimension.id}`,
-            `Bewertung – ${dimension.name}`,
-            `rating-${dimension.id}-star-1`,
-        ),
-    );
     add('image', 'Bild', 'image');
-    Object.keys(errors)
-        .filter((k) => k === 'tags' || k.startsWith('tags.'))
-        .forEach((k) => add(k, 'Tags', 'tag-draft'));
 
     const firstIngredient = ingredientIds.value[0];
     add(
@@ -1133,6 +1482,23 @@ const errorEntries = computed<ErrorEntry[]>(() => {
 
     add('notes', 'Notizen', 'notes');
 
+    // Gate C2: Reihenfolge wie im Formular (Kategorien und Bewertung am Ende)
+    Object.keys(errors)
+        .filter((k) => k === 'tags' || k.startsWith('tags.'))
+        .forEach((k) => add(k, 'Tags', 'tag-draft'));
+
+    // Sprungziel ist die Sternegruppe; `focusField` setzt den Fokus auf ihr
+    // gewähltes bzw. erstes Optionsfeld
+    const taste = tasteDimension.value;
+    add('ratings', 'Bewertung', taste ? `rating-${taste.id}` : null);
+    if (taste) {
+        add(
+            `ratings.${taste.id}`,
+            'Bewertung – Geschmack',
+            `rating-${taste.id}`,
+        );
+    }
+
     // Alles, was keinem Feld zugeordnet werden konnte, trotzdem nennen
     Object.keys(errors).forEach((k) => add(k, 'Formular', null));
 
@@ -1142,8 +1508,15 @@ const errorEntries = computed<ErrorEntry[]>(() => {
 const focusField = (id: string) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.scrollIntoView({ block: 'center' });
-    el.focus();
+    // Gruppen (z. B. die Sterne-Fieldsets) sind selbst nicht fokussierbar:
+    // dann das gewählte bzw. erste Eingabeelement darin
+    const target = el.matches('input, textarea, select, button, a[href]')
+        ? el
+        : (el.querySelector<HTMLElement>('input:checked') ??
+          el.querySelector<HTMLElement>('input, textarea, select, button') ??
+          el);
+    target.scrollIntoView({ block: 'center' });
+    target.focus();
 };
 
 /** Zeilen-Fehler verwerfen (nach Umsortieren/Entfernen stimmen die Indizes nicht mehr). */
@@ -1372,7 +1745,7 @@ const createRowDragHandler = (options: {
 
 const startStepDrag = createRowDragHandler({
     listEl: () => stepsListEl.value,
-    rowSelector: '.steps-builder__row',
+    rowSelector: '[data-step-row]',
     dragged: draggedStepIndex,
     move: (from, to) => {
         const [step] = form.steps.splice(from, 1);
@@ -1390,7 +1763,7 @@ const startStepDrag = createRowDragHandler({
 
 const startIngredientDrag = createRowDragHandler({
     listEl: () => ingredientsListEl.value,
-    rowSelector: '.ingredients-builder__row',
+    rowSelector: '[data-ingredient-row]',
     dragged: draggedIngredientIndex,
     move: (from, to) => {
         const [row] = form.ingredients.splice(from, 1);
@@ -1407,10 +1780,13 @@ const startIngredientDrag = createRowDragHandler({
     onStart: () => closeIngredientDropdown(),
 });
 
-// Rating setzen
-const setRating = (dimensionId: number, value: number) => {
-    form.ratings[dimensionId] = value;
-};
+// Bewertung: `StarRating` (Eingabemodus) schreibt per v-model direkt in
+// `form.ratings[dimensionId]`; „Bewertung entfernen“ setzt `null`
+// (der Server überspringt `null`).
+
+/** Knopf-Baustein: Fokus auf das gerenderte Element */
+type ButtonInstance = { $el: HTMLElement };
+const focusButton = (button: ButtonInstance | null) => button?.$el?.focus();
 
 // F-56: Bildvorschau (neu gewählte Datei bzw. aktuelles Bild)
 const imageInput = ref<HTMLInputElement | null>(null);
@@ -1473,6 +1849,14 @@ const submit = () => {
             ],
         })),
         steps: stepRows.map(({ step }) => step),
+        // Nur die Geschmacks-Bewertung senden ({ [dimensionId]: value | null });
+        // ältere Werte anderer Dimensionen aus den Edit-Props fallen weg
+        ratings: tasteDimension.value
+            ? {
+                  [tasteDimension.value.id]:
+                      data.ratings[tasteDimension.value.id] ?? null,
+              }
+            : {},
     }));
 
     const options = {
@@ -1496,19 +1880,19 @@ const submit = () => {
 
 // F-56: Zurücksetzen nur nach Rückfrage
 const confirmingReset = ref(false);
-const resetButton = ref<HTMLButtonElement | null>(null);
-const resetKeepButton = ref<HTMLButtonElement | null>(null);
+const resetButton = ref<ButtonInstance | null>(null);
+const resetKeepButton = ref<ButtonInstance | null>(null);
 
 const askReset = async () => {
     confirmingReset.value = true;
     await nextTick();
-    resetKeepButton.value?.focus();
+    focusButton(resetKeepButton.value);
 };
 
 const cancelReset = async () => {
     confirmingReset.value = false;
     await nextTick();
-    resetButton.value?.focus();
+    focusButton(resetButton.value);
 };
 
 const resetForm = () => {

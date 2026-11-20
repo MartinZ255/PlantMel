@@ -123,7 +123,7 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
             'name="steps[0]"',
         );
 
-        const summary = page.locator('.form-error-summary');
+        const summary = page.locator('[data-error-summary]');
         await expect(summary).toBeVisible();
         await expect(summary).toHaveAttribute('role', 'alert');
         await expect(summary).toBeFocused();
@@ -135,7 +135,9 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         // Kriterium des bisherigen Defekt-Tests F-06
         expect(
             await page
-                .locator('.recipe-form__section--wide .form-field__error')
+                .locator(
+                    '[data-form-section="ingredients"] [data-field-error], [data-form-section="steps"] [data-field-error], [data-form-section="notes"] [data-field-error]',
+                )
                 .filter({ visible: true })
                 .count(),
         ).toBeGreaterThan(0);
@@ -145,7 +147,7 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         // Sprunglink fokussiert das Feld
         await summary.getByRole('link', { name: /Zutaten/ }).click();
         await expect(
-            page.locator('.ingredients-builder__name').first(),
+            page.locator('[data-ingredient-name]').first(),
         ).toBeFocused();
         await page.screenshot({
             path: test.info().outputPath('F-06-zusammenfassung.png'),
@@ -163,22 +165,22 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         await settle(page);
         await page.locator('#name').fill('E2E F-06 Zeilen');
         await page.getByRole('button', { name: '+ weitere Zutat' }).click();
-        const rows = page.locator('.ingredients-builder__row');
+        const rows = page.locator('[data-ingredient-row]');
         // Zeile 1 bleibt leer (wird gefiltert), Zeile 2 nur mit Menge -> ingredients.0.name
-        await rows.nth(1).locator('.ingredients-builder__amount').fill('200 g');
-        await page.locator('.steps-builder__textarea').first().fill('Kochen.');
+        await rows.nth(1).locator('[data-ingredient-amount]').fill('200 g');
+        await page.locator('[data-step-text]').first().fill('Kochen.');
 
         await Promise.all([
             page.waitForRequest(isRecipeStore),
             page.getByRole('button', { name: 'Rezept speichern' }).click(),
         ]);
-        const summary = page.locator('.form-error-summary');
+        const summary = page.locator('[data-error-summary]');
         await expect(summary).toBeFocused();
         await expect(summary.locator('li')).toHaveCount(1);
         await expect(summary).toContainText('Zutat 2 – Bezeichnung');
 
-        const name0 = rows.nth(0).locator('.ingredients-builder__name');
-        const name1 = rows.nth(1).locator('.ingredients-builder__name');
+        const name0 = rows.nth(0).locator('[data-ingredient-name]');
+        const name1 = rows.nth(1).locator('[data-ingredient-name]');
         await expectFieldError(page, name1, 'Zutat 2 Bezeichnung');
         await expect(name0).not.toHaveAttribute('aria-invalid', 'true');
 
@@ -190,17 +192,17 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         await page.locator('#name').click();
         await dragRow(
             page,
-            rows.nth(1).locator('.ingredients-builder__handle'),
+            rows.nth(1).locator('[data-ingredient-handle]'),
             rows.nth(0),
         );
         await expect(
-            rows.nth(0).locator('.ingredients-builder__amount'),
+            rows.nth(0).locator('[data-ingredient-amount]'),
         ).toHaveValue('200 g');
         await expect(
-            page.locator('.ingredients-builder [aria-invalid="true"]'),
+            page.locator('[data-ingredients-list] [aria-invalid="true"]'),
         ).toHaveCount(0);
         await expect(
-            page.locator('.ingredients-builder__errors .form-field__error'),
+            page.locator('[data-ingredient-errors] [data-field-error]'),
         ).toHaveCount(0);
         await expect(summary).toHaveCount(0);
     });
@@ -213,23 +215,23 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         const name = page.locator('#name');
         await expect(name).toHaveAttribute('required', '');
         await expect(name).toHaveAttribute('aria-required', 'true');
-        await expect(page.locator('form.recipe-form')).toHaveAttribute(
+        await expect(page.locator('form[data-recipe-form]')).toHaveAttribute(
             'novalidate',
             '',
         );
         await page.locator('#cook_time').fill('-5');
-        const row = page.locator('.ingredients-builder__row').first();
-        await row.locator('.ingredients-builder__name').fill('Brokkoli');
-        await page.locator('.steps-builder__textarea').first().fill('Braten.');
+        const row = page.locator('[data-ingredient-row]').first();
+        await row.locator('[data-ingredient-name]').fill('Brokkoli');
+        await page.locator('[data-step-text]').first().fill('Braten.');
         await page.locator('#servings').click();
         await Promise.all([
             page.waitForRequest(isRecipeStore),
             page.getByRole('button', { name: 'Rezept speichern' }).click(),
         ]);
-        await expect(page.locator('.form-error-summary')).toBeFocused();
+        await expect(page.locator('[data-error-summary]')).toBeFocused();
         await expectFieldError(page, name, 'Titel');
         await expectFieldError(page, page.locator('#cook_time'), 'Dauer');
-        await expect(page.locator('.form-error-summary li')).toHaveCount(2);
+        await expect(page.locator('[data-error-summary] li')).toHaveCount(2);
     });
 
     test('F-74 alle Fehler-Keys werden am Feld angezeigt (Portionen, Tags, Bewertung, Menge, Schritt, Notizen)', async ({
@@ -240,12 +242,15 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         const props = await inertiaProps<{
             ratingDimensions: { id: number; name: string }[];
         }>(page);
-        const dim = props.ratingDimensions[0];
+        // Gate C2: bewertet wird nur noch der Geschmack (sonst der erste Eintrag)
+        const dim =
+            props.ratingDimensions.find((d) => d.name === 'Geschmack') ??
+            props.ratingDimensions[0];
         await page.locator('#name').fill('E2E F-74');
-        const row = page.locator('.ingredients-builder__row').first();
-        await row.locator('.ingredients-builder__amount').fill('x');
-        await row.locator('.ingredients-builder__name').fill('Brokkoli');
-        await page.locator('.steps-builder__textarea').first().fill('Braten.');
+        const row = page.locator('[data-ingredient-row]').first();
+        await row.locator('[data-ingredient-amount]').fill('x');
+        await row.locator('[data-ingredient-name]').fill('Brokkoli');
+        await page.locator('[data-step-text]').first().fill('Braten.');
         await page.locator('#notes').fill('Notiz');
 
         await fulfillWithErrors(page, {
@@ -259,33 +264,45 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         });
         await page.getByRole('button', { name: 'Rezept speichern' }).click();
 
-        const summary = page.locator('.form-error-summary');
+        const summary = page.locator('[data-error-summary]');
         await expect(summary).toBeFocused();
         await expect(summary.locator('li')).toHaveCount(7);
         await expectFieldError(page, page.locator('#servings'), 'Portionen');
         await expectFieldError(page, page.locator('#tag-draft'), 'Tags');
         await expectFieldError(
             page,
-            row.locator('.ingredients-builder__amount'),
+            row.locator('[data-ingredient-amount]'),
             'Menge',
         );
         await expectFieldError(
             page,
-            page.locator('.steps-builder__textarea').first(),
+            page.locator('[data-step-text]').first(),
             'Schritt',
         );
         await expectFieldError(page, page.locator('#notes'), 'Notizen');
         await expect(
             page.locator(`[id="rating-${dim.id}-error"]`),
         ).toBeVisible();
-        await expect(
-            page.locator(`#rating-${dim.id}-star-1`).locator('..'),
-        ).toHaveAttribute('aria-describedby', `rating-${dim.id}-error`);
+        // Gate C2: Sterne-Eingabe ist der Baustein StarRating (Fieldset mit
+        // Radiogroup); die Fehler-ID haengt an der Gruppe der Dimension
+        const ratingGroup = page.locator(`[id="rating-${dim.id}"]`);
+        await expect(ratingGroup).toHaveAttribute(
+            'aria-describedby',
+            new RegExp(`(^|\\s)rating-${dim.id}-error(\\s|$)`),
+        );
         // nicht zuordenbarer Key erscheint trotzdem (ohne Link)
         await expect(summary).toContainText('Fehler ohne Feld');
-        // Sprunglink zur Bewertung
+        // Sprunglink zur Bewertung: Fokus auf ein Optionsfeld der Gruppe
         await summary.getByRole('link', { name: /Bewertung/ }).click();
-        await expect(page.locator(`#rating-${dim.id}-star-1`)).toBeFocused();
+        expect(
+            await ratingGroup.evaluate(
+                (el) =>
+                    el.contains(document.activeElement) &&
+                    (document.activeElement as HTMLInputElement).type ===
+                        'radio',
+            ),
+            'Fokus auf einem Stern der Dimension',
+        ).toBe(true);
         await page.unrouteAll({ behavior: 'ignoreErrors' });
     });
 
@@ -330,14 +347,12 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
         );
         await expectFieldError(page, tagInput, 'Tag anlegen');
 
-        const row = page.locator('.ingredients-builder__row').first();
-        const name = row.locator('.ingredients-builder__name');
+        const row = page.locator('[data-ingredient-row]').first();
+        const name = row.locator('[data-ingredient-name]');
         await name.fill('E2E Unbekannte Zutat');
         await page.locator('#name').click();
-        await row.getByRole('button', { name: '+', exact: true }).click();
-        const alert = page.locator(
-            '.ingredients-builder__errors [role="alert"]',
-        );
+        await row.getByRole('button', { name: 'Zutat neu anlegen' }).click();
+        const alert = page.locator('[data-ingredient-errors] [role="alert"]');
         await expect(alert).toContainText('Auf dem Server ist ein Fehler');
         await expectFieldError(page, name, 'Zutat anlegen');
         expect(diag.pageErrors).toEqual([]);
@@ -392,9 +407,7 @@ test.describe('Host – Rezeptformular (F-06/F-74/F-56)', () => {
                 'base64',
             ),
         });
-        await expect(
-            page.locator('.recipe-form__image-preview img'),
-        ).toBeVisible();
+        await expect(page.locator('[data-image-preview] img')).toBeVisible();
 
         // Abbrechen fuehrt zurueck zum Rezept, ohne zu speichern
         await Promise.all([
@@ -424,7 +437,9 @@ const modalCases: ModalCase[] = [
         open: async (page) => {
             await page.goto('/rezepte/erstellen');
             await settle(page);
-            const chip = page.locator('.tag-chip', { hasText: 'Dessert' });
+            const chip = page.locator('[data-tag-chip]', {
+                hasText: 'Dessert',
+            });
             await chip.scrollIntoViewIfNeeded();
             await chip.dblclick();
             return chip;
@@ -438,8 +453,8 @@ const modalCases: ModalCase[] = [
         open: async (page) => {
             await page.goto('/rezepte/erstellen');
             await settle(page);
-            const row = page.locator('.ingredients-builder__row').first();
-            await row.locator('.ingredients-builder__name').fill('Rote Linsen');
+            const row = page.locator('[data-ingredient-row]').first();
+            await row.locator('[data-ingredient-name]').fill('Rote Linsen');
             await page.locator('#name').click();
             const trigger = row.getByRole('button', {
                 name: 'Zutat bearbeiten',
@@ -641,7 +656,9 @@ test.describe('Host – Rezeptdetail-Kopf (F-31)', () => {
                 const h1 = page.locator('h1');
                 const title = (await h1.boundingBox())!;
                 const actionLocators = [
-                    page.getByRole('button', { name: 'Zur Sammlung hinzufügen' }),
+                    page.getByRole('button', {
+                        name: 'Zur Sammlung hinzufügen',
+                    }),
                     page.getByRole('link', { name: 'Rezept bearbeiten' }),
                     page.getByRole('button', { name: 'Rezept löschen' }),
                 ];
@@ -755,7 +772,10 @@ test.describe('Gast – lange Woerter (F-32)', () => {
                                 cur && cur !== content.parentElement;
                                 cur = cur.parentElement
                             ) {
-                                if (getComputedStyle(cur).overflowX === 'visible')
+                                if (
+                                    getComputedStyle(cur).overflowX ===
+                                    'visible'
+                                )
                                     continue;
                                 const pr = cur.getBoundingClientRect();
                                 left = Math.max(left, pr.left);
@@ -1001,7 +1021,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                 show: () => ({ status: 500 }),
             });
             await start(page);
-            const alert = page.locator('.tiktok-import [role="alert"]');
+            const alert = page.locator('[data-tiktok-import] [role="alert"]');
             await expect(alert).toContainText(
                 status === 422 ? 'E2E ungültiger Link' : body.message,
             );
@@ -1030,12 +1050,12 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                       },
         });
         await start(page);
-        const status = page.locator('.tiktok-import [role="status"]');
+        const status = page.locator('[data-tiktok-import] [role="status"]');
         await expect(status).toContainText('Video wird geladen', {
             timeout: 8000,
         });
         await expect(
-            page.locator('.tiktok-import [role="alert"]'),
+            page.locator('[data-tiktok-import] [role="alert"]'),
         ).toContainText('E2E Import fehlgeschlagen', { timeout: 8000 });
         const count = log.show;
         await page.waitForTimeout(4000);
@@ -1056,11 +1076,11 @@ test.describe('Host – TikTok-Import (F-24)', () => {
         await expect(
             page.getByRole('button', { name: 'Abbrechen' }),
         ).toBeVisible();
-        await expect(page.locator('.tiktok-import [role="alert"]')).toHaveCount(
-            0,
-        );
         await expect(
-            page.locator('.tiktok-import [role="alert"]'),
+            page.locator('[data-tiktok-import] [role="alert"]'),
+        ).toHaveCount(0);
+        await expect(
+            page.locator('[data-tiktok-import] [role="alert"]'),
         ).toContainText('mehrfach fehlgeschlagen', { timeout: 15_000 });
         expect(log.show).toBe(3);
         await page.waitForTimeout(4000);
@@ -1077,7 +1097,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
         await page.getByRole('button', { name: 'Abbrechen' }).click();
         const count = log.show;
         await expect(
-            page.locator('.tiktok-import [role="status"]'),
+            page.locator('[data-tiktok-import] [role="status"]'),
         ).toContainText('abgebrochen');
         await page.waitForTimeout(7000);
         expect(log.show, 'keine Abfragen nach Abbrechen').toBe(count);
@@ -1099,7 +1119,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
         await expect.poll(() => log.show).toBe(1);
         await page.clock.fastForward('16:00');
         await expect(
-            page.locator('.tiktok-import [role="alert"]'),
+            page.locator('[data-tiktok-import] [role="alert"]'),
         ).toContainText('ungewöhnlich lange');
         await expect(
             page.getByRole('button', { name: 'Abbrechen' }),
@@ -1182,14 +1202,15 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                     : i === currentIndex
                       ? currentState
                       : 'todo';
-            await expect(items.nth(i), `${label}: ${expected}`).toHaveClass(
-                new RegExp(`import-progress__step--${expected}\\b`),
+            await expect(items.nth(i), `${label}: ${expected}`).toHaveAttribute(
+                'data-state',
+                expected,
             );
         }
     }
 
     const statusRegion = (page: Page) =>
-        page.locator('.tiktok-import [role="status"]');
+        page.locator('[data-tiktok-import] [role="status"]');
 
     for (const variant of [
         { name: '1440', use: {} },
@@ -1217,11 +1238,11 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                 await expectSteps(page, 'Gestartet', 'active');
                 await expect(statusRegion(page)).toContainText('angenommen');
                 await expect(
-                    page.locator('.import-progress__bar'),
+                    page.locator('[data-progress-bar]'),
                     'unbestimmter Balken',
                 ).toBeVisible();
                 await expect(
-                    page.locator('.import-progress__bar [aria-valuenow]'),
+                    page.locator('[data-progress-bar] [aria-valuenow]'),
                     'keine Prozentwerte',
                 ).toHaveCount(0);
                 await expect
@@ -1279,9 +1300,9 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                 state = 'failed';
                 await expectSteps(page, 'Video wird geladen', 'failed');
                 await expect(
-                    page.locator('.tiktok-import [role="alert"]'),
+                    page.locator('[data-tiktok-import] [role="alert"]'),
                 ).toHaveText('E2E Video nicht ladbar');
-                await expect(page.locator('.import-progress__bar')).toHaveCount(
+                await expect(page.locator('[data-progress-bar]')).toHaveCount(
                     0,
                 );
                 expect(log.store).toBe(1);
@@ -1303,7 +1324,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                 expect(body.url).toBe(URL_OK);
                 await expect.poll(() => log.store).toBe(2);
                 await expect(
-                    page.locator('.tiktok-import [role="alert"]'),
+                    page.locator('[data-tiktok-import] [role="alert"]'),
                 ).toHaveText('E2E Limit erreicht');
                 await expectSteps(page, 'Gestartet', 'failed');
 
@@ -1315,7 +1336,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                     .click();
                 await expect.poll(() => log.store).toBe(3);
                 await expect(
-                    page.locator('.tiktok-import [role="alert"]'),
+                    page.locator('[data-tiktok-import] [role="alert"]'),
                 ).toHaveCount(0);
                 await expect(
                     page.getByRole('button', { name: 'Abbrechen' }),
@@ -1343,11 +1364,11 @@ test.describe('Host – TikTok-Import (F-24)', () => {
         });
         await start(page);
         await expectSteps(page, 'Gestartet', 'active');
-        const hint = page.locator('.import-progress__hint');
+        const hint = page.locator('[data-import-hint]');
         await page.clock.fastForward('00:20');
         await expect.poll(() => log.show).toBeGreaterThan(0);
         await expect(hint).toHaveCount(0);
-        await expect(page.locator('.import-progress__time')).toContainText(
+        await expect(page.locator('[data-import-time]')).toContainText(
             /seit 0:2\d/,
         );
         await page.clock.fastForward('00:15');
@@ -1379,7 +1400,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
         await settle(page);
         await page.evaluate(() => {
             const el = document.querySelector(
-                '.tiktok-import [role="status"]',
+                '[data-tiktok-import] [role="status"]',
             )!;
             const w = window as unknown as { __live: string[] };
             w.__live = [];
@@ -1396,7 +1417,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
         await page.getByLabel('Rezept aus TikTok importieren').fill(URL_OK);
         await page.getByRole('button', { name: 'Importieren' }).click();
         await expectSteps(page, 'Gestartet', 'active');
-        const time = page.locator('.import-progress__time');
+        const time = page.locator('[data-import-time]');
         const t0 = await time.textContent();
         await page.clock.runFor('00:10');
         await expect.poll(() => log.show).toBeGreaterThan(0);
@@ -1439,7 +1460,7 @@ test.describe('Host – TikTok-Import (F-24)', () => {
                 () =>
                     document.documentElement.scrollWidth <= window.innerWidth &&
                     Array.from(
-                        document.querySelectorAll('.import-progress *'),
+                        document.querySelectorAll('[data-import-progress] *'),
                     ).every(
                         (el) =>
                             el.getBoundingClientRect().right <=
@@ -1497,11 +1518,11 @@ test.describe('Host – TikTok-Import (F-24)', () => {
         expect(log.show).toBeGreaterThan(before);
         await expectSteps(page, 'Rezept wird erkannt', 'active');
         await expect(
-            page.locator('.import-progress__step--failed'),
+            page.locator('[data-import-progress] li[data-state="failed"]'),
         ).toHaveCount(0);
-        await expect(page.locator('.tiktok-import [role="alert"]')).toHaveCount(
-            0,
-        );
+        await expect(
+            page.locator('[data-tiktok-import] [role="alert"]'),
+        ).toHaveCount(0);
 
         state = 'analyzing';
         await expect(statusRegion(page)).toContainText(
@@ -1548,11 +1569,9 @@ test.describe('Host – TikTok-Import (F-24)', () => {
             await expectSteps(page, 'Video wird geladen', 'active');
             const names = await page.evaluate(() => {
                 const marker = document.querySelector(
-                    '.import-progress__step--active .import-progress__marker',
+                    '[data-import-progress] li[data-state="active"] [data-progress-marker]',
                 )!;
-                const bar = document.querySelector(
-                    '.import-progress__bar-fill',
-                )!;
+                const bar = document.querySelector('[data-progress-bar-fill]')!;
                 return [
                     getComputedStyle(marker, '::after').animationName,
                     getComputedStyle(bar).animationName,

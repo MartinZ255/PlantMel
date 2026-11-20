@@ -1,157 +1,186 @@
 <template>
-    <!-- F-30: außerhalb von #app und vom Rezeptformular (Enter sendet es nicht ab) -->
-    <Teleport to="body">
-        <div v-if="show" class="modal-backdrop">
+    <!-- F-30 / Gate C2: gemeinsamer Dialog-Baustein (Teleport außerhalb des
+         Formulars – Enter sendet es nicht ab; Fokusfalle, Escape, Fokus zurück).
+         Escape und Hintergrund-Klick verhalten sich wie „Abbrechen“. -->
+    <Dialog
+        :open="show"
+        :title="`Alternativen für: ${ingredient?.name || 'Zutat'}`"
+        description="Wähle Zutaten aus, die als Alternativen für diese Rezeptzutat gelten sollen."
+        size="lg"
+        @close="cancel"
+    >
+        <!-- F-13: Das Modal speichert nichts selbst; gespeichert wird mit dem Formular -->
+        <p
+            class="flex items-start gap-2.5 rounded-[1.25rem_1rem_1.4rem_1.1rem] bg-tint p-3.5 text-sm text-ink"
+        >
+            <LeafOrnament
+                variant="sprout"
+                class="mt-0.5 size-5 shrink-0 text-primary"
+            />
+            <span class="min-w-0">
+                Wird mit dem Rezept gespeichert. „Übernehmen“ merkt die Auswahl
+                vor, „Abbrechen“ verwirft die Änderungen in diesem Fenster.
+            </span>
+        </p>
+
+        <!-- Falls gar keine Zutat ausgewählt ist -->
+        <p
+            v-if="!ingredient"
+            class="mt-4 text-sm font-medium text-danger"
+            data-field-error
+        >
+            Bitte zuerst eine Zutat in der Zeile eingeben/auswählen.
+        </p>
+
+        <!-- Hauptlayout: arbeitet immer auf einem Entwurf -->
+        <div
+            v-else
+            class="mt-5 grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5"
+        >
+            <!-- Alle Zutaten mit Suche -->
+            <div data-alternatives-panel class="flex min-w-0 flex-col gap-2">
+                <label for="alt-search" class="text-sm font-semibold text-ink">
+                    Zutat suchen
+                </label>
+                <div class="relative">
+                    <Search
+                        class="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-moss"
+                        aria-hidden="true"
+                    />
+                    <input
+                        id="alt-search"
+                        v-model="searchTerm"
+                        type="text"
+                        class="block min-h-11 w-full min-w-0 rounded-[0.9rem_0.75rem_0.95rem_0.8rem] border-[1.5px] border-line-strong bg-surface py-2 pr-3.5 pl-11 text-base text-ink placeholder:text-ink-muted hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus"
+                        placeholder="z. B. Vollkornpasta"
+                    />
+                </div>
+
+                <div :class="listClass">
+                    <button
+                        v-for="ing in filteredAvailableIngredients"
+                        :key="ing.id"
+                        type="button"
+                        :class="itemClass(selectedAvailableId === ing.id)"
+                        :aria-pressed="
+                            selectedAvailableId === ing.id ? 'true' : 'false'
+                        "
+                        @click="selectedAvailableId = ing.id"
+                    >
+                        <span
+                            class="size-2 shrink-0 rounded-[60%_40%_55%_45%]"
+                            :class="
+                                selectedAvailableId === ing.id
+                                    ? 'bg-matcha'
+                                    : 'bg-moss'
+                            "
+                            aria-hidden="true"
+                        ></span>
+                        <span class="min-w-0 text-wrap-anywhere">{{
+                            ing.name
+                        }}</span>
+                    </button>
+
+                    <p
+                        v-if="filteredAvailableIngredients.length === 0"
+                        class="px-3 py-2.5 text-sm text-ink-muted"
+                    >
+                        Keine passenden Zutaten gefunden.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Mitte: hinzufügen / entfernen (mobil zwischen den Listen) -->
             <div
-                ref="dialogEl"
-                class="modal alternatives-modal"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="alternatives-modal-title"
-                tabindex="-1"
+                class="flex items-center justify-center gap-3 sm:flex-col sm:pt-8"
             >
-                <h2 id="alternatives-modal-title" class="modal__title">
-                    Alternativen für: {{ ingredient?.name || 'Zutat' }}
-                </h2>
+                <Button
+                    class="size-12 px-0"
+                    aria-label="Als Alternative hinzufügen"
+                    title="Als Alternative hinzufügen"
+                    :disabled="!canAdd"
+                    @click="addAlternative"
+                >
+                    <ArrowRight
+                        class="size-5 rotate-90 sm:rotate-0"
+                        aria-hidden="true"
+                    />
+                </Button>
+                <Button
+                    variant="secondary"
+                    class="size-12 px-0"
+                    aria-label="Alternative entfernen"
+                    title="Alternative entfernen"
+                    :disabled="!canRemove"
+                    @click="removeAlternative"
+                >
+                    <ArrowLeft
+                        class="size-5 rotate-90 sm:rotate-0"
+                        aria-hidden="true"
+                    />
+                </Button>
+            </div>
 
-                <p class="modal__hint">
-                    Wähle links Zutaten aus, die als Alternativen für diese
-                    Rezeptzutat gelten sollen.
+            <!-- Ausgewählte Alternativen -->
+            <div data-alternatives-panel class="flex min-w-0 flex-col gap-2">
+                <p
+                    class="flex min-h-[1.25rem] flex-wrap items-center gap-2 text-sm font-semibold text-ink"
+                >
+                    Ausgewählte Alternativen
+                    <Badge tone="accent">Entwurf</Badge>
                 </p>
-                <!-- F-13: Das Modal speichert nichts selbst; gespeichert wird mit dem Formular -->
-                <p class="modal__hint alternatives-modal__save-hint">
-                    Wird mit dem Rezept gespeichert. „Übernehmen“ merkt die
-                    Auswahl vor, „Abbrechen“ verwirft die Änderungen in diesem
-                    Fenster.
-                </p>
 
-                <!-- Falls gar keine Zutat ausgewählt ist -->
-                <div v-if="!ingredient" class="modal__warning">
-                    Bitte zuerst eine Zutat in der Zeile eingeben/auswählen.
-                </div>
-
-                <!-- Hauptlayout: arbeitet immer auf einem Entwurf -->
-                <div v-else class="alternatives-layout">
-                    <!-- Linke Seite: alle Zutaten mit Suche -->
-                    <div class="alternatives-panel">
-                        <div class="form-field">
-                            <label class="form-field__label" for="alt-search"
-                                >Zutat suchen</label
-                            >
-                            <input
-                                id="alt-search"
-                                ref="searchInput"
-                                v-model="searchTerm"
-                                type="text"
-                                class="form-field__input"
-                                placeholder="z. B. Vollkornpasta"
-                            />
-                        </div>
-
-                        <div class="alternatives-list">
-                            <button
-                                v-for="ing in filteredAvailableIngredients"
-                                :key="ing.id"
-                                type="button"
-                                class="alternatives-list__item"
-                                :class="{
-                                    'alternatives-list__item--selected':
-                                        selectedAvailableId === ing.id,
-                                }"
-                                @click="selectedAvailableId = ing.id"
-                            >
-                                {{ ing.name }}
-                            </button>
-
-                            <div
-                                v-if="filteredAvailableIngredients.length === 0"
-                                class="alternatives-list__empty"
-                            >
-                                Keine passenden Zutaten gefunden.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Mitte: Add/Remove -->
-                    <div class="alternatives-panel alternatives-panel--middle">
-                        <button
-                            type="button"
-                            class="primary-pill-button alternatives-panel__btn"
-                            aria-label="Als Alternative hinzufügen"
-                            @click="addAlternative"
-                            :disabled="!canAdd"
-                        >
-                            &gt;&gt;
-                        </button>
-                        <button
-                            type="button"
-                            class="secondary-pill-button alternatives-panel__btn"
-                            aria-label="Alternative entfernen"
-                            @click="removeAlternative"
-                            :disabled="!canRemove"
-                        >
-                            &lt;&lt;
-                        </button>
-                    </div>
-
-                    <!-- Rechte Seite: ausgewählte Alternativen -->
-                    <div class="alternatives-panel">
-                        <div class="form-field">
-                            <div class="form-field__label">
-                                Ausgewählte Alternativen
-                                <span class="inline-badge">Entwurf</span>
-                            </div>
-                        </div>
-
-                        <div class="alternatives-list">
-                            <button
-                                v-for="alt in rightItems"
-                                :key="alt.id"
-                                type="button"
-                                class="alternatives-list__item"
-                                :class="{
-                                    'alternatives-list__item--selected':
-                                        selectedAlternativeId === alt.id,
-                                }"
-                                @click="selectedAlternativeId = alt.id"
-                            >
-                                {{ alt.alternative.name }}
-                            </button>
-
-                            <div
-                                v-if="rightItems.length === 0"
-                                class="alternatives-list__empty"
-                            >
-                                Noch keine Alternativzutaten hinterlegt.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal__actions">
+                <div :class="[listClass, 'sm:mt-[3.25rem]']">
                     <button
+                        v-for="alt in rightItems"
+                        :key="alt.id"
                         type="button"
-                        class="secondary-pill-button"
-                        @click="cancel"
+                        :class="itemClass(selectedAlternativeId === alt.id)"
+                        :aria-pressed="
+                            selectedAlternativeId === alt.id ? 'true' : 'false'
+                        "
+                        @click="selectedAlternativeId = alt.id"
                     >
-                        Abbrechen
+                        <LeafOrnament
+                            variant="leaf"
+                            class="h-3.5 shrink-0 rotate-[30deg]"
+                            :class="
+                                selectedAlternativeId === alt.id
+                                    ? 'text-matcha'
+                                    : 'text-moss'
+                            "
+                        />
+                        <span class="min-w-0 text-wrap-anywhere">{{
+                            alt.alternative.name
+                        }}</span>
                     </button>
-                    <button
-                        v-if="ingredient"
-                        type="button"
-                        class="primary-pill-button"
-                        @click="apply"
+
+                    <p
+                        v-if="rightItems.length === 0"
+                        class="px-3 py-2.5 text-sm text-ink-muted"
                     >
-                        Übernehmen
-                    </button>
+                        Noch keine Alternativzutaten hinterlegt.
+                    </p>
                 </div>
             </div>
         </div>
-    </Teleport>
+
+        <template #footer>
+            <Button variant="ghost" @click="cancel">Abbrechen</Button>
+            <Button v-if="ingredient" @click="apply">
+                <Check class="size-5" aria-hidden="true" />
+                Übernehmen
+            </Button>
+        </template>
+    </Dialog>
 </template>
 
 <script setup lang="ts">
-import { useModal } from '@/composables/useModal';
+import Badge from '@/components/ui/Badge.vue';
+import Button from '@/components/ui/Button.vue';
+import Dialog from '@/components/ui/Dialog.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import { ArrowLeft, ArrowRight, Check, Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 /**
@@ -215,16 +244,18 @@ watch(
     { immediate: true },
 );
 
-const dialogEl = ref<HTMLElement | null>(null);
-const searchInput = ref<HTMLInputElement | null>(null);
+// F-30: Fokus beim Öffnen auf die Suche (erstes Bedienelement), Escape und
+// Hintergrund-Klick wie „Abbrechen“ – übernimmt der Dialog-Baustein.
 
-// F-30: Escape verhält sich wie „Abbrechen“ (Entwurf der Sitzung verwerfen)
-useModal({
-    open: () => props.show,
-    dialog: dialogEl,
-    initialFocus: searchInput,
-    onClose: () => cancel(),
-});
+const listClass =
+    'scrollbar-thin flex max-h-56 min-h-32 flex-col gap-1 overflow-y-auto rounded-[1.25rem_1rem_1.4rem_1.1rem] bg-canvas p-1.5 ring-1 ring-line sm:max-h-64';
+
+const itemClass = (selected: boolean) => [
+    'flex min-h-11 w-full items-center gap-2.5 rounded-[0.9rem_0.75rem_0.95rem_0.8rem] px-3 text-left text-base focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus',
+    selected
+        ? 'bg-primary font-semibold text-on-primary'
+        : 'text-ink hover:bg-tint',
+];
 
 // Verfügbare Zutaten für die linke Liste berechnen
 const filteredAvailableIngredients = computed(() => {
@@ -287,146 +318,3 @@ const cancel = () => {
     emit('close');
 };
 </script>
-
-<style scoped>
-.modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* F-30: gemeinsame Modal-Ebene über Header und Sidebar */
-    z-index: var(--z-modal-backdrop, 1300);
-}
-
-.modal.alternatives-modal {
-    background: var(--cream);
-    border-radius: var(--radius-lg, 18px);
-    border: 1px solid var(--line-soft);
-    box-shadow: var(--shadow-soft);
-    padding: 1.5rem;
-    max-width: 860px;
-    width: 100%;
-    max-height: 90vh;
-    max-height: 90dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* Inhalt wird innerhalb gescrollt */
-}
-
-.modal__title {
-    margin-bottom: 0.5rem;
-    font-size: 1.125rem;
-    font-weight: 600;
-}
-
-.modal__hint {
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-}
-
-.modal__warning {
-    font-size: 0.85rem;
-    color: var(--danger);
-    margin-bottom: 1rem;
-}
-
-.alternatives-layout {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 1rem;
-    margin-top: 0.5rem;
-    flex: 1;
-    min-height: 260px;
-    max-height: 100%;
-    overflow: hidden; /* Panels selbst scrollen */
-}
-
-.alternatives-panel {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0; /* erlaubt, dass die Liste flex:1 wirklich schrumpft */
-}
-
-.alternatives-panel--middle {
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-}
-
-.alternatives-panel__btn {
-    width: 3.5rem;
-}
-
-.alternatives-list {
-    border: 1px solid var(--line-soft);
-    background: #fff;
-    border-radius: 0.5rem;
-    padding: 0.25rem;
-    flex: 1;
-    overflow-y: auto;
-    margin-top: 0.5rem;
-}
-
-.alternatives-list__item {
-    width: 100%;
-    text-align: left;
-    border: none;
-    background: transparent;
-    padding: 0.35rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-}
-
-.alternatives-list__item:hover {
-    background: var(--sand);
-}
-
-.alternatives-list__item--selected {
-    background: var(--sage);
-    font-weight: 500;
-}
-
-.alternatives-list__empty {
-    font-size: 0.85rem;
-    color: var(--text-soft);
-    padding: 0.35rem 0.5rem;
-}
-
-.modal__actions {
-    margin-top: 0.75rem;
-    display: flex;
-    justify-content: flex-end;
-    gap: 2rem;
-}
-
-@media (max-width: 720px) {
-    /* Panels untereinander, Verschiebe-Buttons als horizontale Zeile */
-    .alternatives-layout {
-        grid-template-columns: 1fr;
-        overflow-y: auto;
-    }
-
-    .alternatives-panel--middle {
-        flex-direction: row;
-        justify-content: center;
-    }
-
-    .alternatives-panel__btn {
-        transform: rotate(90deg);
-    }
-
-    .modal.alternatives-modal {
-        max-height: 92vh;
-        max-height: 92dvh;
-        padding: 1rem;
-    }
-
-    .modal__actions {
-        gap: 0.75rem;
-    }
-}
-</style>

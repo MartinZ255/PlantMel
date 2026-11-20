@@ -1,62 +1,93 @@
 <template>
     <!--
-        Fortschrittsanzeige für den TikTok-Import (Slice 4).
-        Die Wurzel bleibt immer gerendert, damit die Live-Region (role="status")
-        dauerhaft im DOM steht. Ohne laufenden Import ist sie per
-        `display: contents` unsichtbar für das Layout.
+        Fortschrittsanzeige für den TikTok-Import (Slice 4, Gate C2 im Stil
+        „Natur & organisch“). Die Wurzel bleibt immer gerendert, damit die
+        Live-Region (role="status") dauerhaft im DOM steht. Ohne laufenden
+        Import nimmt sie keinen Platz ein.
     -->
     <div
         ref="root"
-        class="import-progress"
-        :class="{
-            'import-progress--active': visible,
-            'import-progress--failed': phase === 'failed',
-            'import-progress--done': phase === 'done',
-        }"
+        data-import-progress
+        :data-phase="phase"
+        class="min-w-0"
+        :class="visible || notice || error ? 'mt-5' : ''"
     >
-        <template v-if="visible">
-            <div class="import-progress__header">
-                <span id="import-progress-title" class="import-progress__title">
+        <div
+            v-if="visible"
+            class="rounded-[1.6rem_1.25rem_1.75rem_1.4rem] p-4 ring-1 sm:p-5"
+            :class="
+                phase === 'failed'
+                    ? 'bg-danger-surface ring-danger/30'
+                    : phase === 'done'
+                      ? 'bg-tint ring-primary/30'
+                      : 'bg-canvas ring-line'
+            "
+        >
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <span
+                    id="import-progress-title"
+                    class="font-display text-xl font-semibold text-ink"
+                >
                     Import-Fortschritt
                 </span>
                 <!-- Uhr bewusst außerhalb der Live-Region (keine Ansage je Sekunde) -->
-                <span class="import-progress__time">
+                <span
+                    data-import-time
+                    class="inline-flex items-center gap-1.5 rounded-seed bg-surface px-3 py-1 text-sm font-semibold text-ink-muted tabular-nums ring-1 ring-line"
+                >
+                    <Clock class="size-4 text-moss" aria-hidden="true" />
                     {{ running ? 'seit' : 'Dauer' }}
-                    <time :datetime="`PT${wholeSeconds}S`">{{
+                    <time class="text-ink" :datetime="`PT${wholeSeconds}S`">{{
                         formattedElapsed
                     }}</time>
                 </span>
             </div>
 
             <ol
-                class="import-progress__steps"
+                class="mt-4 flex flex-col gap-3 sm:grid sm:grid-cols-4 sm:gap-2"
                 aria-labelledby="import-progress-title"
             >
                 <li
                     v-for="(step, index) in steps"
                     :key="step"
-                    class="import-progress__step"
-                    :class="`import-progress__step--${stepState(index)}`"
+                    :data-state="stepState(index)"
+                    class="relative flex min-w-0 items-center gap-3 sm:flex-col sm:gap-2 sm:text-center"
                     :aria-current="index === currentStep ? 'step' : undefined"
                 >
-                    <span class="import-progress__marker" aria-hidden="true">
-                        <svg
+                    <!-- Ranke zum nächsten Schritt (mobil senkrecht, ab sm waagerecht) -->
+                    <span
+                        v-if="index < steps.length - 1"
+                        class="pointer-events-none absolute top-11 -bottom-3 left-5 border-l-2 sm:top-5 sm:right-[calc(-50%+1.75rem)] sm:bottom-auto sm:left-[calc(50%+1.75rem)] sm:border-t-2 sm:border-l-0"
+                        :class="
+                            stepState(index) === 'done'
+                                ? 'border-solid border-primary'
+                                : 'border-dashed border-line-strong'
+                        "
+                        aria-hidden="true"
+                    ></span>
+                    <span
+                        data-progress-marker
+                        class="relative blob-mask inline-flex size-10 shrink-0 items-center justify-center font-display text-lg font-semibold"
+                        :class="[markerShapes[index], markerClass(index)]"
+                        aria-hidden="true"
+                    >
+                        <Check
                             v-if="stepState(index) === 'done'"
-                            viewBox="0 0 16 16"
-                            class="import-progress__icon"
-                        >
-                            <path d="M3.5 8.5l3 3 6-7" />
-                        </svg>
-                        <svg
+                            class="size-5"
+                            :stroke-width="3"
+                        />
+                        <X
                             v-else-if="stepState(index) === 'failed'"
-                            viewBox="0 0 16 16"
-                            class="import-progress__icon"
-                        >
-                            <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
-                        </svg>
+                            class="size-5"
+                            :stroke-width="3"
+                        />
                         <template v-else>{{ index + 1 }}</template>
                     </span>
-                    <span class="import-progress__label">{{ step }}</span>
+                    <span
+                        class="min-w-0 text-sm font-semibold text-wrap-anywhere"
+                        :class="labelClass(index)"
+                        >{{ step }}</span
+                    >
                     <span class="sr-only">
                         ({{ stateLabels[stepState(index)] }})
                     </span>
@@ -64,39 +95,65 @@
             </ol>
 
             <!-- Unbestimmter Balken: keine Prozentwerte, nur „läuft“ -->
-            <div v-if="running" class="import-progress__bar" aria-hidden="true">
-                <span class="import-progress__bar-fill"></span>
+            <div
+                v-if="running"
+                data-progress-bar
+                class="relative mt-4 h-2.5 overflow-hidden rounded-full bg-tint-strong"
+                aria-hidden="true"
+            >
+                <span
+                    data-progress-bar-fill
+                    class="progress-fill absolute inset-y-0 left-0 w-2/5 rounded-[1rem_0.6rem_1rem_0.6rem] bg-gradient-to-r from-primary via-moss to-matcha"
+                ></span>
             </div>
-        </template>
+        </div>
 
         <!-- EINE Live-Region für Schrittwechsel und Hinweise -->
         <div
-            class="tiktok-import__status import-progress__status"
+            class="text-base text-ink"
+            :class="visible ? 'mt-3' : ''"
             role="status"
         >
             <template v-if="visible && phase !== 'failed'">
-                <span>{{ phaseMessage }}</span>
-                <span v-if="waitingForWorker" class="import-progress__hint">
-                    Der Import wartet auf die Verarbeitung. Läuft der
-                    Hintergrunddienst (Queue-Worker)? Ohne ihn beginnt der
-                    Import nicht.
+                <span class="block">{{ phaseMessage }}</span>
+                <span
+                    v-if="waitingForWorker"
+                    data-import-hint
+                    class="mt-3 flex items-start gap-2.5 rounded-[1.25rem_1rem_1.4rem_1.1rem] bg-warning-surface p-3.5 text-sm font-medium text-warning"
+                >
+                    <Hourglass
+                        class="mt-0.5 size-5 shrink-0"
+                        aria-hidden="true"
+                    />
+                    <span class="min-w-0">
+                        Der Import wartet auf die Verarbeitung. Läuft der
+                        Hintergrunddienst (Queue-Worker)? Ohne ihn beginnt der
+                        Import nicht.
+                    </span>
                 </span>
             </template>
             <template v-else-if="!visible && notice">
                 <span
-                    :class="{
-                        'tiktok-import__status--success':
-                            noticeTone === 'success',
-                    }"
-                    >{{ notice }}</span
+                    class="flex items-start gap-2 font-medium"
+                    :class="
+                        noticeTone === 'success' ? 'text-success' : 'text-ink'
+                    "
                 >
+                    <CircleCheck
+                        v-if="noticeTone === 'success'"
+                        class="mt-0.5 size-5 shrink-0"
+                        aria-hidden="true"
+                    />
+                    <span class="min-w-0">{{ notice }}</span>
+                </span>
             </template>
         </div>
 
         <p
             v-if="error"
             :id="errorId"
-            class="form-field__error import-progress__error"
+            data-field-error
+            class="mt-3 text-sm font-semibold text-wrap-anywhere text-danger"
             role="alert"
         >
             {{ error }}
@@ -104,31 +161,35 @@
 
         <div
             v-if="visible && (running || (phase === 'failed' && canRetry))"
-            class="import-progress__actions"
+            class="mt-4 flex flex-wrap gap-2"
         >
-            <button
+            <Button
                 v-if="running"
                 ref="cancelButton"
-                type="button"
-                class="secondary-pill-button"
+                variant="secondary"
                 @click="emit('cancel')"
             >
+                <X class="size-4" aria-hidden="true" />
                 Abbrechen
-            </button>
-            <button
-                v-else
-                ref="retryButton"
-                type="button"
-                class="primary-pill-button"
-                @click="emit('retry')"
-            >
+            </Button>
+            <Button v-else ref="retryButton" @click="emit('retry')">
+                <RotateCcw class="size-4" aria-hidden="true" />
                 Erneut versuchen
-            </button>
+            </Button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
+import Button from '@/components/ui/Button.vue';
+import {
+    Check,
+    CircleCheck,
+    Clock,
+    Hourglass,
+    RotateCcw,
+    X,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 export type ImportPhase =
@@ -209,8 +270,9 @@ const phaseMessages: Record<Exclude<ImportPhase, 'idle' | 'failed'>, string> = {
 };
 
 const root = ref<HTMLElement | null>(null);
-const cancelButton = ref<HTMLButtonElement | null>(null);
-const retryButton = ref<HTMLButtonElement | null>(null);
+// Baustein `Button`: Fokus über das gerenderte Element
+const cancelButton = ref<{ $el: HTMLElement } | null>(null);
+const retryButton = ref<{ $el: HTMLElement } | null>(null);
 
 const visible = computed(() => props.phase !== 'idle');
 const running = computed(() =>
@@ -231,6 +293,26 @@ const stepState = (index: number): StepState => {
     if (props.phase === 'done') return 'done';
     return 'active';
 };
+
+/** Blob-Formen der Schritt-Marken (wie die Schritte im Rezept) */
+const markerShapes = ['blob-1', 'blob-4', 'blob-2', 'blob-5'];
+
+/** Fläche der Marke je Zustand; „läuft“ pulsiert (nicht bei reduzierter Bewegung) */
+const markerClass = (index: number) =>
+    ({
+        done: 'bg-primary text-matcha shadow-card',
+        active: 'bg-matcha text-forest shadow-card after:absolute after:inset-0 after:-z-10 after:rounded-[inherit] after:bg-matcha after:animate-ping motion-reduce:after:animate-none',
+        failed: 'bg-danger text-white shadow-card',
+        todo: 'bg-surface text-ink-muted ring-[1.5px] ring-line-strong',
+    })[stepState(index)];
+
+const labelClass = (index: number) =>
+    ({
+        done: 'text-ink',
+        active: 'text-ink',
+        failed: 'text-danger',
+        todo: 'text-ink-muted',
+    })[stepState(index)];
 
 const videoMessages = {
     downloading:
@@ -259,7 +341,30 @@ const formattedElapsed = computed(() => {
 defineExpose({
     containsFocus: () =>
         !!root.value && root.value.contains(document.activeElement),
-    focusCancel: () => cancelButton.value?.focus(),
-    focusRetry: () => retryButton.value?.focus(),
+    focusCancel: () => cancelButton.value?.$el?.focus(),
+    focusRetry: () => retryButton.value?.$el?.focus(),
 });
 </script>
+
+<style scoped>
+/* Unbestimmter Balken: ein weicher Streifen wandert hin und her */
+.progress-fill {
+    animation: import-progress-indeterminate 1.8s ease-in-out infinite;
+}
+
+@keyframes import-progress-indeterminate {
+    0% {
+        translate: -100% 0;
+    }
+    100% {
+        translate: 250% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .progress-fill {
+        animation: none;
+        left: 30%;
+    }
+}
+</style>
