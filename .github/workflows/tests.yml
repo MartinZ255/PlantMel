@@ -59,10 +59,89 @@ jobs:
   # Dieser Job hält die reproduzierbaren bekannten Defekte (tests/KnownDefects,
   # absichtlich rot) sichtbar und blockiert bewusst nicht. Ein Test, der hier grün
   # wird, zeigt einen behobenen Defekt an und gehört dann in die Default-Suiten.
+  #
+  # Leere Suite (Gate D3, 2026-11-20): PHPUnit meldet bei einer leeren Suite
+  # "No tests executed!" mit Exit 0 - der Job sähe grün aus, obwohl nichts
+  # geprüft wurde. Deshalb wird die Zahl der Testdateien zuerst explizit
+  # ermittelt: Ist sie 0, erscheint ein Hinweis (Annotation + Job-Zusammenfassung)
+  # und die übrigen Schritte entfallen. Sonst läuft die Suite mit
+  # --fail-on-empty-test-suite. Siehe tests/KnownDefects/README.md.
   known-defects:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Suite
+        id: suite
+        run: |
+          count=$(find tests/KnownDefects -type f -name '*Test.php' | wc -l | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" = "0" ]; then
+            echo "::notice title=KnownDefects::Suite ist leer (keine offenen Defekte als PHPUnit-Test erfasst) - Lauf bewusst übersprungen."
+            echo "KnownDefects: Suite leer, Lauf bewusst übersprungen (siehe tests/KnownDefects/README.md)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "KnownDefects: $count Testdatei(en)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Setup PHP
+        if: steps.suite.outputs.count != '0'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        if: steps.suite.outputs.count != '0'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install PHP Dependencies
+        if: steps.suite.outputs.count != '0'
+        run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Install Node Dependencies
+        if: steps.suite.outputs.count != '0'
+        run: npm ci
+
+      - name: Copy Environment File
+        if: steps.suite.outputs.count != '0'
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        if: steps.suite.outputs.count != '0'
+        run: php artisan key:generate
+
+      - name: Build Assets
+        if: steps.suite.outputs.count != '0'
+        run: npm run build
+
+      - name: Known Defects
+        if: steps.suite.outputs.count != '0'
+        run: php artisan test --testsuite=KnownDefects --fail-on-empty-test-suite
+
+  # Browser-Regression mit Playwright (Chromium). Lokal gleichwertig:
+  #   npm ci --ignore-scripts && npm run build && npx playwright test --ignore-snapshots
+  #
+  # - Testinstanz wie lokal: eingebauter PHP-Server, eigene SQLite-Datei
+  #   database/e2e.sqlite, Werte aus tests/e2e/support/env.ts (überschreiben die
+  #   .env). global-setup.ts legt die Datei neu an, migriert und seedet E2eSeeder.
+  #   Keine Secrets nötig.
+  # - Die Pixel-Baselines (tests/e2e/baseline.spec.ts-snapshots/*-win32.png) sind
+  #   Windows/Chromium-spezifisch. `--ignore-snapshots` überspringt NUR die
+  #   toHaveScreenshot-Vergleiche; alle übrigen Prüfungen laufen: Projekte
+  #   `regression` und `defects` sowie die Viewport-Projekte w320 bis d1440
+  #   (Erreichbarkeit/Rendern je Seite und Viewport).
+  # - Bei Fehlschlag: HTML-Report und Traces (retain-on-failure) als Artefakt.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -74,6 +153,8 @@ jobs:
           php-version: '8.4'
           tools: composer:v2
           coverage: none
+          # gd: Testbilder im E2eSeeder; pdo_sqlite: Testdatenbank
+          extensions: gd, pdo_sqlite, sqlite3
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -85,7 +166,7 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
 
       - name: Install Node Dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -96,5 +177,19 @@ jobs:
       - name: Build Assets
         run: npm run build
 
-      - name: Known Defects
-        run: php artisan test --testsuite=KnownDefects
+      - name: Install Playwright Browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright (ohne Pixel-Vergleich)
+        run: npx playwright test --ignore-snapshots
+
+      - name: Upload Playwright Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore
