@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Response;
 use App\Models\Recipe;
+use App\Services\TasteRating;
 use Illuminate\Http\RedirectResponse;
 
 
@@ -63,15 +64,16 @@ class CollectionController extends Controller
             abort(403);
         }
 
+        // E14: nur Geschmacks-Bewertungen laden und einrechnen
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $collection->load([
             'recipes.categories',
-            'recipes.ratings',
+            'recipes.ratings' => TasteRating::constrain($tasteDimensionId),
             'recipes.images',
         ]);
 
-        $recipes = $collection->recipes->map(function ($recipe) {
-            $avgRating = $recipe->ratings->avg('value');
-
+        $recipes = $collection->recipes->map(function ($recipe) use ($tasteDimensionId) {
             $firstImage = $recipe->images->first();
             $imageUrl = $firstImage?->image_path
                 ? Storage::url($firstImage->image_path)
@@ -80,7 +82,7 @@ class CollectionController extends Controller
             return [
                 'id' => $recipe->id,
                 'name' => $recipe->title,
-                'rating' => $avgRating ? (int)round($avgRating) : 0,
+                'rating' => TasteRating::roundedForList($recipe->ratings, $tasteDimensionId),
                 'tags' => $recipe->categories->pluck('name')->all(),
                 'time' => $recipe->duration_minutes
                     ? $recipe->duration_minutes . ' Min'

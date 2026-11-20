@@ -23,4 +23,19 @@ return [
 
     'require_email_verification' => (bool) env('REQUIRE_EMAIL_VERIFICATION', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Einzige Bewertungsdimension (Entscheidung E14)
+    |--------------------------------------------------------------------------
+    |
+    | Rezepte werden nur noch mit 1–5 Sternen fuer den Geschmack bewertet.
+    | Gemeint ist der Name einer Zeile in `rating_dimensions`. Bewertungen
+    | anderer Dimensionen bleiben gespeichert, werden aber weder angezeigt
+    | noch eingerechnet. Gibt es keine Dimension mit diesem Namen, entfaellt
+    | die Bewertung (keine Fehler).
+    |
+    */
+
+    'rating_dimension' => 'Geschmack',
+
 ];

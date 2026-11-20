@@ -46,16 +46,22 @@ class RecipeEditUpdateTest extends TestCase
             ],
             'steps' => ['C', 'A', 'B'],
             'notes' => "Notiz eins\nNotiz zwei",
-            'ratings' => [$geschmack->id => 4, $aufwand->id => 2],
+            'ratings' => [$geschmack->id => 4],
         ])->assertSessionHasNoErrors();
 
         $recipe = Recipe::sole();
+        // E14: eine Altbewertung einer anderen Dimension erscheint nicht im Formular.
+        RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $aufwand->id, 'value' => 2]);
         $response = $this->get(route('recipes.edit', $recipe));
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('recipes/Edit')
-            ->has('ratingDimensions', 2)
+            // E14: nur die Geschmacks-Dimension
+            ->has('ratingDimensions', 1)
+            ->where('ratingDimensions', [
+                ['id' => $geschmack->id, 'name' => 'Geschmack', 'description' => null],
+            ])
             ->has('categories', 2)
             ->has('ingredients', 5) // alle Zutaten für die Auswahl
             ->where('isHost', true)
@@ -78,7 +84,7 @@ class RecipeEditUpdateTest extends TestCase
             ['amount' => '1 EL', 'name' => 'Sojasauce', 'alternativeIngredientIds' => []],
             ['amount' => '', 'name' => 'Salz', 'alternativeIngredientIds' => []], // null-Menge -> ''
         ], $form['ingredients']);
-        $this->assertSame([$geschmack->id => 4, $aufwand->id => 2], $form['ratings']);
+        $this->assertSame([$geschmack->id => 4], $form['ratings']);
 
         // Auswahllisten: Zutaten alphabetisch.
         $this->assertSame(
@@ -114,8 +120,8 @@ class RecipeEditUpdateTest extends TestCase
         $this->actingAsHost();
         $vegan = Category::factory()->create(['name' => 'Vegan']);
         $schnell = Category::factory()->create(['name' => 'Schnell']);
-        $geschmack = RatingDimension::factory()->create();
-        $aufwand = RatingDimension::factory()->create();
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
+        $aufwand = RatingDimension::factory()->create(['name' => 'Aufwand']);
 
         $recipe = Recipe::factory()->withSteps(['Alt'], 'Alte Notiz')->create([
             'title' => 'Alter Titel',
@@ -165,14 +171,70 @@ class RecipeEditUpdateTest extends TestCase
         // Die nicht mehr genutzte Zutat selbst bleibt im Katalog.
         $this->assertDatabaseHas('ingredients', ['name' => 'Altzutat']);
 
-        // Bewertungen ersetzt (nicht gesendete Dimension entfällt).
-        $this->assertDatabaseCount('recipe_ratings', 1);
+        // E14 (vorher: alle Bewertungen gelöscht und neu angelegt):
+        // nur Geschmack ersetzt, die Altbewertung „Aufwand“ bleibt unangetastet.
+        $this->assertDatabaseCount('recipe_ratings', 2);
         $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $geschmack->id, 'value' => 5]);
+        $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $aufwand->id, 'value' => 1]);
 
         $show = $this->pageProps($this->get(route('recipes.show', $recipe)));
         $this->assertSame(['Zwiebel', 'Tofu', 'Apfel'], array_column($show['recipe']['ingredients'], 'name'));
         $this->assertSame(['Zwei', 'Eins'], $show['recipe']['steps']);
         $this->assertSame([], $show['recipe']['notes']);
+    }
+
+    public function test_update_with_null_or_missing_taste_removes_only_taste_rating(): void
+    {
+        $this->actingAsHost();
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
+        $gesamt = RatingDimension::factory()->create(['name' => 'Gesamt']);
+
+        foreach ([['ratings' => [$geschmack->id => null]], ['ratings' => []], []] as $ratingsPart) {
+            $recipe = Recipe::factory()->create();
+            RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $geschmack->id, 'value' => 3]);
+            RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $gesamt->id, 'value' => 4]);
+
+            $payload = $this->recipePayload($ratingsPart);
+            if ($ratingsPart === []) {
+                unset($payload['ratings']);
+            }
+
+            $this->post(route('recipes.update', $recipe), $payload)
+                ->assertSessionHasNoErrors();
+
+            $this->assertDatabaseMissing('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $geschmack->id]);
+            $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $gesamt->id, 'value' => 4]);
+        }
+    }
+
+    public function test_update_creates_taste_rating_when_none_existed(): void
+    {
+        $this->actingAsHost();
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
+        $recipe = Recipe::factory()->create();
+
+        $this->post(route('recipes.update', $recipe), $this->recipePayload([
+            'ratings' => [$geschmack->id => 2],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $geschmack->id, 'value' => 2]);
+        $this->assertDatabaseCount('recipe_ratings', 1);
+    }
+
+    public function test_update_without_taste_dimension_keeps_existing_ratings(): void
+    {
+        $this->actingAsHost();
+        $gesamt = RatingDimension::factory()->create(['name' => 'Gesamt']);
+        $recipe = Recipe::factory()->create();
+        RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $gesamt->id, 'value' => 4]);
+
+        $this->post(route('recipes.update', $recipe), $this->recipePayload())
+            ->assertSessionHasNoErrors();
+
+        $form = $this->pageProps($this->get(route('recipes.edit', $recipe)));
+        $this->assertSame([], $form['ratingDimensions']);
+        $this->assertSame([], $form['recipe']['ratings']);
+        $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $gesamt->id, 'value' => 4]);
     }
 
     public function test_update_without_tags_detaches_all_categories(): void

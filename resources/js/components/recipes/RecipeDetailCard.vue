@@ -76,7 +76,9 @@
                 </Link>
             </h3>
 
+            <!-- E14: einzige Bewertung ist der Geschmack -->
             <div class="pt-0.5">
+                <span class="sr-only">Geschmack: </span>
                 <StarRating :value="recipe.rating ?? null" compact size="sm" />
             </div>
         </div>
@@ -97,7 +99,7 @@ interface RecipeDetail {
     name: string;
     tags?: string[]; // Kategorienamen
     time?: string; // '20 Min' oder '–'
-    rating?: number; // 0–5 (0 = keine Bewertung)
+    rating?: number; // Geschmack 0–5 (0 = keine Bewertung, E14)
     image?: string | null;
 }
 

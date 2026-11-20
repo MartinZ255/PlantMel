@@ -8,7 +8,7 @@ use App\Http\Controllers\CollectionController;
 use App\Models\Category;
 use App\Models\Recipe;
 use App\Models\Ingredient;
-use App\Models\RatingDimension;
+use App\Services\TasteRating;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -165,9 +165,8 @@ Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
 
     // Rezepte anlegen / bearbeiten / löschen
     Route::get('/rezepte/erstellen', function (Request $request) {
-        // F-12/E5: nach Name statt nach der nicht vorhandenen Spalte sort_order
-        $ratingDimensions = RatingDimension::orderBy('name')
-            ->get(['id', 'name', 'description']);
+        // E14: nur die Geschmacks-Dimension (0 oder 1 Eintrag)
+        $ratingDimensions = TasteRating::dimensionsForForm();
         $categories = Category::orderBy('name')
             ->get(['id', 'name']);
         $ingredients = Ingredient::orderBy('name')

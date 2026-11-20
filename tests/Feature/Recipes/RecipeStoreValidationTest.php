@@ -136,7 +136,7 @@ class RecipeStoreValidationTest extends TestCase
     #[DataProvider('outOfRangeRatings')]
     public function test_rating_outside_one_to_five_is_rejected(int $value): void
     {
-        $dimension = RatingDimension::factory()->create();
+        $dimension = RatingDimension::factory()->create(['name' => 'Geschmack']);
 
         $this->post(route('recipes.store'), $this->recipePayload([
             'ratings' => [$dimension->id => $value],

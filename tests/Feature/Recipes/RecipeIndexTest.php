@@ -89,7 +89,7 @@ class RecipeIndexTest extends TestCase
     public function test_recipe_entry_maps_title_tags_time_rating_and_image(): void
     {
         Storage::fake('public');
-        $dimA = RatingDimension::factory()->create();
+        $dimA = RatingDimension::factory()->create(['name' => 'Geschmack']);
         $dimB = RatingDimension::factory()->create();
         $dimC = RatingDimension::factory()->create();
         foreach ([[$dimA, 4], [$dimB, 5], [$dimC, 5]] as [$dim, $value]) {
@@ -107,7 +107,8 @@ class RecipeIndexTest extends TestCase
 
         $bolognese = $byName['Linsen-Bolognese'];
         $this->assertSame($this->bolognese->id, $bolognese['id']);
-        $this->assertSame(5, $bolognese['rating']); // Ø 4,67 -> ganzzahlig gerundet
+        // E14: nur Geschmack (4); vorher Ø aller Dimensionen 4,67 -> 5
+        $this->assertSame(4, $bolognese['rating']);
         $this->assertSame(['Vegan'], $bolognese['tags']);
         $this->assertSame('45 Min', $bolognese['time']);
         $this->assertSame(Storage::disk('public')->url('recipes/erstes.jpg'), $bolognese['image']);
@@ -117,6 +118,31 @@ class RecipeIndexTest extends TestCase
         $this->assertSame('–', $curry['time']); // keine Dauer -> Gedankenstrich
         $this->assertNull($curry['image']);
         $this->assertEqualsCanonicalizing(['Vegan', 'Schnell'], $curry['tags']);
+    }
+
+    public function test_list_rating_rounds_taste_average_and_ignores_other_dimensions(): void
+    {
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
+        $gesamt = RatingDimension::factory()->create(['name' => 'Gesamt']);
+        RecipeRating::factory()->create(['recipe_id' => $this->curry->id, 'dimension_id' => $gesamt->id, 'value' => 5]);
+        RecipeRating::factory()->create(['recipe_id' => $this->bolognese->id, 'dimension_id' => $geschmack->id, 'value' => 2]);
+        RecipeRating::factory()->create(['recipe_id' => $this->bolognese->id, 'dimension_id' => $gesamt->id, 'value' => 5]);
+
+        $byName = collect($this->pageProps($this->get(route('recipes.index')))['recipes'])->keyBy('name');
+
+        $this->assertSame(2, $byName['Linsen-Bolognese']['rating']);
+        $this->assertSame(0, $byName['Tofu-Curry']['rating']); // nur „Gesamt“ -> unbewertet
+    }
+
+    public function test_list_without_taste_dimension_shows_all_unrated(): void
+    {
+        $gesamt = RatingDimension::factory()->create(['name' => 'Gesamt']);
+        RecipeRating::factory()->create(['recipe_id' => $this->bolognese->id, 'dimension_id' => $gesamt->id, 'value' => 5]);
+
+        $response = $this->get(route('recipes.index'));
+
+        $response->assertOk();
+        $this->assertSame([0], collect($this->pageProps($response)['recipes'])->pluck('rating')->unique()->values()->all());
     }
 
     public function test_tag_stats_count_recipes_per_category_and_use_name_as_key(): void

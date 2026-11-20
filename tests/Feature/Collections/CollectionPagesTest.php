@@ -88,8 +88,10 @@ class CollectionPagesTest extends TestCase
         $recipe = Recipe::factory()->create(['title' => 'Linsencurry', 'duration_minutes' => 35]);
         $recipe->categories()->attach(Category::factory()->create(['name' => 'Vegan']));
         RecipeImage::factory()->for($recipe)->create(['image_path' => 'recipes/curry.jpg']);
-        RecipeRating::factory()->for($recipe)->create(['dimension_id' => RatingDimension::factory(), 'value' => 4]);
-        RecipeRating::factory()->for($recipe)->create(['dimension_id' => RatingDimension::factory(), 'value' => 5]);
+        // E14: nur Geschmack zählt, „Gesamt“ wird ignoriert
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
+        RecipeRating::factory()->for($recipe)->create(['dimension_id' => $geschmack->id, 'value' => 4]);
+        RecipeRating::factory()->for($recipe)->create(['dimension_id' => RatingDimension::factory()->create(['name' => 'Gesamt']), 'value' => 1]);
 
         $plain = Recipe::factory()->create(['title' => 'Brot', 'duration_minutes' => null]);
 
@@ -112,8 +114,8 @@ class CollectionPagesTest extends TestCase
                     $this->assertSame([
                         'id' => $recipe->id,
                         'name' => 'Linsencurry',
-                        // Durchschnitt 4,5 -> (int) round() = 5
-                        'rating' => 5,
+                        // E14: Geschmack 4 (vorher Ø aller Dimensionen)
+                        'rating' => 4,
                         'tags' => ['Vegan'],
                         'time' => '35 Min',
                         'image' => Storage::url('recipes/curry.jpg'),
@@ -130,6 +132,21 @@ class CollectionPagesTest extends TestCase
 
                     return true;
                 })
+            );
+    }
+
+    public function test_show_without_taste_dimension_shows_recipes_unrated(): void
+    {
+        $user = $this->actingAsUser();
+        $collection = Collection::factory()->for($user)->create();
+        $recipe = Recipe::factory()->create();
+        RecipeRating::factory()->for($recipe)->create(['dimension_id' => RatingDimension::factory()->create(['name' => 'Gesamt']), 'value' => 5]);
+        $collection->recipes()->attach($recipe);
+
+        $this->get(route('collections.show', $collection))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('recipes.0.rating', 0)
             );
     }
 

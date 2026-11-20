@@ -17,7 +17,10 @@ use Tests\TestCase;
  * SQLite wertete den Bezeichner als String-Literal (kein Fehler), MySQL/Postgres
  * hätten mit 500 geantwortet.
  *
- * Sollverhalten: Anlegen- und Bearbeiten-Formular sortieren beide Tabellen nach `name`.
+ * Sollverhalten: Anlegen- und Bearbeiten-Formular sortieren Kategorien nach `name`.
+ * Seit E14 liefern sie nur noch die Geschmacks-Dimension (Lookup über den
+ * eindeutigen Namen, höchstens eine Zeile); dort wird gar nicht mehr sortiert,
+ * es darf aber weiterhin keine fehlende Spalte wie `sort_order` vorkommen.
  */
 #[Group('F-12')]
 class SortOrderColumnTest extends TestCase
@@ -25,7 +28,7 @@ class SortOrderColumnTest extends TestCase
     use InteractsWithRecipes;
     use RefreshDatabase;
 
-    public function test_create_and_edit_order_categories_and_rating_dimensions_by_name(): void
+    public function test_create_and_edit_order_categories_by_name_and_return_only_taste_dimension(): void
     {
         $this->actingAsHost();
         // Einfügereihenfolge absichtlich nicht alphabetisch
@@ -38,14 +41,13 @@ class SortOrderColumnTest extends TestCase
         $recipe = Recipe::factory()->create();
 
         foreach ([route('recipes.create'), route('recipes.edit', $recipe)] as $url) {
-            foreach (['categories', 'rating_dimensions'] as $table) {
-                $columns = $this->orderByColumnsFor($table, fn () => $this->get($url)->assertOk());
-                $this->assertSame(['name'], $columns, "$url sortiert $table");
-            }
+            $columns = $this->orderByColumnsFor('categories', fn () => $this->get($url)->assertOk());
+            $this->assertSame(['name'], $columns, "$url sortiert categories");
 
             $props = $this->pageProps($this->get($url));
             $this->assertSame(['Abendessen', 'Mittag', 'Würzig'], array_column($props['categories'], 'name'), $url);
-            $this->assertSame(['Aufwand', 'Geschmack', 'Optik'], array_column($props['ratingDimensions'], 'name'), $url);
+            // E14: nur Geschmack (vorher alle Dimensionen alphabetisch)
+            $this->assertSame(['Geschmack'], array_column($props['ratingDimensions'], 'name'), $url);
         }
     }
 
@@ -58,7 +60,10 @@ class SortOrderColumnTest extends TestCase
             foreach (['categories', 'rating_dimensions'] as $table) {
                 $columns = $this->orderByColumnsFor($table, fn () => $this->get($url)->assertOk());
 
-                $this->assertNotEmpty($columns, "$url sortiert $table nicht mehr – Reihenfolge undefiniert");
+                // rating_dimensions: seit E14 Lookup einer Zeile per Name, ohne Sortierung
+                if ($table === 'categories') {
+                    $this->assertNotEmpty($columns, "$url sortiert $table nicht mehr – Reihenfolge undefiniert");
+                }
 
                 foreach ($columns as $column) {
                     $this->assertTrue(

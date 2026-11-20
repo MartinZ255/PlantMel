@@ -230,15 +230,16 @@ test.describe('Gate C – Kontraste der Tokens im Browser', () => {
         rows.push({ name: 'Stern gefuellt', starColor, starRatio });
         expect(starRatio).toBeGreaterThanOrEqual(3);
 
-        // Sterne im hellen Inhalt (Bewertungen): Beere auf Naturgrund
+        // Sterne im hellen Inhalt (Bewertung, E14: nur Geschmack): Beere auf
+        // der Beeren-Flaeche (berry-surface) der Geschmacks-Karte
         const lightStar = page
-            .getByRole('region', { name: 'Bewertungen' })
-            .locator('li svg')
+            .getByRole('region', { name: 'Bewertung', exact: true })
+            .locator('svg')
             .last();
         const lightStarColor = await lightStar.evaluate(
             (el) => getComputedStyle(el).color,
         );
-        const lightStarRatio = ratio(parseRgb(lightStarColor), hex(T.canvas));
+        const lightStarRatio = ratio(parseRgb(lightStarColor), hex('#f7e7ec'));
         rows.push({ name: 'Stern hell', lightStarColor, lightStarRatio });
         expect(lightStarRatio).toBeGreaterThanOrEqual(3);
 
