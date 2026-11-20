@@ -133,25 +133,23 @@ for (const role of ['guest', 'user', 'host'] as const) {
                 });
 
                 if (snapshotArg) {
-                    // Laut Messung ist <body> der Scroll-Container (html/body height:100%), nicht das
-                    // Dokument. `fullPage` wuerde dann nur den Viewport abbilden. Deshalb wird der
-                    // Viewport fuer das Bild auf die Inhaltshoehe vergroessert (max. MAX_SHOT_HEIGHT).
+                    // Gate C2 Integration: Seit rezeptly/app.css entfernt ist, scrollt das Fenster
+                    // (nicht mehr <body>); `fullPage` bildet die ganze Seite ab. Der fruehere
+                    // Workaround (Viewport auf Inhaltshoehe vergroessern) entfaellt. Sehr lange
+                    // Seiten werden auf MAX_SHOT_HEIGHT begrenzt.
                     const viewport = page.viewportSize()!;
-                    const contentHeight = Math.max(
-                        heights.docScrollHeight,
-                        heights.bodyScrollHeight,
-                        viewport.height,
+                    const shotHeight = Math.min(
+                        Math.max(heights.docScrollHeight, viewport.height),
+                        MAX_SHOT_HEIGHT,
                     );
-                    const shotHeight = Math.min(contentHeight, MAX_SHOT_HEIGHT);
-                    if (shotHeight !== viewport.height) {
-                        await page.setViewportSize({
-                            width: viewport.width,
-                            height: shotHeight,
-                        });
-                        await settle(page);
-                    }
                     await expect(page).toHaveScreenshot(snapshotArg, {
                         fullPage: true,
+                        clip: {
+                            x: 0,
+                            y: 0,
+                            width: viewport.width,
+                            height: shotHeight,
+                        },
                     });
                 }
             });

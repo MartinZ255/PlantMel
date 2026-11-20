@@ -9,7 +9,8 @@ import {
 /**
  * Slice 3 (F-30): gemeinsames Verhalten der Dialoge.
  *
- * - Scroll-Sperre des Hintergrunds (`<body>` ist der Scroll-Container)
+ * - Scroll-Sperre des Hintergrunds: `overflow: hidden` auf `<html>` (seit dem
+ *   Entfernen von rezeptly/app.css der Scroll-Container) und `<body>`
  * - Hintergrund (`#app`) ist `inert`, solange ein Dialog offen ist: nicht
  *   klickbar, nicht fokussierbar. Die Dialoge selbst liegen per
  *   `<Teleport to="body">` außerhalb von `#app`.

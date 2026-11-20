@@ -1,6 +1,6 @@
 # Roadmap / Backlog
 
-Stand: 2026-11-19 · Branch `fix/slice-4-konto-recht-import` · **Gate B (Slice 0 bis 4) abgeschlossen; Gate C wartet auf Freigabe.**
+Stand: 2026-11-20 · Branch `feat/gate-c-redesign` · **Gate B abgeschlossen; Gate C (C1, C1b, C2-A/B/C, E14, Integration) lokal abgeschlossen, wartet auf Abnahme.** Bericht: `GATE-C-BERICHT.md`.
 
 Grundlage: `FINDINGS.md` (F-01 bis F-85; Abschnitt 11 Testlauf und Browser, Abschnitte 12 bis 14 Stand nach Slice 1 bis 3), `FEATURE-MATRIX.md` (Stand Audit), `SLICE-0-BERICHT.md`, `SLICE-1-BERICHT.md`, `SLICE-2-BERICHT.md`, `SLICE-3-BERICHT.md`, `DECISIONS.md`.
 
@@ -116,11 +116,15 @@ Ergebnis: reguläre Suite 562 grün, bekannte Defekte 4 → 1 (F-23), Browser 24
 
 ## Gate C – Konsistentes Redesign (nach Gate B)
 
-- [ ] Design-Tokens und eine Breakpoint-Skala (F-33); CSS-Layer und Dark Mode (F-34)
-- [ ] Gemeinsame Bausteine: Button, Dialog, Formularfeld, Suchleiste, Sternebewertung, Auth-Layout (F-35, F-40, F-41)
-- [ ] Barrierefreiheit: Tastatur-Alternativen, Kontrast nach Messung (F-38, F-43; axe-Zählung als Ausgangswert vorhanden)
-- [ ] Leer-, Lade- und Fehlerzustände, Filter-Chips, Touch-Drag (F-36, F-44)
-- Die Screenshot-Baseline aus Slice 0 ist der Vergleichsstand.
+- [x] Design-Tokens, eine Stilquelle; `rezeptly/app.css` entfernt (F-33; Dark Mode nicht gewünscht, E4)
+- [x] Gemeinsame Bausteine: Button, Dialog, Formularfeld, Suchleiste, Sternebewertung, Auth- und Einstellungs-Layout (F-35, F-40, F-41)
+- [x] Kontrast nach Rechnung und axe (0 Verstöße auf den geprüften Seiten bei 390/1440 px, F-43)
+- [x] Leer-, Lade- und Fehlerzustände; Lösch-Dialoge statt `window.confirm`
+- [x] E14: Bewertung nur noch Geschmack (1–5 Sterne)
+- [x] Screenshot-Baseline auf den Endstand erneuert, Gesamtvorschau `gate-c2-vorschau/`
+- [x] Kategorien per Stift-Knopf bearbeiten (F-91), deutscher Datei-Knopf (F-92), Sammlungs-Collage (F-93), Sammlung umbenennen (F-94)
+- [ ] Tastatur-Alternative fürs Umsortieren (F-38) – verschoben nach Gate D
+- [ ] Touch-Drag, Griffgröße, Auto-Scroll (F-36) – verschoben nach Gate D
 
 ## Gate D – Qualitätsverbesserung
 
@@ -130,10 +134,12 @@ Ergebnis: reguläre Suite 562 grün, bekannte Defekte 4 → 1 (F-23), Browser 24
 - [ ] Toter Code, Abhängigkeiten, Typecheck, Inertia-Links (F-51, F-52, F-54, F-57)
 - [ ] Playwright in der CI (Linux-Baselines), Lauf gegen MySQL
 - [ ] README, `.env.example` (F-62)
+- [ ] F-38 Tastatur-Umsortieren; `RecipeList.vue` entfernen
 
 ## Gate E – Release (gesonderte Freigabe)
 
 - [ ] Staging mit synthetischen Daten, Schema-Abgleich (F-11)
+- [ ] Dimension „Geschmack“ in Produktion lesend prüfen (F-95, E14); Datenschutz §9 um Fraunces ergänzen (F-90)
 - [ ] Runbook: Nginx, Queue-Worker, `storage:link`, env-Schlüssel, yt-dlp (F-49)
 - [ ] CI grün, Smoke-Tests, Backup-/Rollback-Plan
 - [ ] Manuelle Abnahme, erst danach Production
@@ -168,4 +174,4 @@ Ergebnis: reguläre Suite 562 grün, bekannte Defekte 4 → 1 (F-23), Browser 24
 
 ## Nächste empfohlene Aufgabe
 
-**Gate C – konsistentes Redesign** (Design-Tokens, gemeinsame Bausteine, Tastatur-Alternative fürs Umsortieren, Kontrast, Fokus im Drawer) auf Basis der aktuellen Screenshot-Baseline. Parallel: Rechtstexte durch den Betreiber. Wenn lokal alles fertig ist: lesende VPS-Prüfung und Release (Gate E), jeweils mit ausdrücklicher Freigabe.
+**Abnahme Gate C** durch den Auftraggeber anhand von `gate-c2-vorschau/` und `GATE-C-BERICHT.md`. Danach Gate D (F-38 Tastatur-Umsortieren, Performance F-23, CI mit Playwright). Parallel: Rechtstexte durch den Betreiber (inkl. F-90). Release (Gate E) nur mit ausdrücklicher Freigabe.

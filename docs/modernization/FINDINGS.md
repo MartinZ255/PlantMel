@@ -399,3 +399,27 @@ Branch `fix/slice-4-konto-recht-import` (lokal). Belege: reguläre Suite 562 Tes
 | ID | Priorität | Beobachtung | Vorschlag |
 |---|---|---|---|
 | F-89 | P1 | Import scheiterte in Schritt 2 („Das Video konnte nicht geladen werden.“). Log: yt-dlp 2026.07.04 meldete `Unexpected response from webpage request` – TikTok hatte die Seite geändert. Nach `winget upgrade yt-dlp.yt-dlp` auf 2026.10.26 liefert `yt-dlp -J` für dasselbe Video wieder Metadaten (Exit 0). | yt-dlp auf dem VPS regelmäßig automatisch aktualisieren (z. B. wöchentlicher Timer `yt-dlp -U` bzw. pip/pipx); in das Deployment-Runbook aufnehmen |
+
+## 16. Nachtrag Gate C (2026-11-20): Redesign „Natur & organisch“ und Integration
+
+Branch `feat/gate-c-redesign` (lokal, kein Push). Details und Testzahlen in `GATE-C-BERICHT.md`.
+
+| ID | Status | Was geändert wurde | Regressionstest |
+|---|---|---|---|
+| F-30 | behoben (abgesichert) | Alle Dialoge nutzen `ui/Dialog.vue` (Teleport, `role="dialog"`, Scroll-Sperre auf `<html>` und `<body>`, Hintergrund `inert`). Seit dem Entfernen von `rezeptly/app.css` scrollt das Fenster; die Sperre greift weiterhin | `known-defects.spec.ts` F-30 (jetzt über `role=dialog` „Alternativen für …“), `regression-forms.spec.ts` (prüft zusätzlich `overflow: hidden` an `<html>`) |
+| F-33/F-34 | teilweise | Design-Tokens und eine Stilquelle (`resources/css/app.css`); Legacy-Datei `resources/css/rezeptly/app.css` (3249 Zeilen) entfernt. Dark Mode bewusst nicht (E4) | Wächtertests „keine Legacy-Klassen auf allen Hauptseiten“ und „Datei und Import entfernt“ (`regression-gate-c2-shell.spec.ts`) |
+| F-35/F-40/F-41 | behoben | gemeinsame Bausteine (Button, Dialog, Field, Chip/SeedToggle, StarRating, AuthShell, SettingsShell, FormSection); Lösch-Bestätigungen im Dialog statt `window.confirm` | `regression-gate-c2-*.spec.ts`, axe 0 bei 390/1440 px |
+| F-38 | teilweise | Kategorien jetzt per sichtbarem Stift-Knopf bearbeitbar (Merge 723badb). Offen: Umsortieren der Schritte/Zutaten nur per Zeiger | `known-defects.spec.ts` F-38 bleibt `test.fail`; `regression-collections-tags.spec.ts` |
+| F-23 | teilweise | N+1 in `collections.index` behoben (Merge 723badb: `recipes_count`, Collage per Eager Loading). Offen: Pagination der Rezeptliste | `tests/Feature/Collections/CollectionIndexQueryCountTest.php` (aus `tests/KnownDefects` verschoben) |
+| F-06 | behoben (Test geschärft) | Der Defekt-Test zählte über den breiten Selektor `[class*="error"]`; jetzt `data-field-error` in den Abschnitten Zutaten/Schritte/Notizen, gemessen erst nach dem Rendern der Fehlerzusammenfassung | `known-defects.spec.ts` F-06, `regression-forms.spec.ts` |
+
+### Neue Punkte aus Gate C
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-90 | P2 | Datenschutz-Vorlage §9 nennt die selbst gehostete Schrift Fraunces nicht (nur Instrument Sans). | Betreiber ergänzt den Abschnitt beim Ausfüllen (`RECHTSTEXTE.md`) |
+| F-91 | erledigt (723badb) | Kategorie bearbeiten war nur per Doppelklick möglich (Teil von F-38). | umgesetzt: Stift-Knopf „Kategorie „…“ bearbeiten“ je Kategorie; Doppelklick bleibt |
+| F-92 | erledigt (723badb) | Die Datei-Auswahl zeigte die Browser-Beschriftung „Choose File“. | umgesetzt: eigener Knopf „Bild auswählen“ |
+| F-93 | erledigt (723badb) | Sammlungskacheln zeigten keine Bilder der enthaltenen Rezepte. | umgesetzt: Collage mit Rezeptbildern |
+| F-94 | erledigt (723badb) | Sammlungen ließen sich nicht umbenennen. | umgesetzt: Dialog „Bearbeiten“ auf der Sammlungsseite, Route `collections.update`, Feature-Test `CollectionUpdateAndCollageTest` |
+| F-95 | P1 (Release) | E14 findet die Bewertungs-Dimension per Name „Geschmack“ (`config/plantmel.php`). Ob sie in der Produktions-Datenbank genau so heißt, ist ungeprüft; sonst zeigt die App keine Bewertungen. | vor dem Release lesend prüfen (mit Freigabe), ggf. Konfiguration anpassen |

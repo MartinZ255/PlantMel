@@ -2,8 +2,6 @@
 
 @import 'tw-animate-css';
 
-@import './rezeptly/app.css';
-
 /*
   Slice 4 (F-58): Instrument Sans selbst gehostet statt von fonts.bunny.net.
   Quelle: npm-Paket @fontsource/instrument-sans (exakt gepinnt, Lizenz OFL-1.1).
@@ -288,9 +286,15 @@
         border-color: var(--color-line);
     }
 
+    /*
+      Gate C2 Integration: Seit rezeptly/app.css entfernt ist, scrollt das
+      Fenster (<html>), nicht mehr <body>. scroll-padding hält Fokus- und
+      Ankersprünge unterhalb der klebenden Kopfzeile.
+    */
     html {
         color-scheme: light;
         -webkit-text-size-adjust: 100%;
+        scroll-padding-top: calc(var(--header-height) + 1rem);
     }
 
     body {
@@ -306,10 +310,11 @@
         outline-offset: 2px;
     }
 
-    /* Ankersprünge landen nicht unter der festen Kopfzeile */
-    [id] {
-        scroll-margin-top: calc(var(--header-height) + 1rem);
-    }
+    /*
+      Ankersprünge landen nicht unter der festen Kopfzeile: übernimmt jetzt
+      `scroll-padding-top` an <html> (oben). Das frühere `[id] { scroll-margin-top }`
+      entfällt, sonst addierten sich beide Abstände.
+    */
 
     ::selection {
         background-color: var(--color-matcha);
