@@ -24,13 +24,6 @@ import {
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 
-type RatingDimension = {
-    id: number | null;
-    name: string;
-    avg: number; // 1.0–5.0
-    count: number; // Anzahl Bewertungen für diese Dimension
-};
-
 type CollectionOption = {
     id: number;
     name: string;
@@ -47,9 +40,11 @@ const props = defineProps<{
         difficulty: string | null;
         categories: string[];
         tags: string[];
+        // E14: einzige Bewertung ist Geschmack (Durchschnitt 1–5 oder null)
         rating: number | null;
         ratingCount: number;
-        ratingDimensions: RatingDimension[];
+        // E14: bleibt im Vertrag, ist aber immer leer (keine Kategorien mehr)
+        ratingDimensions?: unknown[];
         // F-15: kein Feld „Quelle“ mehr
         ingredients: {
             amount: string | null;
@@ -68,10 +63,13 @@ const props = defineProps<{
 
 const recipe = computed(() => props.recipe);
 
-const hasAnyRatings = computed(
-    () => recipe.value.rating != null && recipe.value.ratingCount > 0,
+/** E14: nur noch eine Geschmacks-Bewertung (1–5 Sterne) */
+const hasTasteRating = computed(
+    () =>
+        recipe.value.rating != null &&
+        recipe.value.rating > 0 &&
+        recipe.value.ratingCount > 0,
 );
-const ratingDimensions = computed(() => recipe.value.ratingDimensions ?? []);
 
 // --- Zur Sammlung hinzufügen ---------------------------------------------------
 const isCollectionModalOpen = ref(false);
@@ -218,20 +216,19 @@ const servingsText = computed(() =>
                                 class="col-span-2 rounded-[1.5rem_1.2rem_1.4rem_1.1rem] bg-forest-deep/55 px-4 py-3.5 ring-1 ring-forest-soft backdrop-blur-sm sm:col-span-1"
                             >
                                 <dt class="text-sm text-on-forest-muted">
-                                    Bewertung
+                                    Geschmack
                                 </dt>
                                 <dd class="mt-1.5">
                                     <StarRating
+                                        v-if="hasTasteRating"
                                         tone="on-forest"
-                                        :value="
-                                            hasAnyRatings ? recipe.rating : null
-                                        "
-                                        :count="
-                                            hasAnyRatings
-                                                ? recipe.ratingCount
-                                                : null
-                                        "
+                                        :value="recipe.rating"
                                     />
+                                    <span
+                                        v-else
+                                        class="text-sm font-medium text-on-forest"
+                                        >Noch nicht bewertet</span
+                                    >
                                 </dd>
                             </div>
                         </dl>
@@ -465,7 +462,7 @@ const servingsText = computed(() =>
                     </ul>
                 </Reveal>
 
-                <!-- Bewertungen je Dimension -->
+                <!-- Bewertung (E14): nur Geschmack, 1–5 Sterne, keine Kategorien -->
                 <Reveal
                     as="section"
                     aria-labelledby="recipe-ratings-title"
@@ -475,70 +472,29 @@ const servingsText = computed(() =>
                         id="recipe-ratings-title"
                         class="font-display-wonk text-3xl font-semibold text-ink sm:text-4xl"
                     >
-                        Bewertungen
+                        Bewertung
                     </h2>
                     <div
-                        v-if="hasAnyRatings || ratingDimensions.length"
-                        class="mt-6 grid gap-8 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] md:items-center"
+                        v-if="hasTasteRating"
+                        class="relative mt-6 flex max-w-md flex-wrap items-center gap-x-6 gap-y-3 overflow-hidden rounded-[2.5rem_2rem_2.75rem_2.25rem] bg-berry-surface p-6"
                     >
-                        <div
-                            v-if="hasAnyRatings"
-                            class="relative flex flex-col items-start gap-2 overflow-hidden rounded-[2.5rem_2rem_2.75rem_2.25rem] bg-berry-surface p-6"
+                        <!-- große Ziffer rein grafisch; Text steht in StarRating -->
+                        <span
+                            class="font-display-wonk text-7xl leading-none font-semibold text-berry"
+                            aria-hidden="true"
+                            >{{ formatRating(recipe.rating) }}</span
                         >
-                            <span
-                                class="font-display-wonk text-7xl leading-none font-semibold text-berry"
-                                aria-hidden="true"
-                                >{{ formatRating(recipe.rating) }}</span
+                        <div class="relative flex min-w-0 flex-col gap-1.5">
+                            <p
+                                class="font-display text-xl font-semibold text-ink"
                             >
-                            <span class="sr-only">Gesamtbewertung: </span>
-                            <StarRating
-                                :value="recipe.rating"
-                                :count="recipe.ratingCount"
-                            />
+                                Geschmack
+                            </p>
+                            <StarRating :value="recipe.rating" />
                         </div>
-                        <ul
-                            v-if="ratingDimensions.length"
-                            class="grid gap-x-8 gap-y-5 sm:grid-cols-2"
-                        >
-                            <li
-                                v-for="(dim, i) in ratingDimensions"
-                                :key="dim.id ?? dim.name"
-                                class="min-w-0"
-                            >
-                                <p
-                                    class="font-display text-xl font-semibold text-wrap-anywhere text-ink"
-                                >
-                                    {{ dim.name }}
-                                </p>
-                                <!-- Balken rein grafisch; Wert steht als Text daneben -->
-                                <span
-                                    class="mt-2 block h-3 overflow-hidden rounded-full bg-tint"
-                                    aria-hidden="true"
-                                >
-                                    <span
-                                        class="block h-full rounded-[1rem_0.6rem_1rem_0.6rem]"
-                                        :class="
-                                            i % 2 === 0
-                                                ? 'bg-primary'
-                                                : 'bg-berry'
-                                        "
-                                        :style="{
-                                            width: `${Math.max(0, Math.min(5, dim.avg)) * 20}%`,
-                                        }"
-                                    ></span>
-                                </span>
-                                <div class="mt-2">
-                                    <StarRating
-                                        :value="dim.avg"
-                                        :count="dim.count"
-                                        size="sm"
-                                    />
-                                </div>
-                            </li>
-                        </ul>
                     </div>
                     <p v-else class="mt-3 text-lg text-ink-muted">
-                        Noch keine Bewertungen
+                        Noch nicht bewertet
                     </p>
                 </Reveal>
             </div>

@@ -19,6 +19,7 @@
 | 2026-11-14 | Schrift wird selbst gehostet statt von fonts.bunny.net geladen | Empfehlung des Leads, vom Auftraggeber freigegeben; entfernt einen Drittanbieter aus Datenschutz und CSP | Slice 4 |
 | 2026-11-14 | Import zeigt den Fortschritt in Schritten an | Wunsch des Auftraggebers | Slice 4 |
 | 2026-11-14 | Weitere Import-Quellen (Instagram, Rezept-Websites) als späteres Feature vormerken (E13) | Wunsch des Auftraggebers, langfristig; Bewertung im Slice-4-Bericht | vorgemerkt |
+| 2026-11-19 | Rezepte werden nur noch mit 1–5 Sternen für den Geschmack bewertet, keine Bewertungskategorien mehr (E14) | Entscheidung des Auftraggebers. Die Dimension wird per Name gefunden (`config/plantmel.php`, `rating_dimension` = „Geschmack“; fehlt sie, gibt es keine Bewertung). Keine Migration, nichts gelöscht: Bewertungen anderer Dimensionen bleiben in `recipe_ratings`, werden aber nicht mehr angezeigt oder eingerechnet; `update` ersetzt nur noch die Geschmacks-Bewertung. Reversibel durch Rücknahme des Codes | umgesetzt (Backend + Rezeptdetail), Formular folgt |
 
 Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren.
 

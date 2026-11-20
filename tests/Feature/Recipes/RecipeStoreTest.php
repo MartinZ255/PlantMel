@@ -27,6 +27,8 @@ class RecipeStoreTest extends TestCase
     {
         $this->actingAsHost();
         $dimension = RatingDimension::factory()->create(['name' => 'Geschmack', 'description' => 'Wie schmeckt es?']);
+        // E14: andere Dimensionen erscheinen nicht mehr im Formular.
+        RatingDimension::factory()->create(['name' => 'Aufwand']);
         $category = Category::factory()->create(['name' => 'Vegan']);
         $zucchini = Ingredient::factory()->create(['name' => 'Zucchini']);
         $apfel = Ingredient::factory()->create(['name' => 'Apfel']);
@@ -57,9 +59,7 @@ class RecipeStoreTest extends TestCase
         $vegan = Category::factory()->create(['name' => 'Vegan']);
         $schnell = Category::factory()->create(['name' => 'Schnell']);
         Category::factory()->create(['name' => 'Dessert']);
-        $geschmack = RatingDimension::factory()->create();
-        $aufwand = RatingDimension::factory()->create();
-        $optik = RatingDimension::factory()->create();
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
         $tofu = Ingredient::factory()->create(['name' => 'Tofu']);
         $seitan = Ingredient::factory()->create(['name' => 'Seitan']);
         $tempeh = Ingredient::factory()->create(['name' => 'Tempeh']);
@@ -80,7 +80,7 @@ class RecipeStoreTest extends TestCase
             ],
             'steps' => ['C', 'A', 'B'],
             'notes' => "Notiz eins\n\nNotiz zwei",
-            'ratings' => [$geschmack->id => '4', $aufwand->id => '5', $optik->id => ''],
+            'ratings' => [$geschmack->id => '4'],
             'image' => $this->fakePng('pfanne.png'),
         ]);
 
@@ -121,10 +121,9 @@ class RecipeStoreTest extends TestCase
             ]);
         }
 
-        // Bewertungen: leerer Wert (-> null) wird übersprungen.
-        $this->assertDatabaseCount('recipe_ratings', 2);
+        // Bewertung (E14): nur Geschmack; vorher wurden mehrere Dimensionen gespeichert.
+        $this->assertDatabaseCount('recipe_ratings', 1);
         $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $geschmack->id, 'value' => 4]);
-        $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $aufwand->id, 'value' => 5]);
 
         // Bild
         $image = RecipeImage::sole();
@@ -132,6 +131,18 @@ class RecipeStoreTest extends TestCase
         $this->assertStringStartsWith('recipes/', $image->image_path);
         $this->assertStringEndsWith('.png', $image->image_path);
         Storage::disk('public')->assertExists($image->image_path);
+    }
+
+    public function test_store_with_empty_taste_value_saves_no_rating(): void
+    {
+        $this->actingAsHost();
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
+
+        $this->post(route('recipes.store'), $this->recipePayload([
+            'ratings' => [$geschmack->id => ''], // leerer Wert -> null
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('recipe_ratings', 0);
     }
 
     public function test_store_with_minimal_payload_has_no_image_ratings_or_categories(): void

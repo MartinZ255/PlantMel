@@ -19,6 +19,8 @@ use Tests\TestCase;
  *   recipes.index still ignoriert (200), gültige Filter bleiben wirksam.
  * - `ratings.*`-Schlüssel wurden nicht gegen rating_dimensions geprüft
  *   -> Fremdschlüssel-Verletzung. Jetzt: Validierungsfehler auf `ratings`.
+ *   E14 verschärft das: erlaubt ist nur noch die Geschmacks-Dimension, jede
+ *   andere (auch existierende) Dimension ist ein Validierungsfehler (422).
  * - Rezept-Strings haben `max`-Grenzen passend zu den Spalten.
  */
 #[Group('F-22')]
@@ -91,7 +93,7 @@ class RecipeInputValidationTest extends TestCase
     {
         $this->actingAsHost();
         $recipe = Recipe::factory()->create(['title' => 'Vorher']);
-        $known = RatingDimension::factory()->create();
+        $known = RatingDimension::factory()->create(['name' => 'Geschmack']);
 
         $this->from(route('recipes.edit', $recipe))
             ->post(route('recipes.update', $recipe), $this->recipePayload([
@@ -104,19 +106,81 @@ class RecipeInputValidationTest extends TestCase
         $this->assertSame('Vorher', $recipe->fresh()->title);
     }
 
-    public function test_known_rating_dimensions_are_still_saved(): void
+    /**
+     * E14 (vorher: jede existierende Dimension wurde gespeichert): Nur
+     * Geschmack wird gespeichert; null bedeutet „keine Bewertung“.
+     */
+    public function test_taste_rating_is_saved_and_null_means_no_rating(): void
     {
         $this->actingAsHost();
-        $taste = RatingDimension::factory()->create();
-        $effort = RatingDimension::factory()->create();
+        $taste = RatingDimension::factory()->create(['name' => 'Geschmack']);
 
         $this->post(route('recipes.store'), $this->recipePayload([
-            'ratings' => [$taste->id => 5, $effort->id => null],
+            'ratings' => [$taste->id => 5],
         ]))->assertSessionHasNoErrors();
 
         $recipe = Recipe::sole();
         $this->assertDatabaseHas('recipe_ratings', ['recipe_id' => $recipe->id, 'dimension_id' => $taste->id, 'value' => 5]);
         $this->assertDatabaseCount('recipe_ratings', 1);
+
+        $this->post(route('recipes.store'), $this->recipePayload([
+            'name' => 'Ohne Bewertung',
+            'ratings' => [$taste->id => null],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('recipe_ratings', 1);
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function recipeWriteRoutes(): array
+    {
+        return ['store' => ['store'], 'update' => ['update']];
+    }
+
+    #[DataProvider('recipeWriteRoutes')]
+    public function test_other_existing_dimension_is_rejected_with_422(string $action): void
+    {
+        $this->actingAsHost();
+        $taste = RatingDimension::factory()->create(['name' => 'Geschmack']);
+        $effort = RatingDimension::factory()->create(['name' => 'Aufwand']);
+        $recipe = Recipe::factory()->create(['title' => 'Vorher']);
+        $url = $action === 'store' ? route('recipes.store') : route('recipes.update', $recipe);
+
+        $invalid = [
+            [$effort->id => 3],                       // andere, existierende Dimension
+            [$taste->id => 4, $effort->id => null],   // Geschmack plus andere Dimension
+            ['abc' => 2],                             // kein ID-Schlüssel
+            [999999 => 2],                            // unbekannte Dimension
+            ['0'.$taste->id => 4],                    // führende Null
+        ];
+
+        foreach ($invalid as $ratings) {
+            $this->postJson($url, $this->recipePayload(['name' => 'Nachher', 'ratings' => $ratings]))
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('ratings');
+        }
+
+        $this->assertSame(1, Recipe::count());
+        $this->assertSame('Vorher', $recipe->fresh()->title);
+        $this->assertDatabaseCount('recipe_ratings', 0);
+    }
+
+    public function test_without_taste_dimension_ratings_must_be_empty(): void
+    {
+        $this->actingAsHost();
+        $other = RatingDimension::factory()->create(['name' => 'Gesamt']);
+
+        $this->postJson(route('recipes.store'), $this->recipePayload(['ratings' => [$other->id => 3]]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('ratings');
+
+        $this->post(route('recipes.store'), $this->recipePayload())
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, Recipe::count());
+        $this->assertDatabaseCount('recipe_ratings', 0);
     }
 
     /**

@@ -9,13 +9,13 @@ use App\Models\IngredientAlternative;
 use Illuminate\Container\Attributes\Tag;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Models\RatingDimension;
 use App\Models\Recipe;
 use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Models\RecipeImage;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeRating;
+use App\Services\TasteRating;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -28,10 +28,13 @@ class RecipeController extends Controller
 
     public function show(Request $request, Recipe $recipe): Response
     {
+        // E14: nur die Geschmacks-Bewertung laden, andere Dimensionen bleiben unberührt
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $recipe->load([
             'images',
             'recipeIngredients.ingredient',
-            'ratings.dimension',
+            'ratings' => TasteRating::constrain($tasteDimensionId),
             'categories',
             'ingredientAlternatives.alternativeIngredient',
         ]);
@@ -70,24 +73,7 @@ class RecipeController extends Controller
 
         $servings = $recipe->servings;
 
-        // Rating-Dimensionen aggregieren (pro Dimension Durchschnitt + Anzahl)
-        $ratingGroups = $recipe->ratings->groupBy('dimension_id');
-
-        $ratingDimensions = $ratingGroups
-            ->map(function ($ratingsForDimension) {
-                $dimension = $ratingsForDimension->first()->dimension;
-
-                return [
-                    'id'    => $dimension?->id,
-                    'name'  => $dimension?->name ?? 'Unbenannte Kategorie',
-                    'avg'   => round($ratingsForDimension->avg('value'), 1),
-                    'count' => $ratingsForDimension->count(),
-                ];
-            })
-            ->values()
-            ->all();
-
-        // Gesamtbewertung (alle Ratings zusammen)
+        // E14: einzige Bewertung ist Geschmack (Durchschnitt, eine Nachkommastelle)
         $ratingCount = $recipe->ratings->count();
         $ratingAvg   = $ratingCount > 0
             ? round($recipe->ratings->avg('value'), 1)
@@ -114,10 +100,10 @@ class RecipeController extends Controller
 
                 'servings'         => $servings,
 
-                // Bewertung: Gesamt + Dimensionen
-                'rating'           => $ratingAvg,          // Gesamtbewertung (z. B. 4.3)
-                'ratingCount'      => $ratingCount,        // Anzahl aller Bewertungen
-                'ratingDimensions' => $ratingDimensions,   // pro Dimension: id, name, avg, count
+                // Bewertung (E14): nur Geschmack
+                'rating'           => $ratingAvg,          // Ø Geschmack (z. B. 4.3) oder null
+                'ratingCount'      => $ratingCount,        // Anzahl Geschmacks-Bewertungen
+                'ratingDimensions' => [],                  // bleibt leer (Props-Vertrag, E14)
 
                 // F-15: Feld „Quelle“ entfällt (Entscheidung des Auftraggebers).
 
@@ -152,8 +138,16 @@ class RecipeController extends Controller
         // --- Tags (mehrere) ---
         $tags = $this->normalizeStringList($request->query('tags', []));
 
+        // E14: nur Geschmacks-Bewertungen laden
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $query = Recipe::query()
-            ->with(['categories', 'ratings', 'images', 'recipeIngredients.ingredient']);
+            ->with([
+                'categories',
+                'ratings' => TasteRating::constrain($tasteDimensionId),
+                'images',
+                'recipeIngredients.ingredient',
+            ]);
 
         // -------------------------------------------
         // Freitext: Titel ODER irgendeine Zutat
@@ -210,9 +204,7 @@ class RecipeController extends Controller
 
         $recipes = $query
             ->get()
-            ->map(function (Recipe $recipe) {
-                $avgRating = $recipe->ratings->avg('value');
-
+            ->map(function (Recipe $recipe) use ($tasteDimensionId) {
                 $firstImage = $recipe->images->first();
                 $imageUrl = $firstImage?->image_path
                     ? Storage::disk('public')->url($firstImage->image_path)
@@ -222,8 +214,8 @@ class RecipeController extends Controller
                     'id'   => $recipe->id,
                     'name' => $recipe->title,
 
-                    // 0–5, ganzzahlig
-                    'rating' => $avgRating ? (int) round($avgRating) : 0,
+                    // 0–5, ganzzahlig, nur Geschmack (E14)
+                    'rating' => TasteRating::roundedForList($recipe->ratings, $tasteDimensionId),
 
                     // Tags (Kategorienamen)
                     'tags' => $recipe->categories->pluck('name')->all(),
@@ -282,27 +274,43 @@ class RecipeController extends Controller
     }
 
     /**
-     * Regel für `ratings`: Jeder Schlüssel muss eine existierende
-     * rating_dimensions.id sein (F-22, sonst Fremdschlüssel-Fehler/500).
+     * Regel für `ratings` (F-22, verschärft durch E14): Erlaubt ist nur der
+     * Schlüssel der Geschmacks-Dimension. Jeder andere Schlüssel – auch eine
+     * existierende andere Dimension – ist ein Validierungsfehler (422).
+     * Fehlt die Geschmacks-Dimension, ist nur eine leere Map erlaubt.
      */
-    private function ratingDimensionKeysRule(): Closure
+    private function ratingDimensionKeysRule(?int $tasteDimensionId): Closure
     {
-        return function (string $attribute, mixed $value, Closure $fail): void {
+        return function (string $attribute, mixed $value, Closure $fail) use ($tasteDimensionId): void {
             if (! is_array($value) || $value === []) {
                 return;
             }
 
-            $keys = array_keys($value);
-            $ids = array_filter($keys, fn ($key) => is_int($key) || ctype_digit((string) $key));
+            foreach (array_keys($value) as $key) {
+                // exakter Vergleich: „05“ o. Ä. wäre sonst gültig, beim Speichern aber nicht auffindbar
+                if ($tasteDimensionId === null || (string) $key !== (string) $tasteDimensionId) {
+                    $fail('Bewertet werden kann nur der Geschmack.');
 
-            $known = count($ids) === count($keys)
-                ? RatingDimension::whereIn('id', array_map('intval', $ids))->count()
-                : -1;
-
-            if ($known !== count(array_unique(array_map('intval', $ids)))) {
-                $fail('Die Bewertung enthält eine unbekannte Bewertungsdimension.');
+                    return;
+                }
             }
         };
+    }
+
+    /**
+     * Liest den Geschmacks-Wert (1–5) aus den validierten Ratings oder null.
+     *
+     * @param  array<int|string, mixed>  $ratings
+     */
+    private function tasteValueFrom(array $ratings, ?int $tasteDimensionId): ?int
+    {
+        if ($tasteDimensionId === null) {
+            return null;
+        }
+
+        $value = $ratings[$tasteDimensionId] ?? null;
+
+        return $value === null ? null : (int) $value;
     }
 
     /**
@@ -311,9 +319,8 @@ class RecipeController extends Controller
      */
     public function create()
     {
-        // F-12/E5: nach Name statt nach der nicht vorhandenen Spalte sort_order
-        $ratingDimensions = RatingDimension::orderBy('name')
-            ->get(['id', 'name', 'description']);
+        // E14: nur die Geschmacks-Dimension (0 oder 1 Eintrag)
+        $ratingDimensions = TasteRating::dimensionsForForm();
 
         $categories = Category::orderBy('name')
             ->get(['id', 'name']);
@@ -330,6 +337,8 @@ class RecipeController extends Controller
 
     public function store(Request $request)
     {
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $validated = $request->validate([
             'name'                 => ['required', 'string', 'max:255'],
             'description'          => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
@@ -358,7 +367,7 @@ class RecipeController extends Controller
             'notes'                => ['nullable', 'string', 'max:65535'],
 
             // Ratings: { [dimensionId]: value }
-            'ratings'              => ['array', $this->ratingDimensionKeysRule()],
+            'ratings'              => ['array', $this->ratingDimensionKeysRule($tasteDimensionId)],
             'ratings.*'            => ['nullable', 'integer', 'min:1', 'max:5'],
 
             // Bild-Upload (optional)
@@ -376,7 +385,7 @@ class RecipeController extends Controller
         $storedImagePath = null;
 
         try {
-            DB::transaction(function () use (&$recipe, &$storedImagePath, $request, $validated) {
+            DB::transaction(function () use (&$recipe, &$storedImagePath, $request, $validated, $tasteDimensionId) {
                 // 1) Recipe selbst anlegen
                 $recipe           = new Recipe();
                 $recipe->title    = $validated['name'];
@@ -402,16 +411,13 @@ class RecipeController extends Controller
                 // 3) + 4) Zutaten und Alternativzutaten speichern (gemeinsam mit update(), F-13)
                 $this->syncIngredientsAndAlternatives($recipe, $validated['ingredients']);
 
-                // 5) Ratings speichern
-                foreach ($validated['ratings'] as $dimensionId => $value) {
-                    if ($value === null) {
-                        continue;
-                    }
-
+                // 5) Geschmacks-Bewertung speichern (E14: einzige Dimension)
+                $tasteValue = $this->tasteValueFrom($validated['ratings'], $tasteDimensionId);
+                if ($tasteValue !== null) {
                     RecipeRating::create([
                         'recipe_id'    => $recipe->id,
-                        'dimension_id' => (int) $dimensionId,
-                        'value'        => (int) $value,
+                        'dimension_id' => $tasteDimensionId,
+                        'value'        => $tasteValue,
                     ]);
                 }
 
@@ -581,10 +587,13 @@ class RecipeController extends Controller
 
     public function edit(Request $request, Recipe $recipe): Response
     {
+        // E14: nur die Geschmacks-Bewertung ins Formular
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $recipe->load([
             'categories',
             'recipeIngredients.ingredient',
-            'ratings.dimension',
+            'ratings' => TasteRating::constrain($tasteDimensionId),
             'ingredientAlternatives.alternativeIngredient',
         ]);
 
@@ -613,15 +622,14 @@ class RecipeController extends Controller
         // Formular-Vertrag: Notizen als EIN Text (Zeilen mit "\n") oder null
         $notes = $noteLines !== [] ? implode("\n", $noteLines) : null;
 
-        // Ratings als Map dimension_id => value
+        // Ratings als Map dimension_id => value (nur Geschmack, E14)
         $ratings = $recipe->ratings
             ->groupBy('dimension_id')
             ->map(fn ($group) => (int) $group->avg('value'))
             ->all();
 
-        // F-12/E5: nach Name statt nach der nicht vorhandenen Spalte sort_order
-        $ratingDimensions = RatingDimension::orderBy('name')
-            ->get(['id', 'name', 'description']);
+        // E14: nur die Geschmacks-Dimension (0 oder 1 Eintrag)
+        $ratingDimensions = TasteRating::dimensionsForForm();
 
         $categories = Category::orderBy('name')
             ->get(['id', 'name']);
@@ -712,6 +720,7 @@ class RecipeController extends Controller
 
     public function update(Request $request, Recipe $recipe)
     {
+        $tasteDimensionId = TasteRating::dimensionId();
 
         $validated = $request->validate([
             'name'                 => ['required', 'string', 'max:255'],
@@ -741,7 +750,7 @@ class RecipeController extends Controller
             'notes'                => ['nullable', 'string', 'max:65535'],
 
             // Ratings: { [dimensionId]: value }
-            'ratings'              => ['array', $this->ratingDimensionKeysRule()],
+            'ratings'              => ['array', $this->ratingDimensionKeysRule($tasteDimensionId)],
             'ratings.*'            => ['nullable', 'integer', 'min:1', 'max:5'],
 
             // Bild-Upload (optional, darf bei Update leer bleiben)
@@ -760,7 +769,7 @@ class RecipeController extends Controller
         $replacedImagePaths = [];
 
         try {
-            DB::transaction(function () use (&$recipe, &$newImagePath, &$replacedImagePaths, $request, $validated) {
+            DB::transaction(function () use (&$recipe, &$newImagePath, &$replacedImagePaths, $request, $validated, $tasteDimensionId) {
                 // 1) Grunddaten aktualisieren
                 $recipe->title            = $validated['name'];
                 $recipe->description      = $validated['description'] ?? null;
@@ -785,20 +794,21 @@ class RecipeController extends Controller
                 // 3) Zutaten und Alternativen exakt nach Payload ersetzen (F-13)
                 $this->syncIngredientsAndAlternatives($recipe, $validated['ingredients']);
 
-                // 4) Ratings aktualisieren:
-                // alte Ratings löschen und neu anlegen
-                $recipe->ratings()->delete();
+                // 4) Geschmacks-Bewertung ersetzen oder entfernen (E14).
+                // Bewertungen anderer Dimensionen bleiben unangetastet.
+                // Wie bisher gilt die Payload als Soll-Zustand: fehlt der
+                // Geschmacks-Schlüssel oder ist er null, wird sie entfernt.
+                if ($tasteDimensionId !== null) {
+                    $tasteValue = $this->tasteValueFrom($validated['ratings'], $tasteDimensionId);
 
-                foreach ($validated['ratings'] as $dimensionId => $value) {
-                    if ($value === null) {
-                        continue;
+                    if ($tasteValue === null) {
+                        $recipe->ratings()->where('dimension_id', $tasteDimensionId)->delete();
+                    } else {
+                        RecipeRating::updateOrCreate(
+                            ['recipe_id' => $recipe->id, 'dimension_id' => $tasteDimensionId],
+                            ['value' => $tasteValue],
+                        );
                     }
-
-                    RecipeRating::create([
-                        'recipe_id'    => $recipe->id,
-                        'dimension_id' => (int) $dimensionId,
-                        'value'        => (int) $value,
-                    ]);
                 }
 
                 // 5) Bild aktualisieren (falls neues hochgeladen wurde):

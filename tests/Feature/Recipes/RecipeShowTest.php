@@ -89,14 +89,19 @@ class RecipeShowTest extends TestCase
         $this->assertSame(['ohne Doppelpunkt, Groß-/Kleinschreibung egal'], $props['recipe']['notes']);
     }
 
-    public function test_rating_is_aggregated_per_dimension_and_overall(): void
+    /**
+     * E14 (vorher: Durchschnitt über alle Dimensionen + Liste je Dimension):
+     * Nur Geschmack zählt, andere Dimensionen bleiben gespeichert, fließen
+     * aber nicht ein; `ratingDimensions` bleibt als leeres Array im Vertrag.
+     */
+    public function test_rating_is_taste_only_and_other_dimensions_are_ignored(): void
     {
         $recipe = Recipe::factory()->create();
         $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
         $aufwand = RatingDimension::factory()->create(['name' => 'Aufwand']);
         $optik = RatingDimension::factory()->create(['name' => 'Optik']);
 
-        foreach ([[$geschmack, 4], [$aufwand, 5], [$optik, 5]] as [$dim, $value]) {
+        foreach ([[$geschmack, 4], [$aufwand, 1], [$optik, 1]] as [$dim, $value]) {
             RecipeRating::factory()->create([
                 'recipe_id' => $recipe->id,
                 'dimension_id' => $dim->id,
@@ -108,13 +113,55 @@ class RecipeShowTest extends TestCase
 
         $props = $this->pageProps($this->get(route('recipes.show', $recipe)));
 
-        $this->assertSame(4.7, $props['recipe']['rating']); // (4+5+5)/3, eine Nachkommastelle
-        $this->assertSame(3, $props['recipe']['ratingCount']);
-        $this->assertEquals([
-            ['id' => $geschmack->id, 'name' => 'Geschmack', 'avg' => 4.0, 'count' => 1],
-            ['id' => $aufwand->id, 'name' => 'Aufwand', 'avg' => 5.0, 'count' => 1],
-            ['id' => $optik->id, 'name' => 'Optik', 'avg' => 5.0, 'count' => 1],
-        ], $props['recipe']['ratingDimensions']);
+        $this->assertEquals(4.0, $props['recipe']['rating']);
+        $this->assertSame(1, $props['recipe']['ratingCount']);
+        $this->assertSame([], $props['recipe']['ratingDimensions']);
+
+        // Daten bleiben erhalten (keine Löschung durch das Lesen).
+        $this->assertDatabaseCount('recipe_ratings', 4);
+    }
+
+    public function test_recipe_with_only_other_dimensions_is_unrated(): void
+    {
+        $recipe = Recipe::factory()->create();
+        RatingDimension::factory()->create(['name' => 'Geschmack']);
+        $gesamt = RatingDimension::factory()->create(['name' => 'Gesamt']);
+        RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $gesamt->id, 'value' => 5]);
+
+        $props = $this->pageProps($this->get(route('recipes.show', $recipe)));
+
+        $this->assertNull($props['recipe']['rating']);
+        $this->assertSame(0, $props['recipe']['ratingCount']);
+        $this->assertSame([], $props['recipe']['ratingDimensions']);
+    }
+
+    public function test_missing_taste_dimension_yields_no_rating_without_error(): void
+    {
+        $recipe = Recipe::factory()->create();
+        $gesamt = RatingDimension::factory()->create(['name' => 'Gesamt']);
+        RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $gesamt->id, 'value' => 5]);
+
+        $response = $this->get(route('recipes.show', $recipe));
+
+        $response->assertOk();
+        $props = $this->pageProps($response);
+        $this->assertNull($props['recipe']['rating']);
+        $this->assertSame(0, $props['recipe']['ratingCount']);
+        $this->assertSame([], $props['recipe']['ratingDimensions']);
+    }
+
+    public function test_taste_dimension_name_is_configurable(): void
+    {
+        config(['plantmel.rating_dimension' => 'Gesamt']);
+        $recipe = Recipe::factory()->create();
+        $geschmack = RatingDimension::factory()->create(['name' => 'Geschmack']);
+        $gesamt = RatingDimension::factory()->create(['name' => 'Gesamt']);
+        RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $geschmack->id, 'value' => 2]);
+        RecipeRating::factory()->create(['recipe_id' => $recipe->id, 'dimension_id' => $gesamt->id, 'value' => 5]);
+
+        $props = $this->pageProps($this->get(route('recipes.show', $recipe)));
+
+        $this->assertEquals(5.0, $props['recipe']['rating']);
     }
 
     public function test_image_url_uses_first_image_on_public_disk(): void
