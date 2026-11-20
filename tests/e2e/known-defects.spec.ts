@@ -34,6 +34,9 @@ const MOBILE_320 = {
     hasTouch: true,
 } as const;
 
+const alternativesDialog = (page: import('@playwright/test').Page) =>
+    page.getByRole('dialog', { name: /^Alternativen für/ });
+
 function intersects(
     a: { x: number; y: number; width: number; height: number },
     b: { x: number; y: number; width: number; height: number },
@@ -126,12 +129,23 @@ test.describe('Host', () => {
             page.getByRole('button', { name: 'Rezept speichern' }).click(),
         ]);
         await settle(page);
+        // Gate C2: erst messen, wenn die Server-Fehler gerendert sind (Inertia-Folgeseite);
+        // der alte Selektor [class*="error"] traf auch ohne Meldung Elemente.
+        await page
+            .locator('[data-error-summary]')
+            .waitFor({ state: 'visible', timeout: 10_000 })
+            .catch(() => undefined);
         const visibleErrors = await page
-            .locator('.form-field__error:visible')
+            .locator('[data-field-error]:visible')
             .allTextContents();
-        const scoped = page
-            .locator('.recipe-form__section--wide')
-            .locator('.form-field__error, [class*="error"]');
+        // Gate C2: Fehler in den breiten Abschnitten Zutaten/Schritte/Notizen
+        const scoped = page.locator(
+            [
+                '[data-form-section="ingredients"] [data-field-error]',
+                '[data-form-section="steps"] [data-field-error]',
+                '[data-form-section="notes"] [data-field-error]',
+            ].join(', '),
+        );
         const scopedVisible = await scoped.filter({ visible: true }).count();
         await page.screenshot({
             path: test.info().outputPath('F-06-nach-speichern.png'),
@@ -159,10 +173,10 @@ test.describe('Host', () => {
         await page
             .getByRole('button', { name: '+ weiteren Schritt hinzufügen' })
             .click();
-        const areas = page.locator('.steps-builder__textarea');
+        const areas = page.locator('[data-step-text]');
         await areas.nth(0).fill('Schritt A');
         await areas.nth(1).fill('Schritt B');
-        const handle = page.locator('.steps-builder__handle').first();
+        const handle = page.locator('[data-step-handle]').first();
         await handle.focus();
         const focused = await handle.evaluate(
             (el) => el === document.activeElement,
@@ -274,7 +288,10 @@ test.describe('Host', () => {
                     .first();
                 await btn.scrollIntoViewIfNeeded();
                 await btn.click();
-                const title = page.locator('.alternatives-modal .modal__title');
+                // Gate C2: gemeinsamer Dialog-Baustein, Titel = Ueberschrift des Dialogs
+                const title = alternativesDialog(page).getByRole('heading', {
+                    name: /^Alternativen für/,
+                });
                 await expect(title).toBeVisible();
                 await page.waitForTimeout(300);
                 return title;
@@ -290,9 +307,7 @@ test.describe('Host', () => {
                     .locator('#app header')
                     .first()
                     .boundingBox();
-                const modalBox = await page
-                    .locator('.alternatives-modal')
-                    .boundingBox();
+                const modalBox = await alternativesDialog(page).boundingBox();
                 await page.screenshot({
                     path: test
                         .info()
@@ -354,7 +369,12 @@ test.describe('Host', () => {
                         r.left + r.width / 2,
                         r.top + 2,
                     );
-                    return !!top && !!top.closest('.alternatives-modal');
+                    const dialog = el.closest('[role="dialog"]');
+                    return (
+                        !!top &&
+                        !!dialog &&
+                        top.closest('[role="dialog"]') === dialog
+                    );
                 });
                 expect(
                     topEdgeInModal,

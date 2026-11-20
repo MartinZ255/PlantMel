@@ -279,7 +279,9 @@ test.describe('Gast', () => {
         }) => {
             await page.goto('/rezepte');
             await settle(page);
-            await page.getByRole('button', { name: 'Menü', exact: true }).click();
+            await page
+                .getByRole('button', { name: 'Menü', exact: true })
+                .click();
             const menu = page.getByRole('dialog', { name: 'Menü' });
             await expect(menu).toBeVisible();
             await page.waitForTimeout(400);
@@ -386,7 +388,10 @@ test.describe('Nutzer 2 (eigene Session)', () => {
         await page.goto('/home');
         await settle(page);
         // Gate C: Disclosure-Muster (kein role="menu"), daher aria-controls statt aria-haspopup
-        await expect(trigger(page)).toHaveAttribute('aria-controls', 'user-menu');
+        await expect(trigger(page)).toHaveAttribute(
+            'aria-controls',
+            'user-menu',
+        );
         await openMenu(page);
         await page.keyboard.press('Escape');
         await expectMenuClosed(page);
@@ -423,8 +428,7 @@ test.describe('Nutzer 2 (eigene Session)', () => {
             await page.keyboard.press('Tab');
             inDropdownAfterTab.push(
                 await page.evaluate(
-                    () =>
-                        !!document.activeElement?.closest('#user-menu'),
+                    () => !!document.activeElement?.closest('#user-menu'),
                 ),
             );
         }
@@ -584,13 +588,13 @@ test.describe('Host – Slice 2', () => {
 
         await page.goto('/rezepte/erstellen');
         await settle(page);
-        const chip = page.locator('.tag-chip', {
+        const chip = page.locator('[data-tag-chip]', {
             hasText: DATA.throwawayCategory,
         });
         await chip.dblclick();
         const modal = page.getByRole('dialog', { name: 'Tag bearbeiten' });
         await expect(modal).toBeVisible();
-        await expect(modal.locator('.form-field__hint')).toContainText(
+        await expect(modal.locator('[data-field-hint]')).toContainText(
             'gelten für alle Rezepte',
         );
 
@@ -612,7 +616,7 @@ test.describe('Host – Slice 2', () => {
         await expect(confirm).toBeVisible();
         const message =
             (
-                await confirm.locator('.modal__confirm-text').textContent()
+                await confirm.locator('[data-confirm-text]').textContent()
             )?.trim() ?? '';
         expect(message).toContain(`„${DATA.throwawayCategory}“`);
         expect(message).toContain('in einem Rezept verwendet');
@@ -659,7 +663,9 @@ test.describe('Host – Slice 2', () => {
         await page.reload();
         await settle(page);
         await expect(
-            page.locator('.tag-chip', { hasText: DATA.throwawayCategory }),
+            page.locator('[data-tag-chip]', {
+                hasText: DATA.throwawayCategory,
+            }),
         ).toHaveCount(0);
 
         const deletes = requests.filter((r) => r.method === 'DELETE');
@@ -690,7 +696,9 @@ test.describe('Host – Slice 2', () => {
         });
         await page.goto('/rezepte/erstellen');
         await settle(page);
-        await page.locator('.tag-chip', { hasText: 'Dessert' }).dblclick();
+        await page
+            .locator('[data-tag-chip]', { hasText: 'Dessert' })
+            .dblclick();
         const modal = page.getByRole('dialog', { name: 'Tag bearbeiten' });
         await modal.getByRole('button', { name: 'Löschen' }).click();
         await expect(modal.getByRole('alert')).toContainText(
@@ -709,7 +717,9 @@ test.describe('Host – Slice 2', () => {
     }) => {
         await page.goto('/rezepte/erstellen');
         await settle(page);
-        await page.locator('.tag-chip', { hasText: 'Dessert' }).dblclick();
+        await page
+            .locator('[data-tag-chip]', { hasText: 'Dessert' })
+            .dblclick();
         const modal = page.getByRole('dialog', { name: 'Tag bearbeiten' });
         await modal.locator('#tag-name').fill('Snack');
         const [res] = await Promise.all([
@@ -734,7 +744,9 @@ test.describe('Host – Slice 2', () => {
             const requests = logRequests(page, /^\/categories\//);
             await page.goto('/rezepte/erstellen');
             await settle(page);
-            await page.locator('.tag-chip', { hasText: 'Dessert' }).dblclick();
+            await page
+                .locator('[data-tag-chip]', { hasText: 'Dessert' })
+                .dblclick();
             const modal = page.getByRole('dialog', { name: 'Tag bearbeiten' });
             await modal.getByRole('button', { name: 'Löschen' }).click();
             const confirm = modal.getByRole('group');
@@ -764,12 +776,12 @@ test.describe('Host – Slice 2', () => {
     }) => {
         await page.goto('/rezepte/erstellen');
         await settle(page);
-        const row = page.locator('.ingredients-builder__row').first();
-        await row.locator('.ingredients-builder__name').fill('Rote Linsen');
+        const row = page.locator('[data-ingredient-row]').first();
+        await row.locator('[data-ingredient-name]').fill('Rote Linsen');
         await page.locator('#name').click(); // Dropdown schliessen
         await row.getByRole('button', { name: 'Zutat bearbeiten' }).click();
         const modal = page.getByRole('dialog', { name: 'Zutat bearbeiten' });
-        await expect(modal.locator('.form-field__hint')).toContainText(
+        await expect(modal.locator('[data-field-hint]')).toContainText(
             'gelten für alle Rezepte',
         );
         const [res] = await Promise.all([
@@ -798,7 +810,10 @@ test.describe('Host – Slice 2', () => {
         ]);
         expect(put.status()).toBe(422);
         await expect(
-            modal.locator('.form-field__error[role="alert"]'),
+            // Gate C2: Fehlermeldung direkt am Namensfeld (nicht die Loesch-Meldung)
+            modal.locator(
+                '#ingredient-name-hint ~ [data-field-error][role="alert"]',
+            ),
         ).toBeVisible();
         writeRaw('regression', 'F-65-in-use', {
             deleteStatus: res.status(),
@@ -813,8 +828,8 @@ test.describe('Host – Slice 2', () => {
         const requests = logRequests(page, /^\/ingredients/);
         await page.goto('/rezepte/erstellen');
         await settle(page);
-        const row = page.locator('.ingredients-builder__row').first();
-        await row.locator('.ingredients-builder__name').fill(name);
+        const row = page.locator('[data-ingredient-row]').first();
+        await row.locator('[data-ingredient-name]').fill(name);
         await page.locator('#name').click();
         const [created] = await Promise.all([
             page.waitForResponse(
@@ -822,7 +837,9 @@ test.describe('Host – Slice 2', () => {
                     r.request().method() === 'POST' &&
                     new URL(r.url()).pathname === '/ingredients',
             ),
-            row.getByRole('button', { name: '+', exact: true }).click(),
+            row
+                .getByRole('button', { name: 'Zutat neu anlegen', exact: true })
+                .click(),
         ]);
         expect(created.status()).toBe(201);
 
@@ -846,7 +863,7 @@ test.describe('Host – Slice 2', () => {
         expect(final.status()).toBe(200);
         await expect(modal).toBeHidden();
         // Zeile geleert, Zutat nach Neuladen nicht mehr in den Vorschlaegen
-        await expect(row.locator('.ingredients-builder__name')).toHaveValue('');
+        await expect(row.locator('[data-ingredient-name]')).toHaveValue('');
         await page.reload();
         await settle(page);
         const props = await inertiaProps<{ ingredients: { name: string }[] }>(
@@ -879,7 +896,7 @@ test.describe('Host – Slice 2', () => {
         try {
             await page.goto(`/rezept/${recipeId}/bearbeiten`);
             await settle(page);
-            const rows = page.locator('.ingredients-builder__row');
+            const rows = page.locator('[data-ingredient-row]');
             await rows
                 .nth(0)
                 .getByRole('button', { name: 'Alternativzutaten bearbeiten' })
@@ -892,7 +909,7 @@ test.describe('Host – Slice 2', () => {
             );
             await modal.locator('#alt-search').fill('Tempeh');
             await modal
-                .locator('.alternatives-panel')
+                .locator('[data-alternatives-panel]')
                 .first()
                 .getByRole('button', { name: 'Tempeh', exact: true })
                 .click();
@@ -915,9 +932,9 @@ test.describe('Host – Slice 2', () => {
             expect(fields['source'], 'kein Feld source').toBeUndefined();
             await page.waitForURL(new RegExp(`/rezept/${recipeId}$`));
             await settle(page);
-            await expect(
-                alternativesOf(page, 'Brokkoli'),
-            ).toContainText('Tempeh');
+            await expect(alternativesOf(page, 'Brokkoli')).toContainText(
+                'Tempeh',
+            );
 
             // Wieder entfernen: Modal startet mit den Alternativen aus den Edit-Props (ohne GET)
             await page.goto(`/rezept/${recipeId}/bearbeiten`);
@@ -926,7 +943,7 @@ test.describe('Host – Slice 2', () => {
                 .nth(0)
                 .getByRole('button', { name: 'Alternativzutaten bearbeiten' })
                 .click();
-            const right = modal.locator('.alternatives-panel').last();
+            const right = modal.locator('[data-alternatives-panel]').last();
             await right
                 .getByRole('button', { name: 'Tempeh', exact: true })
                 .click();
@@ -944,9 +961,7 @@ test.describe('Host – Slice 2', () => {
                     .click(),
             ]);
             await settle(page);
-            await expect(
-                alternativesOf(page, 'Brokkoli'),
-            ).toHaveCount(0);
+            await expect(alternativesOf(page, 'Brokkoli')).toHaveCount(0);
 
             writeRaw('regression', 'F-13-add-remove', { altRequests, fields });
             expect(
@@ -979,7 +994,7 @@ test.describe('Host – Slice 2', () => {
                 name: /Alternativen für: Brokkoli/,
             });
             await modal
-                .locator('.alternatives-panel')
+                .locator('[data-alternatives-panel]')
                 .first()
                 .getByRole('button', { name: 'Naturtofu', exact: true })
                 .click();
@@ -987,14 +1002,14 @@ test.describe('Host – Slice 2', () => {
                 .getByRole('button', { name: 'Als Alternative hinzufügen' })
                 .click();
             await expect(
-                modal.locator('.alternatives-panel').last(),
+                modal.locator('[data-alternatives-panel]').last(),
             ).toContainText('Naturtofu');
             await modal.getByRole('button', { name: 'Abbrechen' }).click();
             await expect(modal).toBeHidden();
 
             await openButton.click();
             await expect(
-                modal.locator('.alternatives-panel').last(),
+                modal.locator('[data-alternatives-panel]').last(),
             ).toContainText('Noch keine Alternativzutaten hinterlegt.');
             await modal.getByRole('button', { name: 'Abbrechen' }).click();
 
@@ -1050,18 +1065,12 @@ test.describe('Host – Slice 2', () => {
         try {
             await page.goto(`/rezept/${recipeId}/bearbeiten`);
             await settle(page);
-            const rows = page.locator('.ingredients-builder__row');
+            const rows = page.locator('[data-ingredient-row]');
 
             // Neue Zeile mit Alternative
             await page.getByRole('button', { name: '+ weitere Zutat' }).click();
-            await rows
-                .nth(2)
-                .locator('.ingredients-builder__amount')
-                .fill('150 g');
-            await rows
-                .nth(2)
-                .locator('.ingredients-builder__name')
-                .fill('Quinoa');
+            await rows.nth(2).locator('[data-ingredient-amount]').fill('150 g');
+            await rows.nth(2).locator('[data-ingredient-name]').fill('Quinoa');
             await page.locator('#name').click();
             await rows
                 .nth(2)
@@ -1072,7 +1081,7 @@ test.describe('Host – Slice 2', () => {
             });
             await modal.locator('#alt-search').fill('Basmatireis');
             await modal
-                .locator('.alternatives-panel')
+                .locator('[data-alternatives-panel]')
                 .first()
                 .getByRole('button', { name: 'Basmatireis', exact: true })
                 .click();
@@ -1083,7 +1092,7 @@ test.describe('Host – Slice 2', () => {
             await expect(modal).toBeHidden();
 
             // Umsortieren: neue Zeile (Index 2) per Drag-Griff ganz nach oben
-            const handle = rows.nth(2).locator('.ingredients-builder__handle');
+            const handle = rows.nth(2).locator('[data-ingredient-handle]');
             const hb = (await handle.boundingBox())!;
             const top = (await rows.nth(0).boundingBox())!;
             await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
@@ -1093,7 +1102,7 @@ test.describe('Host – Slice 2', () => {
             });
             await page.mouse.up();
             const names = await rows
-                .locator('.ingredients-builder__name')
+                .locator('[data-ingredient-name]')
                 .evaluateAll((els) =>
                     els.map((e) => (e as HTMLInputElement).value),
                 );
@@ -1106,7 +1115,7 @@ test.describe('Host – Slice 2', () => {
             // Brokkoli-Zeile (jetzt Index 1) umbenennen; Sojasauce-Modal nie geoeffnet
             await rows
                 .nth(1)
-                .locator('.ingredients-builder__name')
+                .locator('[data-ingredient-name]')
                 .fill('Zucchini');
             await page.locator('#name').click();
 
@@ -1153,14 +1162,14 @@ test.describe('Host – Slice 2', () => {
         await page.goto('/rezepte/erstellen');
         await settle(page);
         await page.locator('#name').fill(`E2E F-14 Mehrzeilig ${Date.now()}`);
-        const row = page.locator('.ingredients-builder__row').first();
-        await row.locator('.ingredients-builder__amount').fill('1 Kopf');
-        await row.locator('.ingredients-builder__name').fill('Brokkoli');
+        const row = page.locator('[data-ingredient-row]').first();
+        await row.locator('[data-ingredient-amount]').fill('1 Kopf');
+        await row.locator('[data-ingredient-name]').fill('Brokkoli');
         await page.locator('#name').click();
         await page
             .getByRole('button', { name: '+ weiteren Schritt hinzufügen' })
             .click();
-        const areas = page.locator('.steps-builder__textarea');
+        const areas = page.locator('[data-step-text]');
         await areas.nth(0).fill(multi);
         await areas.nth(1).fill('Kurz braten.');
         await Promise.all([
@@ -1243,7 +1252,7 @@ test.describe('Host – Slice 2', () => {
             await settle(page);
             await expect(page.locator('#source')).toHaveCount(0);
             await expect(page.getByLabel('Quelle')).toHaveCount(0);
-            await expect(page.locator('.recipe-form')).not.toContainText(
+            await expect(page.locator('[data-recipe-form]')).not.toContainText(
                 'Quelle',
             );
         }
@@ -1260,14 +1269,16 @@ test.describe('Host – Slice 2', () => {
             DATA.importWithSource.name,
         );
         const names = await page
-            .locator('.ingredients-builder__name')
+            .locator('[data-ingredient-name]')
             .evaluateAll((els) =>
                 els.map((e) => (e as HTMLInputElement).value),
             );
         expect(names).toEqual(['Brokkoli', 'Sojasauce']);
-        await expect(page.locator('.steps-builder__textarea')).toHaveCount(2);
+        await expect(page.locator('[data-step-text]')).toHaveCount(2);
         await expect(
-            page.locator('.tag-chip--active', { hasText: 'Abendessen' }),
+            page.locator('[data-tag-chip][aria-pressed="true"]', {
+                hasText: 'Abendessen',
+            }),
         ).toHaveCount(1);
         await expect(page.locator('#source')).toHaveCount(0);
         expect([...diag.pageErrors, ...diag.consoleErrors]).toEqual([]);
