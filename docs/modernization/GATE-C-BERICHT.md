@@ -8,9 +8,10 @@ Alle Seiten sind im Konzept „Natur & organisch“ umgesetzt. Die Legacy-Stilda
 
 | Messung | Ergebnis | Exit |
 |---|---|---|
-| PHPUnit (`php vendor/bin/phpunit`, Unit + Feature) | __PHPUNIT__ | 0 |
-| Bekannte Defekte (`--testsuite KnownDefects`) | 1 Test, 1 rot (F-23, N+1, beabsichtigt) | 1 (beabsichtigt) |
-| Browser (`E2E_PORT=8197 npx playwright test`, inkl. Screenshot-Vergleich) | __E2E__ | __E2E_EXIT__ |
+| PHPUnit (`php vendor/bin/phpunit`, Unit + Feature) | 607 Tests, 3955 Assertions, alle grün | 0 |
+| Bekannte Defekte (`--testsuite KnownDefects`) | vor dem Merge 723badb: 1 Test rot (F-23, N+1); danach grün und in `tests/Feature/Collections/` verschoben – Suite jetzt leer („No tests executed“) | 0 |
+| Browser (`E2E_PORT=8197 npx playwright test`, inkl. Screenshot-Vergleich) | zweimal vollständig: je 383 bestanden, 35 übersprungen (Vorschau-Generatoren, nur mit `GATE_C2_PREVIEW=1`) | 0 / 0 |
+| Screenshot-Baseline (`baseline.spec.ts`) | `--update-snapshots` 124 bestanden, danach zweimal ohne Update je 124 bestanden | 0 / 0 / 0 |
 | ESLint (`npx eslint .`) | 0 Befunde | 0 |
 | `npx vue-tsc --noEmit` | 0 Fehler | 0 |
 | `npm run build` | erfolgreich | 0 |
@@ -29,6 +30,8 @@ Alle Seiten sind im Konzept „Natur & organisch“ umgesetzt. Die Legacy-Stilda
 
 **E14 – Bewertung nur noch Geschmack.** Eine Bewertung mit 1–5 Sternen; Dimension per Name aus `config/plantmel.php`. Andere Dimensionen bleiben in der Datenbank, werden aber nicht angezeigt oder eingerechnet.
 
+**Nachtrag des Leads (Merge 723badb).** Stift-Knöpfe für Kategorien im Rezeptformular, deutscher Datei-Knopf, Sammlungs-Collage mit Bildern, Dialog „Bearbeiten“ auf der Sammlungsseite (neue Route `collections.update`); Tests `CollectionUpdateAndCollageTest`, `regression-collections-tags.spec.ts`.
+
 **Integration (dieser Schritt).**
 - Alte BEM-Selektoren in `tests/e2e/regression.spec.ts` und `tests/e2e/known-defects.spec.ts` auf `data-*`-Hooks und Rollen umgestellt (`data-tag-chip` + `aria-pressed`, `data-ingredient-*`, `data-step-*`, `data-recipe-form`, `data-field-error/-hint`, `data-confirm-text`, Dialog über `role="dialog"` „Alternativen für …“, Knopf „Zutat neu anlegen“ statt „+“). Prüfgedanken unverändert; F-06 misst jetzt erst nach dem Rendern der Fehlerzusammenfassung (vorher traf der breite Selektor `[class*="error"]` zufällig Elemente). F-38 bleibt `test.fail`; kein `test.fail` wurde unerwartet grün.
 - `resources/css/rezeptly/app.css` (3249 Zeilen) und der Import entfernt. Vorher per Skript geprüft: keine Vue-Datei, kein Blade-Template und kein Test nutzt noch Klassen daraus. Wächtertests: Datei und Import fehlen; keine der 261 früheren Klassen (feste Liste `tests/e2e/support/legacy-classes.ts`) auf Paket-C- und allen Hauptseiten.
@@ -37,7 +40,8 @@ Alle Seiten sind im Konzept „Natur & organisch“ umgesetzt. Die Legacy-Stilda
 - Baseline-Spec: Viewport-Vergrößerung entfernt, stattdessen `fullPage` mit Höhenbegrenzung 5000 px. Vorschau-Spec: Style-Tag-Workaround entfernt.
 - Aufräumen: `useAppNavigation` ohne veraltetes `isHost`; `SettingsShell` nach `components/settings/`; `StarRating` ohne Wert „Noch nicht bewertet“ (wie die Detailseite, E2E-Test ergänzt).
 - Backend: `RecipeController::edit` liefert `recipe.image` (erste Bilddatei, URL über Disk `public`, wie `show`); Feature-Test `RecipeEditImageTest`.
-- Screenshot-Baselines erneuert; Gesamtvorschau `docs/modernization/gate-c2-vorschau/` neu aufgenommen (Generator: `tests/e2e/regression-gate-c2-preview.spec.ts` und der Vorschau-Block in `regression-gate-c2-forms.spec.ts`, beide nur mit `GATE_C2_PREVIEW=1`).
+- Merge 723badb übernommen (ohne Konflikte); im Formular-Test den Kategorie-Umschalter mit `exact: true` adressiert, weil der Stift-Knopf „Kategorie „Dessert“ bearbeiten“ sonst mitgetroffen wird.
+- Screenshot-Baselines nach dem Merge erneuert; Gesamtvorschau `docs/modernization/gate-c2-vorschau/` neu aufgenommen (Generator: `tests/e2e/regression-gate-c2-preview.spec.ts` und der Vorschau-Block in `regression-gate-c2-forms.spec.ts`, beide nur mit `GATE_C2_PREVIEW=1`).
 
 ## 3. Verhaltensänderungen für Nutzerinnen und Nutzer
 
@@ -49,17 +53,17 @@ Alle Seiten sind im Konzept „Natur & organisch“ umgesetzt. Die Legacy-Stilda
 | Konto löschen mit Browser-Rückfrage | Dialog mit Passwortabfrage |
 | Bewertung mit mehreren Kategorien | nur „Geschmack“, 1–5 Sterne, optional und zurücksetzbar |
 | Bearbeiten zeigte kein aktuelles Bild | Kopf und Bildvorschau zeigen das gespeicherte Bild |
+| Kategorie bearbeiten nur per Doppelklick | zusätzlich Stift-Knopf je Kategorie |
+| Sammlungen nicht umbenennbar | Dialog „Bearbeiten“ auf der Sammlungsseite |
 | `<body>` war Scroll-Container | das Fenster scrollt (normales Browserverhalten, z. B. für Ankersprünge und Zurück-Navigation) |
 
 ## 4. Offene Punkte
 
 - **Datenschutz §9** nennt Fraunces nicht (F-90) – der Betreiber füllt die Vorlage aus.
-- **Tag-Bearbeiten nur per Doppelklick** (F-91, Teil von F-38) – sichtbarer Knopf in Gate D.
-- **Datei-Knopf** zeigt die Browser-Beschriftung („Choose File“) statt eines deutschen Textes (F-92).
-- **Collage für Sammlungen** fehlt (F-93, optional).
-- **Umbenennen von Sammlungen** fehlt (F-94).
+- Erledigt mit Merge 723badb (vor den Baselines integriert): Tag-Bearbeiten per Stift-Knopf statt nur Doppelklick (F-91), deutscher Datei-Knopf „Bild auswählen“ statt „Choose File“ (F-92), Collage mit Rezeptbildern für Sammlungen (F-93), Sammlung umbenennen im Dialog „Bearbeiten“ (F-94, Route `collections.update`).
 - **Dimension „Geschmack“ in Produktion prüfen** (F-95): Heißt sie dort anders, zeigt die App keine Bewertungen.
-- F-38 (Tastatur-Umsortieren) und F-23 (N+1 in der Sammlungsübersicht) bleiben bekannte Defekte.
+- F-38 (Tastatur-Umsortieren der Schritte/Zutaten) bleibt bekannter Defekt (`test.fail`).
+- F-23: N+1 in der Sammlungsübersicht ist mit Merge 723badb behoben (Test verschoben); die fehlende Pagination der Rezeptliste bleibt offen.
 - `recipes/RecipeList.vue` ist ungenutzt (Gate D).
 
 ## 5. Verbleibende Risiken
@@ -67,3 +71,5 @@ Alle Seiten sind im Konzept „Natur & organisch“ umgesetzt. Die Legacy-Stilda
 - Screenshot-Baselines gelten nur für Windows/Chromium.
 - Ohne `overflow-x: hidden` an `<html>/<body>` würde künftiger horizontaler Überlauf sichtbar scrollen; die 320-px-Tests decken die bekannten Seiten ab.
 - Produktion, Datenbanktreiber und Schema sind weiterhin ungeprüft (Gate E).
+- Die Collage lädt Rezepte per Eager Loading mit Limit je Sammlung; Laravel nutzt dafür Fensterfunktionen (MySQL ab 8.0, MariaDB ab 10.2, SQLite ab 3.25). Geprüft ist nur SQLite (E10/F-11).
+- Die leere Suite `KnownDefects` liefert Exit 0 mit Warnung; der CI-Job dafür ist bis zu neuen bekannten Defekten ohne Wirkung.

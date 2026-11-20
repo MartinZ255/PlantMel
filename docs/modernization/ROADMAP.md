@@ -122,7 +122,8 @@ Ergebnis: reguläre Suite 562 grün, bekannte Defekte 4 → 1 (F-23), Browser 24
 - [x] Leer-, Lade- und Fehlerzustände; Lösch-Dialoge statt `window.confirm`
 - [x] E14: Bewertung nur noch Geschmack (1–5 Sterne)
 - [x] Screenshot-Baseline auf den Endstand erneuert, Gesamtvorschau `gate-c2-vorschau/`
-- [ ] Tastatur-Alternative fürs Umsortieren und Tag-Bearbeiten (F-38, F-91) – verschoben nach Gate D
+- [x] Kategorien per Stift-Knopf bearbeiten (F-91), deutscher Datei-Knopf (F-92), Sammlungs-Collage (F-93), Sammlung umbenennen (F-94)
+- [ ] Tastatur-Alternative fürs Umsortieren (F-38) – verschoben nach Gate D
 - [ ] Touch-Drag, Griffgröße, Auto-Scroll (F-36) – verschoben nach Gate D
 
 ## Gate D – Qualitätsverbesserung
@@ -133,8 +134,7 @@ Ergebnis: reguläre Suite 562 grün, bekannte Defekte 4 → 1 (F-23), Browser 24
 - [ ] Toter Code, Abhängigkeiten, Typecheck, Inertia-Links (F-51, F-52, F-54, F-57)
 - [ ] Playwright in der CI (Linux-Baselines), Lauf gegen MySQL
 - [ ] README, `.env.example` (F-62)
-- [ ] F-38/F-91 Tastatur-Umsortieren und sichtbarer Kategorie-Bearbeiten-Knopf; `RecipeList.vue` entfernen; Datei-Knopf deutsch (F-92)
-- [ ] Sammlungen umbenennen (F-94), optional Collage (F-93)
+- [ ] F-38 Tastatur-Umsortieren; `RecipeList.vue` entfernen
 
 ## Gate E – Release (gesonderte Freigabe)
 
@@ -174,4 +174,4 @@ Ergebnis: reguläre Suite 562 grün, bekannte Defekte 4 → 1 (F-23), Browser 24
 
 ## Nächste empfohlene Aufgabe
 
-**Abnahme Gate C** durch den Auftraggeber anhand von `gate-c2-vorschau/` und `GATE-C-BERICHT.md`. Danach Gate D (F-38/F-91 Tastatur, Performance F-23, CI mit Playwright). Parallel: Rechtstexte durch den Betreiber (inkl. F-90). Release (Gate E) nur mit ausdrücklicher Freigabe.
+**Abnahme Gate C** durch den Auftraggeber anhand von `gate-c2-vorschau/` und `GATE-C-BERICHT.md`. Danach Gate D (F-38 Tastatur-Umsortieren, Performance F-23, CI mit Playwright). Parallel: Rechtstexte durch den Betreiber (inkl. F-90). Release (Gate E) nur mit ausdrücklicher Freigabe.

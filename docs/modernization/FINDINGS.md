@@ -409,7 +409,8 @@ Branch `feat/gate-c-redesign` (lokal, kein Push). Details und Testzahlen in `GAT
 | F-30 | behoben (abgesichert) | Alle Dialoge nutzen `ui/Dialog.vue` (Teleport, `role="dialog"`, Scroll-Sperre auf `<html>` und `<body>`, Hintergrund `inert`). Seit dem Entfernen von `rezeptly/app.css` scrollt das Fenster; die Sperre greift weiterhin | `known-defects.spec.ts` F-30 (jetzt über `role=dialog` „Alternativen für …“), `regression-forms.spec.ts` (prüft zusätzlich `overflow: hidden` an `<html>`) |
 | F-33/F-34 | teilweise | Design-Tokens und eine Stilquelle (`resources/css/app.css`); Legacy-Datei `resources/css/rezeptly/app.css` (3249 Zeilen) entfernt. Dark Mode bewusst nicht (E4) | Wächtertests „keine Legacy-Klassen auf allen Hauptseiten“ und „Datei und Import entfernt“ (`regression-gate-c2-shell.spec.ts`) |
 | F-35/F-40/F-41 | behoben | gemeinsame Bausteine (Button, Dialog, Field, Chip/SeedToggle, StarRating, AuthShell, SettingsShell, FormSection); Lösch-Bestätigungen im Dialog statt `window.confirm` | `regression-gate-c2-*.spec.ts`, axe 0 bei 390/1440 px |
-| F-38 | offen | Umsortieren der Schritte weiterhin nur per Zeiger; Tag-Bearbeiten nur per Doppelklick | `known-defects.spec.ts` F-38 bleibt `test.fail` |
+| F-38 | teilweise | Kategorien jetzt per sichtbarem Stift-Knopf bearbeitbar (Merge 723badb). Offen: Umsortieren der Schritte/Zutaten nur per Zeiger | `known-defects.spec.ts` F-38 bleibt `test.fail`; `regression-collections-tags.spec.ts` |
+| F-23 | teilweise | N+1 in `collections.index` behoben (Merge 723badb: `recipes_count`, Collage per Eager Loading). Offen: Pagination der Rezeptliste | `tests/Feature/Collections/CollectionIndexQueryCountTest.php` (aus `tests/KnownDefects` verschoben) |
 | F-06 | behoben (Test geschärft) | Der Defekt-Test zählte über den breiten Selektor `[class*="error"]`; jetzt `data-field-error` in den Abschnitten Zutaten/Schritte/Notizen, gemessen erst nach dem Rendern der Fehlerzusammenfassung | `known-defects.spec.ts` F-06, `regression-forms.spec.ts` |
 
 ### Neue Punkte aus Gate C
@@ -417,8 +418,8 @@ Branch `feat/gate-c-redesign` (lokal, kein Push). Details und Testzahlen in `GAT
 | ID | Priorität | Beobachtung | Vorschlag |
 |---|---|---|---|
 | F-90 | P2 | Datenschutz-Vorlage §9 nennt die selbst gehostete Schrift Fraunces nicht (nur Instrument Sans). | Betreiber ergänzt den Abschnitt beim Ausfüllen (`RECHTSTEXTE.md`) |
-| F-91 | P2 | Kategorie bearbeiten im Rezeptformular nur per Doppelklick (für Tastatur und Touch nicht erkennbar). Teil von F-38. | sichtbarer Bearbeiten-Knopf je Kategorie |
-| F-92 | P3 | Die Datei-Auswahl zeigt die Browser-Beschriftung („Choose File“ bzw. „Datei auswählen“ je nach Browsersprache), nicht einheitlich deutsch. | eigener Knopf mit verstecktem `input type=file` |
-| F-93 | P3 | Sammlungskacheln zeigen keine Bild-Collage der enthaltenen Rezepte. | Feature-Paket, optional |
-| F-94 | P2 | Sammlungen lassen sich nicht umbenennen (nur anlegen und löschen). | Feature-Paket mit eigener Route und Test |
+| F-91 | erledigt (723badb) | Kategorie bearbeiten war nur per Doppelklick möglich (Teil von F-38). | umgesetzt: Stift-Knopf „Kategorie „…“ bearbeiten“ je Kategorie; Doppelklick bleibt |
+| F-92 | erledigt (723badb) | Die Datei-Auswahl zeigte die Browser-Beschriftung „Choose File“. | umgesetzt: eigener Knopf „Bild auswählen“ |
+| F-93 | erledigt (723badb) | Sammlungskacheln zeigten keine Bilder der enthaltenen Rezepte. | umgesetzt: Collage mit Rezeptbildern |
+| F-94 | erledigt (723badb) | Sammlungen ließen sich nicht umbenennen. | umgesetzt: Dialog „Bearbeiten“ auf der Sammlungsseite, Route `collections.update`, Feature-Test `CollectionUpdateAndCollageTest` |
 | F-95 | P1 (Release) | E14 findet die Bewertungs-Dimension per Name „Geschmack“ (`config/plantmel.php`). Ob sie in der Produktions-Datenbank genau so heißt, ist ungeprüft; sonst zeigt die App keine Bewertungen. | vor dem Release lesend prüfen (mit Freigabe), ggf. Konfiguration anpassen |

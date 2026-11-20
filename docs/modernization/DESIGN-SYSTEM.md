@@ -172,7 +172,7 @@ Weitere neue Bausteine: `components/landing/LandingHeroArt.vue` (Bildkomposition
 | `legal-prose` | `@utility` in `resources/css/app.css` | Typografie der Rechtstexte (Impressum, Datenschutz) |
 | `useIsHost` | `components/layout/useIsHost.ts` | Host-Status aus der global geteilten Prop `auth.user.is_host` (Kopfzeile, Mobilmenü, Nutzermenü). `useAppNavigation` liefert kein `isHost` mehr. |
 
-Weitere Änderungen: `StarRating` zeigt ohne Wert „Noch nicht bewertet“ (wie die Detailseite). E14: Bewertung nur noch „Geschmack“ (1–5 Sterne), keine Balken je Dimension mehr.
+Weitere Änderungen: Kategorien im Formular mit Stift-Knopf (`data-tag-edit`), Datei-Knopf „Bild auswählen“, Sammlungskacheln mit Bild-Collage, Sammlung bearbeiten im Dialog. `StarRating` zeigt ohne Wert „Noch nicht bewertet“ (wie die Detailseite). E14: Bewertung nur noch „Geschmack“ (1–5 Sterne), keine Balken je Dimension mehr.
 
 ### Offen
 
