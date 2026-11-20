@@ -139,7 +139,7 @@ Weitere neue Bausteine: `components/landing/LandingHeroArt.vue` (Bildkomposition
 
 - **Startseite:** Hero mit Fraunces-Headline („Lieblingsrezepte, *liebevoll* gesammelt.“, Beeren-Strich unter dem Akzentwort), Bildkomposition aus bis zu drei echten Rezeptbildern (Prop `featuredRecipes`) auf atmendem Matcha-Blob, schwebende Karte „Zuletzt hinzugefügt“; Waldgrün-Band mit Wellen für die drei Vorteile (E8: nur vorhandene Funktionen); wischbares Band „Eine kleine Auswahl“ (Scroll-Snap, ab `md` Zurück/Weiter-Knöpfe, versetzte Höhen); Abschluss auf großem Matcha-Blob. Ohne Rezeptbilder: grafische Komposition, kein Band.
 - **Rezeptliste:** Kopf mit Blob-Hintergrund und schwebenden Blättern, „Rezepte“ in großer Fraunces, Suche als schwebende Kapsel (Waldgrün-Blob als Suchsymbol); Karten ohne Kasten: Bild in Blob-Maske über einer versetzten zweiten Form, Dauer-Sticker, Samen-Kategorien, Titel in Fraunces, Sterne mit Text; leicht gestaffeltes Raster (DOM-Reihenfolge = Lesereihenfolge).
-- **Rezeptdetail:** Waldgrün-Kopf mit Körnung, Titel in großer Fraunces, Eckdaten als schwebende Kiesel, Bild in großer Blob-Maske auf Matcha-Blob mit Beeren-Sticker (ohne Bild: Komposition aus Blatt, Topf, Zweig); Welle in den Naturgrund; Zutaten als Papierblatt mit **Abhak-Checkboxen** (rein clientseitig, Fortschritt als Live-Text); Schritte mit großen Fraunces-Ziffern in wechselnden Blob-Formen, verbunden durch eine gestrichelte Ranke; Notizen als Hinweis mit Blatt; Bewertungen mit großer Gesamtzahl in Beere und Balken je Dimension (Balken `aria-hidden`, Wert als Text).
+- **Rezeptdetail:** Waldgrün-Kopf mit Körnung, Titel in großer Fraunces, Eckdaten als schwebende Kiesel, Bild in großer Blob-Maske auf Matcha-Blob mit Beeren-Sticker (ohne Bild: Komposition aus Blatt, Topf, Zweig); Welle in den Naturgrund; Zutaten als Papierblatt mit **Abhak-Checkboxen** (rein clientseitig, Fortschritt als Live-Text); Schritte mit großen Fraunces-Ziffern in wechselnden Blob-Formen, verbunden durch eine gestrichelte Ranke; Notizen als Hinweis mit Blatt; Bewertung (seit E14 nur „Geschmack“) mit großer Zahl in Beere und Sternen, Wert als Text.
 - **Kopfnavigation/Footer/Mobilmenü:** Kopf halbtransparent mit Unschärfe, Logo = Keimling im Waldgrün-Blob + „Plant*Mel*“; aktiver Bereich als Matcha-Kiesel; Footer Waldgrün mit welliger Oberkante und Zweigen; Mobilmenü als Waldgrün-Blatt mit großen Einträgen und Matcha-Aktivzustand.
 
 ## 7. Regeln
@@ -152,13 +152,28 @@ Weitere neue Bausteine: `components/landing/LandingHeroArt.vue` (Bildkomposition
 - Kein horizontales Scrollen bis 320 px. Das Rezeptband scrollt in sich (eigener Scrollbereich).
 - Bewegung immer mit `prefers-reduced-motion`-Fallback; Einblenden verändert nie das Layout.
 
-## 8. Was im zweiten Schritt umzustellen ist
+## 8. Stand nach Gate C2 (Schritt 2 abgeschlossen)
 
-Unverändert gegenüber Gate C1: Diese Dateien nutzen noch Klassen aus `resources/css/rezeptly/app.css` (funktionieren mit Kopfnavigation, Footer und neuen Tokens weiter, werden aber erst in Schritt 2 gestaltet):
+### Legacy-CSS
 
-- Seiten: `pages/Home.vue`, `pages/IngredientSearch.vue`, `pages/MyIngredients.vue`, `pages/Error.vue`, `pages/collections/{Index,Create,Show}.vue`, `pages/recipes/{Create,Edit}.vue`, `pages/settings/{Index,Profile,Password}.vue`, `pages/auth/*.vue`, `pages/legal/{Impressum,Datenschutz}.vue`
-- Komponenten: `recipes/RecipeForm.vue` (dort `StarRating` im Eingabemodus), `recipes/ImportProgress.vue`, `recipes/IngredientSearchArea.vue`, `recipes/IngredientCard.vue`, `recipes/CollectionCard.vue`, `recipes/RecipeCollectionBoard.vue`, `widgets/{IngredientAlternativesModal,IngredientEditModal,TagEditModal}.vue`
-- `recipes/RecipeList.vue` wird nirgends verwendet (Gate D: entfernen)
-- Danach `rezeptly/app.css` und den Import in `app.css` entfernen (dabei auch `html, body { height: 100%; overflow-x: hidden }`, das `<body>` zum Scroll-Container macht).
+- Keine. `resources/css/rezeptly/app.css` und der Import in `resources/css/app.css` sind entfernt (Gate C2 Integration). Keine Vue-Datei, kein Blade-Template und kein Test nutzt noch Klassen daraus; der Wächtertest in `tests/e2e/regression-gate-c2-shell.spec.ts` prüft das gegen die feste Namensliste `tests/e2e/support/legacy-classes.ts` (261 Klassen).
+- Folge: Das Fenster (`<html>`) ist wieder der Scroll-Container, nicht mehr `<body>`. Abstand unter der klebenden Kopfzeile über `html { scroll-padding-top: calc(var(--header-height) + 1rem) }` (ersetzt `[id] { scroll-margin-top }`). Die Scroll-Sperre in `useModal` setzt `overflow: hidden` auf `<html>` und `<body>`.
+- Test-Hooks: statt BEM-Klassen `data-*`-Attribute und Rollen (`data-recipe-form`, `data-form-section="…"`, `data-ingredient-row|name|amount|handle`, `data-step-text|handle`, `data-tag-chip` + `aria-pressed`, `data-field-error`, `data-field-hint`, `data-error-summary`, `data-confirm-text`, `data-alternatives-panel`, `data-import-progress`, `data-tiktok-import`, Dialoge über `role="dialog"` mit Namen).
 
-`collections/Show.vue` nutzt bereits die neue `RecipeDetailCard` (Blob-Karte).
+### Neue Bausteine aus Schritt 2
+
+| Baustein | Ort | Zweck |
+|---|---|---|
+| `AuthShell` | `components/auth/AuthShell.vue` | Rahmen der Anmelde-Seiten: Waldgrün-Seite mit Wortmarke (ab `lg` klebend), Formularblatt, Status-/Fehlermeldungen |
+| `SettingsShell` | `components/settings/SettingsShell.vue` (verschoben aus `components/auth/`) | Rahmen der Einstellungen mit Seitennavigation (Übersicht, Profil, Passwort) |
+| `FormSection` | `components/recipes/form/FormSection.vue` | nummerierter Abschnitt des Rezeptformulars (Blob-Ziffer, Titel, Hinweis), `data-form-section` |
+| `SeedToggle` | `components/recipes/form/SeedToggle.vue` | Umschalter in Samen-Form mit `aria-pressed` (Kategorien im Formular) |
+| `IngredientGrid` | `components/ingredients/IngredientGrid.vue` | A–Z-Raster der Zutaten mit Blob-Buchstaben (Zutatensuche, Meine Zutaten) |
+| `legal-prose` | `@utility` in `resources/css/app.css` | Typografie der Rechtstexte (Impressum, Datenschutz) |
+| `useIsHost` | `components/layout/useIsHost.ts` | Host-Status aus der global geteilten Prop `auth.user.is_host` (Kopfzeile, Mobilmenü, Nutzermenü). `useAppNavigation` liefert kein `isHost` mehr. |
+
+Weitere Änderungen: `StarRating` zeigt ohne Wert „Noch nicht bewertet“ (wie die Detailseite). E14: Bewertung nur noch „Geschmack“ (1–5 Sterne), keine Balken je Dimension mehr.
+
+### Offen
+
+- `recipes/RecipeList.vue` wird nirgends verwendet (Gate D: entfernen).
