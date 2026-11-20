@@ -19,6 +19,9 @@ import { writeRaw } from './support/raw';
  * Behobene Befunde wandern nach tests/e2e/regression.spec.ts (seit Slice 1a: F-01 bis F-04,
  * seit Slice 2: F-07) bzw. tests/e2e/regression-shell.spec.ts (Slice 3: F-05, F-17, F-21a/b,
  * F-29, F-42a/b; die F-20-Tests entfielen mit Entscheidung E4 und wurden dort ersetzt).
+ * Gate D1: der F-38-Test (Drag-Griff per Tastatur) ist durch
+ * tests/e2e/regression-keyboard-reorder.spec.ts ersetzt (Tastaturweg sind Nach-oben/
+ * Nach-unten-Knoepfe; der Griff ist bewusst kein Tab-Stopp mehr).
  *
  * Datenveraenderungen: keine.
  */
@@ -162,46 +165,6 @@ test.describe('Host', () => {
             scopedVisible,
             'sichtbare Fehlermeldung bei Zutaten/Schritten',
         ).toBeGreaterThan(0);
-    });
-
-    test('F-38 Drag-Griff der Schritte ist per Tastatur bedienbar', async ({
-        page,
-    }) => {
-        test.fail(true, 'F-38: Umsortieren nur per Pointer-Events');
-        await page.goto('/rezepte/erstellen');
-        await settle(page);
-        await page
-            .getByRole('button', { name: '+ weiteren Schritt hinzufügen' })
-            .click();
-        const areas = page.locator('[data-step-text]');
-        await areas.nth(0).fill('Schritt A');
-        await areas.nth(1).fill('Schritt B');
-        const handle = page.locator('[data-step-handle]').first();
-        await handle.focus();
-        const focused = await handle.evaluate(
-            (el) => el === document.activeElement,
-        );
-        for (const key of [
-            'Space',
-            'ArrowDown',
-            'Space',
-            'Alt+ArrowDown',
-            'Enter',
-            'ArrowDown',
-        ]) {
-            await page.keyboard.press(key);
-        }
-        const order = await areas.evaluateAll((els) =>
-            els.map((e) => (e as HTMLTextAreaElement).value),
-        );
-        writeRaw('defects', 'F-38', {
-            handleFocusable: focused,
-            orderAfterKeys: order,
-        });
-        expect(order, 'Schritt A nach unten verschoben').toEqual([
-            'Schritt B',
-            'Schritt A',
-        ]);
     });
 
     test.describe('1024', () => {

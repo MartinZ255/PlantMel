@@ -2,6 +2,10 @@
     <!-- novalidate: Pflichtfelder sind markiert, geprüft wird auf dem Server
          (die Meldungen erscheinen am Feld und in der Zusammenfassung) -->
     <form class="min-w-0" data-recipe-form novalidate @submit.prevent="submit">
+        <!-- F-38: Ansage nach dem Umsortieren („Schritt 2 ist jetzt Schritt 1“) -->
+        <p class="sr-only" role="status" aria-live="polite" data-reorder-status>
+            {{ reorderAnnouncement }}
+        </p>
         <div
             class="lg:grid lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-10 xl:gap-14"
         >
@@ -400,7 +404,7 @@
                                         ? ''
                                         : undefined
                                 "
-                                class="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 gap-y-2 rounded-[1.25rem_1rem_1.4rem_1.1rem] p-2 transition-[background-color,box-shadow] duration-200 sm:grid-cols-[2.75rem_7.5rem_minmax(0,1fr)_auto] sm:items-center"
+                                class="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 gap-y-2 rounded-[1.25rem_1rem_1.4rem_1.1rem] p-2 transition-[background-color,box-shadow] duration-200 sm:grid-cols-[auto_7.5rem_minmax(0,1fr)_auto] sm:items-center"
                                 :class="
                                     draggedIngredientIndex === index
                                         ? 'bg-tint shadow-raised ring-2 ring-primary'
@@ -409,23 +413,61 @@
                                           : 'bg-transparent'
                                 "
                             >
-                                <button
+                                <!-- F-38: Umsortieren per Knopf (Tastatur) oder per Griff (Zeiger).
+                                     Der Griff ist bewusst nicht fokussierbar: die Knöpfe sind
+                                     der Tastaturweg, ein Griff ohne Tastenfunktion wäre ein
+                                     toter Tab-Stopp. -->
+                                <div
                                     v-if="form.ingredients.length > 1"
-                                    type="button"
-                                    data-ingredient-handle
-                                    class="row-span-3 inline-flex size-11 cursor-grab touch-none items-center justify-center self-start rounded-pebble text-ink-muted hover:bg-tint-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:cursor-grabbing sm:row-span-1 sm:self-center"
-                                    aria-label="Zutat verschieben"
-                                    title="Gedrückt halten und ziehen, um die Zutat zu verschieben"
-                                    @pointerdown="
-                                        startIngredientDrag(index, $event)
-                                    "
-                                    @contextmenu.prevent
+                                    data-ingredient-reorder
+                                    class="row-span-3 flex flex-col items-center gap-1 self-start sm:row-span-1 sm:flex-row sm:self-center"
                                 >
-                                    <GripVertical
-                                        class="size-5"
+                                    <button
+                                        :id="`ingredient-${ingredientIds[index]}-move-up`"
+                                        type="button"
+                                        data-move-up
+                                        :class="reorderButtonClass"
+                                        :aria-label="`Zutat ${index + 1} nach oben verschieben`"
+                                        title="Nach oben verschieben"
+                                        :disabled="index === 0"
+                                        @click="moveIngredient(index, -1)"
+                                    >
+                                        <ChevronUp
+                                            class="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+                                    <div
+                                        data-ingredient-handle
+                                        class="inline-flex size-11 cursor-grab touch-none items-center justify-center rounded-pebble text-ink-muted select-none hover:bg-tint-strong hover:text-ink active:cursor-grabbing"
                                         aria-hidden="true"
-                                    />
-                                </button>
+                                        title="Gedrückt halten und ziehen, um die Zutat zu verschieben"
+                                        @pointerdown="
+                                            startIngredientDrag(index, $event)
+                                        "
+                                        @contextmenu.prevent
+                                    >
+                                        <GripVertical class="size-5" />
+                                    </div>
+                                    <button
+                                        :id="`ingredient-${ingredientIds[index]}-move-down`"
+                                        type="button"
+                                        data-move-down
+                                        :class="reorderButtonClass"
+                                        :aria-label="`Zutat ${index + 1} nach unten verschieben`"
+                                        title="Nach unten verschieben"
+                                        :disabled="
+                                            index ===
+                                            form.ingredients.length - 1
+                                        "
+                                        @click="moveIngredient(index, 1)"
+                                    >
+                                        <ChevronDown
+                                            class="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+                                </div>
 
                                 <input
                                     :id="`ingredient-${ingredientIds[index]}-amount`"
@@ -460,29 +502,43 @@
                                         :aria-required="
                                             index === 0 ? 'true' : undefined
                                         "
-                                        v-bind="ingredientNameAttrs(index)"
+                                        v-bind="{
+                                            ...ingredientNameAttrs(index),
+                                            ...comboboxAttrs(index),
+                                        }"
                                         @focus="openIngredientDropdown(index)"
                                         @input="onIngredientNameInput(index)"
                                         @blur="closeIngredientDropdown"
-                                        @keydown.esc="closeIngredientDropdown"
+                                        @keydown="
+                                            onIngredientNameKeydown(
+                                                index,
+                                                $event,
+                                            )
+                                        "
                                     />
 
-                                    <div
-                                        v-if="
-                                            ingredientDropdownOpenIndex ===
-                                                index &&
-                                            getIngredientOptions(index).length
-                                        "
+                                    <!-- F-38: Combobox-Muster (ARIA 1.2) – der Fokus bleibt im
+                                         Eingabefeld, die aktive Option zeigt aria-activedescendant -->
+                                    <ul
+                                        v-if="isIngredientListOpen(index)"
+                                        :id="`ingredient-${ingredientIds[index]}-listbox`"
+                                        role="listbox"
                                         data-ingredient-suggestions
+                                        :aria-label="`Vorschläge für Zutat ${index + 1}`"
                                         class="absolute inset-x-0 top-full z-(--z-dropdown) mt-1.5 max-h-64 scrollbar-thin overflow-y-auto rounded-[1.25rem_1rem_1.4rem_1.1rem] bg-surface p-1.5 shadow-raised ring-1 ring-line"
                                     >
-                                        <button
-                                            v-for="option in getIngredientOptions(
-                                                index,
-                                            )"
+                                        <li
+                                            v-for="(
+                                                option, optionIndex
+                                            ) in getIngredientOptions(index)"
+                                            :id="optionId(index, optionIndex)"
                                             :key="option.id"
-                                            type="button"
-                                            class="flex min-h-11 w-full items-center gap-2 rounded-[0.9rem_0.75rem_0.95rem_0.8rem] px-3 text-left text-base text-ink hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus"
+                                            role="option"
+                                            :aria-selected="
+                                                activeOptionIndex ===
+                                                optionIndex
+                                            "
+                                            class="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[0.9rem_0.75rem_0.95rem_0.8rem] px-3 text-left text-base text-ink hover:bg-tint aria-selected:bg-tint aria-selected:outline-2 aria-selected:outline-offset-[-2px] aria-selected:outline-focus"
                                             @mousedown.prevent="
                                                 selectIngredient(
                                                     index,
@@ -498,8 +554,8 @@
                                                 class="min-w-0 text-wrap-anywhere"
                                                 >{{ option.name }}</span
                                             >
-                                        </button>
-                                    </div>
+                                        </li>
+                                    </ul>
                                 </div>
 
                                 <div
@@ -712,21 +768,19 @@
                                     aria-hidden="true"
                                     >{{ index + 1 }}</span
                                 >
-                                <button
+                                <!-- F-38: Griff nur für Zeiger (nicht fokussierbar);
+                                     per Tastatur über „nach oben/unten“ unter dem Text -->
+                                <div
                                     v-if="form.steps.length > 1"
-                                    type="button"
                                     data-step-handle
-                                    class="relative inline-flex size-11 cursor-grab touch-none items-center justify-center rounded-pebble bg-canvas text-ink-muted hover:bg-tint-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:cursor-grabbing"
-                                    aria-label="Schritt verschieben"
+                                    class="relative inline-flex size-11 cursor-grab touch-none items-center justify-center rounded-pebble bg-canvas text-ink-muted select-none hover:bg-tint-strong hover:text-ink active:cursor-grabbing"
+                                    aria-hidden="true"
                                     title="Gedrückt halten und ziehen, um den Schritt zu verschieben"
                                     @pointerdown="startStepDrag(index, $event)"
                                     @contextmenu.prevent
                                 >
-                                    <GripVertical
-                                        class="size-5"
-                                        aria-hidden="true"
-                                    />
-                                </button>
+                                    <GripVertical class="size-5" />
+                                </div>
                             </div>
 
                             <div class="min-w-0 pt-1">
@@ -752,10 +806,48 @@
                                         v-if="stepError(index)"
                                         :id="`step-${stepIds[index]}-error`"
                                         data-field-error
-                                        class="min-w-0 py-2 text-sm font-medium text-danger"
+                                        class="min-w-0 basis-full py-2 text-sm font-medium text-danger"
                                     >
                                         {{ stepError(index) }}
                                     </p>
+                                    <div
+                                        v-if="form.steps.length > 1"
+                                        data-step-reorder
+                                        class="flex items-center gap-1.5"
+                                    >
+                                        <button
+                                            :id="`step-${stepIds[index]}-move-up`"
+                                            type="button"
+                                            data-move-up
+                                            :class="reorderButtonClass"
+                                            :aria-label="`Schritt ${index + 1} nach oben verschieben`"
+                                            title="Nach oben verschieben"
+                                            :disabled="index === 0"
+                                            @click="moveStep(index, -1)"
+                                        >
+                                            <ChevronUp
+                                                class="size-5"
+                                                aria-hidden="true"
+                                            />
+                                        </button>
+                                        <button
+                                            :id="`step-${stepIds[index]}-move-down`"
+                                            type="button"
+                                            data-move-down
+                                            :class="reorderButtonClass"
+                                            :aria-label="`Schritt ${index + 1} nach unten verschieben`"
+                                            title="Nach unten verschieben"
+                                            :disabled="
+                                                index === form.steps.length - 1
+                                            "
+                                            @click="moveStep(index, 1)"
+                                        >
+                                            <ChevronDown
+                                                class="size-5"
+                                                aria-hidden="true"
+                                            />
+                                        </button>
+                                    </div>
                                     <Button
                                         v-if="form.steps.length > 1"
                                         variant="ghost"
@@ -1140,6 +1232,8 @@ import axios from 'axios';
 import {
     ArrowLeftRight,
     Check,
+    ChevronDown,
+    ChevronUp,
     CircleAlert,
     Clock,
     GripVertical,
@@ -1234,6 +1328,10 @@ const rowInputClass = `${fieldBase} px-3.5`;
 /** Symbol-Knöpfe einer Zutatenzeile (44 × 44 px) */
 const rowActionClass =
     'inline-flex size-11 shrink-0 items-center justify-center rounded-pebble border-[1.5px] border-line bg-surface text-primary transition-[background-color,border-color,border-radius] duration-200 hover:border-primary hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60';
+
+/** F-38: Nach-oben/Nach-unten-Knöpfe (44 × 44 px, am Rand deaktiviert) */
+const reorderButtonClass =
+    'inline-flex size-11 shrink-0 items-center justify-center rounded-pebble border-[1.5px] border-line bg-surface text-primary transition-[background-color,border-color] duration-200 hover:border-primary hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-ink-muted disabled:opacity-50';
 
 /** Schritt-Ziffern in wechselnden Blob-Formen (wie auf der Detailseite) */
 const stepShape = (index: number) =>
@@ -1679,19 +1777,106 @@ const removeIngredient = (index: number) => {
     discardRowErrors('ingredients');
 };
 
+// F-38: aktive Option der offenen Vorschlagsliste (-1 = keine)
+const activeOptionIndex = ref(-1);
+
 // Dropdown öffnen
 const openIngredientDropdown = (index: number) => {
+    if (ingredientDropdownOpenIndex.value !== index)
+        activeOptionIndex.value = -1;
     ingredientDropdownOpenIndex.value = index;
 };
 
 const onIngredientNameInput = (index: number) => {
     delete ingredientCreateErrors.value[ingredientIds.value[index]];
     openIngredientDropdown(index);
+    activeOptionIndex.value = -1;
 };
 
 // Dropdown schließen
 const closeIngredientDropdown = () => {
     ingredientDropdownOpenIndex.value = null;
+    activeOptionIndex.value = -1;
+};
+
+const isIngredientListOpen = (index: number) =>
+    ingredientDropdownOpenIndex.value === index &&
+    getIngredientOptions(index).length > 0;
+
+const optionId = (index: number, optionIndex: number) =>
+    `ingredient-${ingredientIds.value[index]}-option-${optionIndex}`;
+
+/** Combobox-Attribute des Bezeichnungsfelds (ARIA 1.2, Liste mit Vorschlägen). */
+const comboboxAttrs = (index: number) => {
+    const open = isIngredientListOpen(index);
+    return {
+        role: 'combobox',
+        'aria-autocomplete': 'list' as const,
+        'aria-expanded': open ? ('true' as const) : ('false' as const),
+        'aria-controls': open
+            ? `ingredient-${ingredientIds.value[index]}-listbox`
+            : undefined,
+        'aria-activedescendant':
+            open && activeOptionIndex.value >= 0
+                ? optionId(index, activeOptionIndex.value)
+                : undefined,
+    };
+};
+
+const setActiveOption = async (index: number, optionIndex: number) => {
+    activeOptionIndex.value = optionIndex;
+    await nextTick();
+    document
+        .getElementById(optionId(index, optionIndex))
+        ?.scrollIntoView({ block: 'nearest' });
+};
+
+/**
+ * Tastatur im Bezeichnungsfeld: Pfeil runter/hoch öffnet die Liste bzw. wählt
+ * die nächste/vorige Option, Enter übernimmt die aktive Option, Escape
+ * schließt. Ohne aktive Option bleibt Enter beim Standard (Formular absenden).
+ */
+const onIngredientNameKeydown = (index: number, event: KeyboardEvent) => {
+    const options = getIngredientOptions(index);
+    const open = isIngredientListOpen(index);
+    switch (event.key) {
+        case 'ArrowDown':
+        case 'ArrowUp': {
+            if (event.altKey) {
+                event.preventDefault();
+                if (event.key === 'ArrowDown') openIngredientDropdown(index);
+                else closeIngredientDropdown();
+                return;
+            }
+            if (!options.length) return;
+            event.preventDefault();
+            if (!open) openIngredientDropdown(index);
+            const last = options.length - 1;
+            const current = open ? activeOptionIndex.value : -1;
+            const next =
+                event.key === 'ArrowDown'
+                    ? current >= last
+                        ? 0
+                        : current + 1
+                    : current <= 0
+                      ? last
+                      : current - 1;
+            void setActiveOption(index, next);
+            return;
+        }
+        case 'Enter': {
+            const option = options[activeOptionIndex.value];
+            if (open && option) {
+                event.preventDefault();
+                selectIngredient(index, option.name);
+            }
+            return;
+        }
+        case 'Escape':
+            if (open) event.preventDefault();
+            closeIngredientDropdown();
+            return;
+    }
 };
 
 // Vorschlagsliste für eine bestimmte Zeile
@@ -1728,6 +1913,86 @@ const removeStep = (index: number) => {
     discardRowErrors('steps');
 };
 
+// ---------------------------------------------------------------------------
+// F-38: Umsortieren per Tastatur (Nach-oben/Nach-unten-Knöpfe je Zeile)
+//
+// Nach dem Verschieben bleibt der Fokus auf dem gleichen Knopf der
+// verschobenen Zeile; ist dieser am Rand deaktiviert, wandert er auf den
+// Knopf der Gegenrichtung. Eine Live-Region sagt die neue Position an.
+// ---------------------------------------------------------------------------
+const reorderAnnouncement = ref('');
+
+const announceMove = async (
+    label: 'Schritt' | 'Zutat',
+    from: number,
+    to: number,
+) => {
+    // erst leeren, damit gleiche Ansagen nacheinander wiederholt werden
+    reorderAnnouncement.value = '';
+    await nextTick();
+    reorderAnnouncement.value = `${label} ${from + 1} ist jetzt ${label} ${to + 1}`;
+};
+
+const moveRow = async (options: {
+    label: 'Schritt' | 'Zutat';
+    prefix: 'step' | 'ingredient';
+    rows: unknown[];
+    ids: number[];
+    index: number;
+    direction: -1 | 1;
+}) => {
+    const { rows, ids, index, direction } = options;
+    const to = index + direction;
+    if (to < 0 || to >= rows.length) return;
+
+    const [row] = rows.splice(index, 1);
+    rows.splice(to, 0, row);
+    const [rowId] = ids.splice(index, 1);
+    ids.splice(to, 0, rowId);
+
+    await nextTick();
+    const atEdge = to === 0 || to === rows.length - 1;
+    const same = direction === -1 ? 'up' : 'down';
+    const opposite = direction === -1 ? 'down' : 'up';
+    const sameButton = document.getElementById(
+        `${options.prefix}-${rowId}-move-${same}`,
+    ) as HTMLButtonElement | null;
+    const target =
+        sameButton && !sameButton.disabled && !atEdge
+            ? sameButton
+            : document.getElementById(
+                  `${options.prefix}-${rowId}-move-${opposite}`,
+              );
+    target?.focus();
+    void announceMove(options.label, index, to);
+};
+
+const moveStep = (index: number, direction: -1 | 1) => {
+    discardRowErrors('steps');
+    void moveRow({
+        label: 'Schritt',
+        prefix: 'step',
+        rows: form.steps,
+        ids: stepIds.value,
+        index,
+        direction,
+    });
+};
+
+const moveIngredient = (index: number, direction: -1 | 1) => {
+    // offenes Autocomplete zeigt sonst auf die falsche Zeile
+    closeIngredientDropdown();
+    discardRowErrors('ingredients');
+    void moveRow({
+        label: 'Zutat',
+        prefix: 'ingredient',
+        rows: form.ingredients,
+        ids: ingredientIds.value,
+        index,
+        direction,
+    });
+};
+
 // Verschieben per Pointer-Events statt HTML5-Drag-and-drop,
 // damit es auch auf Touchscreens (primäre Nutzung!) funktioniert.
 // Liefert einen pointerdown-Handler für den Drag-Griff einer Zeile.
@@ -1737,8 +2002,9 @@ const createRowDragHandler = (options: {
     dragged: { value: number | null };
     move: (from: number, to: number) => void;
     onStart?: () => void;
-    // nach dem Loslassen; `moved` = Reihenfolge hat sich geändert
-    onEnd?: (moved: boolean) => void;
+    // nach dem Loslassen; `moved` = Reihenfolge hat sich geändert,
+    // `from`/`to` = Position beim Greifen bzw. Loslassen
+    onEnd?: (moved: boolean, from: number, to: number) => void;
 }) => {
     return (index: number, event: PointerEvent) => {
         // verhindert Scrollen/Textauswahl während des Ziehens
@@ -1782,11 +2048,12 @@ const createRowDragHandler = (options: {
         };
 
         const stop = () => {
+            const to = options.dragged.value ?? index;
             options.dragged.value = null;
             window.removeEventListener('pointermove', onMove);
             window.removeEventListener('pointerup', stop);
             window.removeEventListener('pointercancel', stop);
-            options.onEnd?.(moved);
+            options.onEnd?.(moved, index, to);
         };
 
         window.addEventListener('pointermove', onMove);
@@ -1808,8 +2075,10 @@ const startStepDrag = createRowDragHandler({
     },
     // Fehler erst nach dem Loslassen verwerfen: Während des Ziehens bleiben
     // sie über die Zeilen-ID korrekt zugeordnet, und das Layout springt nicht
-    onEnd: (moved) => {
-        if (moved) discardRowErrors('steps');
+    onEnd: (moved, from, to) => {
+        if (!moved) return;
+        discardRowErrors('steps');
+        if (from !== to) announceMove('Schritt', from, to);
     },
 });
 
@@ -1824,8 +2093,10 @@ const startIngredientDrag = createRowDragHandler({
         const [id] = ingredientIds.value.splice(from, 1);
         ingredientIds.value.splice(to, 0, id);
     },
-    onEnd: (moved) => {
-        if (moved) discardRowErrors('ingredients');
+    onEnd: (moved, from, to) => {
+        if (!moved) return;
+        discardRowErrors('ingredients');
+        if (from !== to) announceMove('Zutat', from, to);
     },
     // offenes Autocomplete-Dropdown schließen, sonst zeigt es
     // nach dem Umsortieren auf die falsche Zeile
