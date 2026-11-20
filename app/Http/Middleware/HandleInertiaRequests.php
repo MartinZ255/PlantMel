@@ -64,7 +64,12 @@ class HandleInertiaRequests extends Middleware
                         'is_host' => (bool) $request->user()->is_host,
                     ]
                     : null,
-                'collections' => $request->user()
+                // F-23 (Gate D2): Gebraucht auf jeder Seite mit Kopfzeile
+                // (Menue "Sammlungen" in AppHeader/MobileMenu ueber
+                // useAppNavigation) und auf Home; deshalb weiter geteilt, aber
+                // lazy: Partial Reloads ohne `auth` (z. B. Blaettern und Filtern
+                // in recipes/Index.vue) sparen die Abfrage. Gaeste: keine Abfrage.
+                'collections' => fn () => $request->user()
                     ? $request->user()
                         ->collections()
                         ->orderByDesc('updated_at')
