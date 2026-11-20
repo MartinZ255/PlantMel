@@ -120,6 +120,17 @@
                             }}
                         </button>
 
+                        <button
+                            type="button"
+                            data-collection-edit
+                            class="inline-flex min-h-11 items-center justify-center gap-2 pebble-morph border-[1.5px] border-on-forest-muted px-5 text-base font-semibold text-on-forest hover:border-on-forest hover:bg-forest-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                            aria-haspopup="dialog"
+                            @click="openEdit"
+                        >
+                            <Pencil class="size-4" aria-hidden="true" />
+                            Bearbeiten
+                        </button>
+
                         <Button
                             variant="ghost"
                             class="text-danger-on-forest hover:bg-forest-soft active:bg-forest-deep"
@@ -264,6 +275,68 @@
             </ul>
         </section>
 
+        <!-- Name und Beschreibung bearbeiten (PATCH collections.update) -->
+        <Dialog
+            :open="isEditOpen"
+            title="Sammlung bearbeiten"
+            description="Name und Beschreibung ändern. Die Rezepte der Sammlung bleiben unverändert."
+            @close="closeEdit"
+        >
+            <form
+                id="collection-edit-form"
+                class="flex flex-col gap-5"
+                novalidate
+                @submit.prevent="submitEdit"
+            >
+                <Field
+                    id="collection-edit-name"
+                    label="Name der Sammlung"
+                    required
+                    :error="editForm.errors.name"
+                    v-slot="field"
+                >
+                    <TextInput
+                        v-model="editForm.name"
+                        v-bind="field.inputAttrs"
+                        type="text"
+                        maxlength="255"
+                        autocomplete="off"
+                    />
+                </Field>
+
+                <Field
+                    id="collection-edit-description"
+                    label="Beschreibung (optional)"
+                    :error="editForm.errors.description"
+                    v-slot="field"
+                >
+                    <Textarea
+                        v-model="editForm.description"
+                        v-bind="field.inputAttrs"
+                        :rows="3"
+                    />
+                </Field>
+            </form>
+
+            <template #footer>
+                <Button
+                    variant="ghost"
+                    :disabled="editForm.processing"
+                    @click="closeEdit"
+                >
+                    Abbrechen
+                </Button>
+                <Button
+                    type="submit"
+                    form="collection-edit-form"
+                    :loading="editForm.processing"
+                >
+                    <Check class="size-4" aria-hidden="true" />
+                    Speichern
+                </Button>
+            </template>
+        </Dialog>
+
         <!-- Löschen mit Rückfrage (Dialog statt confirm()) -->
         <Dialog
             :open="isDeleteOpen"
@@ -300,9 +373,12 @@ import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
 import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import Field from '@/components/ui/Field.vue';
 import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import TextInput from '@/components/ui/TextInput.vue';
+import Textarea from '@/components/ui/Textarea.vue';
 import WaveDivider from '@/components/ui/WaveDivider.vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import {
     ArrowLeft,
     BookmarkPlus,
@@ -311,6 +387,7 @@ import {
     Clock,
     Info,
     ListX,
+    Pencil,
     Trash2,
     X,
 } from 'lucide-vue-next';
@@ -439,6 +516,49 @@ const removeRecipe = (recipeId: number) => {
             },
         },
     );
+};
+
+// --- Name/Beschreibung bearbeiten (Dialog, Inertia-Form, Flash bei Erfolg) ----
+const isEditOpen = ref(false);
+const editForm = useForm({
+    name: props.collection.name,
+    description: props.collection.description ?? '',
+});
+
+const openEdit = () => {
+    // immer mit dem aktuellen Stand öffnen (z. B. nach vorigem Speichern)
+    editForm.defaults({
+        name: collection.value.name,
+        description: collection.value.description ?? '',
+    });
+    editForm.reset();
+    editForm.clearErrors();
+    isEditOpen.value = true;
+};
+
+const closeEdit = () => {
+    if (!editForm.processing) isEditOpen.value = false;
+};
+
+const submitEdit = () => {
+    if (editForm.processing) return;
+    editForm.patch(route('collections.update', collection.value.id), {
+        preserveScroll: true,
+        // Seite bleibt gemountet: Fokus kehrt an „Bearbeiten“ zurück
+        preserveState: true,
+        onSuccess: () => {
+            isEditOpen.value = false;
+        },
+        // Server-Fehler: Fokus auf das erste fehlerhafte Feld
+        onError: (errors) => {
+            const id = errors.name
+                ? 'collection-edit-name'
+                : errors.description
+                  ? 'collection-edit-description'
+                  : null;
+            if (id) document.getElementById(id)?.focus();
+        },
+    });
 };
 
 // --- Sammlung löschen: Rückfrage im Dialog (vorher window.confirm) -------------

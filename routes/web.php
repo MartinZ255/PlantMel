@@ -155,6 +155,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/collections/{collection}/recipes/{recipe}', [CollectionController::class, 'removeRecipe'])
         ->name('collections.removeRecipe');
 
+    Route::patch('/collections/{collection}', [CollectionController::class, 'update'])
+        ->name('collections.update');
+
     Route::delete('/collections/{collection}', [CollectionController::class, 'delete'])
         ->name('collections.delete');
 });

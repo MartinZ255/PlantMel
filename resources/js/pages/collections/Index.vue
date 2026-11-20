@@ -118,6 +118,8 @@ interface Collection {
     name: string;
     description?: string | null;
     recipeCount?: number;
+    /** bis zu 4 Bild-URLs enthaltener Rezepte (Collage der Kachel) */
+    images?: string[];
 }
 
 const props = defineProps<{
