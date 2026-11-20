@@ -5,6 +5,7 @@ namespace Tests\Feature\Pages;
 use App\Models\Collection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -87,6 +88,48 @@ class SharedInertiaPropsTest extends TestCase
                 ->where('auth.user', null)
                 ->where('auth.collections', [])
             );
+    }
+
+    public function test_auth_collections_are_shared_on_other_pages_for_the_header_menu(): void
+    {
+        // Gate D2: Das Kopfmenue "Sammlungen" (useAppNavigation) braucht die
+        // Liste auf jeder Seite mit Kopfzeile, nicht nur auf Home.
+        $user = $this->actingAsUser();
+        $collection = Collection::factory()->for($user)->create(['name' => 'Wochenplan']);
+
+        foreach ([route('recipes.index'), route('collections.index'), route('IngredientSearch')] as $url) {
+            $this->get($url)
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('auth.collections', [['id' => $collection->id, 'name' => 'Wochenplan']])
+                );
+        }
+    }
+
+    public function test_auth_collections_are_lazy_and_skipped_on_partial_reloads(): void
+    {
+        // Gate D2 (F-23): Partial Reloads ohne `auth` fragen keine Sammlungen ab.
+        $user = $this->actingAsUser();
+        Collection::factory()->for($user)->create();
+        $version = $this->get(route('recipes.index'))->viewData('page')['version'];
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $response = $this->get(route('recipes.index'), [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) $version,
+            'X-Inertia-Partial-Component' => 'recipes/Index',
+            'X-Inertia-Partial-Data' => 'recipes,pagination,filters',
+        ]);
+        $queries = array_column(DB::getQueryLog(), 'query');
+        DB::disableQueryLog();
+
+        $response->assertOk();
+        $this->assertArrayNotHasKey('auth', $response->json('props'));
+        $this->assertSame([], array_values(array_filter(
+            $queries,
+            fn (string $q) => str_contains($q, 'from "collections"'),
+        )));
     }
 
     public function test_shared_prop_keys_are_exactly_known(): void

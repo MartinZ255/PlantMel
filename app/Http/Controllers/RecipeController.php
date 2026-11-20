@@ -9,6 +9,7 @@ use App\Models\IngredientAlternative;
 use Illuminate\Container\Attributes\Tag;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Recipe;
 use Inertia\Inertia;
 use App\Http\Controllers\Controller;
@@ -120,7 +121,10 @@ class RecipeController extends Controller
     }
 
 
-    public function index(Request $request): Response
+    /** Gate D2 (F-23): Rezepte je Seite in der öffentlichen Liste. */
+    public const INDEX_PER_PAGE = 24;
+
+    public function index(Request $request): Response|RedirectResponse
     {
         // F-22: Query-Parameter werden normalisiert statt validiert. Ungültige
         // Formen (z. B. ?search[]=a oder verschachtelte Arrays) werden still
@@ -141,12 +145,14 @@ class RecipeController extends Controller
         // E14: nur Geschmacks-Bewertungen laden
         $tasteDimensionId = TasteRating::dimensionId();
 
+        // F-23 (Gate D2): keine Zutaten mehr per Eager Loading – die Karten
+        // zeigen keine Zutaten (recipes/Index.vue, RecipeDetailCard.vue). Die
+        // Zutaten-Filter unten laufen weiter als Unterabfragen (whereHas).
         $query = Recipe::query()
             ->with([
                 'categories',
                 'ratings' => TasteRating::constrain($tasteDimensionId),
                 'images',
-                'recipeIngredients.ingredient',
             ]);
 
         // -------------------------------------------
@@ -202,8 +208,36 @@ class RecipeController extends Controller
             }
         }
 
-        $recipes = $query
-            ->get()
+        // -------------------------------------------
+        // F-23 (Gate D2): serverseitige Pagination
+        // -------------------------------------------
+        // Ungültige Werte (keine positive Ganzzahl, Array, Überlauf) => Seite 1,
+        // wie Laravels Standard. Eine Seite hinter der letzten wird auf die
+        // letzte umgeleitet (302, Filter bleiben erhalten): Lesezeichen und
+        // geteilte Links zeigen nach Löschungen weiter Rezepte statt einer
+        // leeren Seite. Die Gesamtzahl wird vorab gezählt, damit für zu hohe
+        // Seiten kein riesiger OFFSET an die Datenbank geht.
+        $page = filter_var($request->query('page'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $page = $page === false ? 1 : $page;
+
+        $total = (clone $query)->toBase()->getCountForPagination();
+        $lastPage = max(1, (int) ceil($total / self::INDEX_PER_PAGE));
+
+        if ($page > $lastPage) {
+            if ($total > 0) {
+                return redirect()->to($request->fullUrlWithQuery(['page' => $lastPage]));
+            }
+            $page = 1;
+        }
+
+        // stabile Reihenfolge über Seiten hinweg (bisher implizit Einfügereihenfolge)
+        $paginator = $query
+            ->orderBy('recipes.id')
+            ->paginate(self::INDEX_PER_PAGE, ['recipes.*'], 'page', $page, $total)
+            ->withQueryString();
+
+        $recipes = $paginator
+            ->getCollection()
             ->map(function (Recipe $recipe) use ($tasteDimensionId) {
                 $firstImage = $recipe->images->first();
                 $imageUrl = $firstImage?->image_path
@@ -227,13 +261,16 @@ class RecipeController extends Controller
 
                     'image' => $imageUrl,
                 ];
-            });
+            })
+            ->values();
 
-        // Tags-Liste (für Filter oben)
-        $allTags = Category::orderBy('name')->pluck('name')->all();
+        // Tags-Liste (für Filter oben). Gate D2: beide Tag-Props lazy – sie
+        // hängen weder von Seite noch Filter ab, Partial Reloads beim Blättern
+        // und Filtern (recipes/Index.vue) fragen sie deshalb nicht erneut ab.
+        $allTags = fn () => Category::orderBy('name')->pluck('name')->all();
 
         // Tag-Statistiken (Anzahl Rezepte pro Kategorie)
-        $tagStats = Category::withCount('recipes')
+        $tagStats = fn () => Category::withCount('recipes')
             ->get()
             ->map(fn (Category $cat) => [
                 'key'   => $cat->slug ?? $cat->name,
@@ -242,7 +279,9 @@ class RecipeController extends Controller
             ]);
 
         return Inertia::render('recipes/Index', [
-            'recipes'  => $recipes,
+            // Gate D2: nur die Rezepte der aktuellen Seite (Form wie bisher)
+            'recipes'    => $recipes,
+            'pagination' => $this->paginationProps($paginator),
             'tags'     => $allTags,
             'tagStats' => $tagStats,
             'filters'  => [
@@ -271,6 +310,51 @@ class RecipeController extends Controller
         $strings = array_filter($value, 'is_string');
 
         return array_values(array_filter(array_map('trim', $strings)));
+    }
+
+    /**
+     * Props für die Seitennavigation (components/ui/Pagination.vue). Alle
+     * URLs kommen aus dem Paginator (`withQueryString`) und enthalten damit
+     * sämtliche Filter. `pages`: erste, letzte und die Nachbarn der aktuellen
+     * Seite; größere Lücken als `page: null` (…), eine Lücke von genau einer
+     * Seite wird stattdessen als diese Seite gezeigt.
+     *
+     * @return array{currentPage: int, lastPage: int, perPage: int, total: int, from: int|null, to: int|null, prevUrl: string|null, nextUrl: string|null, pages: list<array{page: int|null, url: string|null, current: bool}>}
+     */
+    private function paginationProps(LengthAwarePaginator $paginator): array
+    {
+        $current = $paginator->currentPage();
+        $last = $paginator->lastPage();
+
+        $numbers = array_values(array_unique(array_filter(
+            [1, $current - 1, $current, $current + 1, $last],
+            fn (int $n) => $n >= 1 && $n <= $last,
+        )));
+        sort($numbers);
+
+        $pages = [];
+        $previous = 0;
+        foreach ($numbers as $n) {
+            if ($n - $previous === 2) {
+                $pages[] = ['page' => $n - 1, 'url' => $paginator->url($n - 1), 'current' => false];
+            } elseif ($n - $previous > 2) {
+                $pages[] = ['page' => null, 'url' => null, 'current' => false];
+            }
+            $pages[] = ['page' => $n, 'url' => $paginator->url($n), 'current' => $n === $current];
+            $previous = $n;
+        }
+
+        return [
+            'currentPage' => $current,
+            'lastPage'    => $last,
+            'perPage'     => $paginator->perPage(),
+            'total'       => $paginator->total(),
+            'from'        => $paginator->firstItem(),
+            'to'          => $paginator->lastItem(),
+            'prevUrl'     => $paginator->previousPageUrl(),
+            'nextUrl'     => $paginator->nextPageUrl(),
+            'pages'       => $pages,
+        ];
     }
 
     /**
@@ -313,27 +397,8 @@ class RecipeController extends Controller
         return $value === null ? null : (int) $value;
     }
 
-    /**
-     * Hinweis: Keine Route zeigt auf diese Methode – `recipes.create` ist eine
-     * Closure in routes/web.php. Sie wird nur konsistent gehalten (F-12).
-     */
-    public function create()
-    {
-        // E14: nur die Geschmacks-Dimension (0 oder 1 Eintrag)
-        $ratingDimensions = TasteRating::dimensionsForForm();
-
-        $categories = Category::orderBy('name')
-            ->get(['id', 'name']);
-
-        $ingredients = Ingredient::orderBy('name')
-            ->get(['id', 'name']);
-
-        return Inertia::render('recipes/Create', [
-            'ratingDimensions' => $ratingDimensions,
-            'categories' => $categories,
-            'ingredients' => $ingredients,
-        ]);
-    }
+    // Gate D2: tote Methode create() entfernt – keine Route zeigte darauf,
+    // `recipes.create` ist eine Closure in routes/web.php.
 
     public function store(Request $request)
     {

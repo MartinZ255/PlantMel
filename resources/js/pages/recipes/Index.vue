@@ -48,22 +48,22 @@
             class="mx-auto w-full max-w-(--content-max) px-4 pt-4 pb-16 sm:px-6 lg:px-8"
         >
             <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
+                <!-- Gate D2: Ziel von Fokus und Scroll nach einem Seitenwechsel -->
                 <h2
                     id="recipe-results-title"
-                    class="font-display-wonk text-3xl font-semibold text-ink sm:text-4xl"
+                    ref="resultsHeading"
+                    tabindex="-1"
+                    class="font-display-wonk text-3xl font-semibold text-ink focus:outline-none sm:text-4xl"
                 >
                     {{ hasActiveFilters ? 'Suchergebnisse' : 'Alle Rezepte' }}
                 </h2>
-                <!-- F-44: Trefferzahl als Live-Region -->
+                <!-- F-44: Trefferzahl als Live-Region; Gate D2: Gesamtzahl über alle Seiten -->
                 <p
                     class="rounded-seed bg-tint px-3.5 py-1 text-sm font-semibold text-primary"
                     role="status"
+                    data-result-count
                 >
-                    {{
-                        recipeCards.length === 1
-                            ? '1 Ergebnis'
-                            : `${recipeCards.length} Ergebnisse`
-                    }}
+                    {{ resultText }}
                 </p>
             </div>
 
@@ -106,6 +106,15 @@
                     <RecipeDetailCard :recipe="card" :shape="(i % 6) + 1" />
                 </Reveal>
             </ul>
+
+            <!-- Gate D2 (F-23): Seitennavigation; die Filter stecken in den URLs -->
+            <Pagination
+                v-if="recipeCards.length > 0"
+                class="mt-16"
+                :pagination="props.pagination"
+                :only="LIST_PROPS"
+                @navigate="focusResults"
+            />
         </section>
     </AppLayout>
 </template>
@@ -119,10 +128,13 @@ import Button from '@/components/ui/Button.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
+import Pagination, {
+    type PaginationData,
+} from '@/components/ui/Pagination.vue';
 import Reveal from '@/components/ui/Reveal.vue';
 import { router } from '@inertiajs/vue3';
 import { Plus, SearchX } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { route } from 'ziggy-js';
 
 interface Recipes {
@@ -153,10 +165,22 @@ const props = withDefaults(
         tags?: string[];
         tagStats?: TagStat[];
         filters?: Filters;
+        pagination?: PaginationData;
         isHost: boolean;
     }>(),
     {
         recipes: () => [],
+        pagination: () => ({
+            currentPage: 1,
+            lastPage: 1,
+            perPage: 24,
+            total: 0,
+            from: null,
+            to: null,
+            prevUrl: null,
+            nextUrl: null,
+            pages: [],
+        }),
         tags: () => [],
         tagStats: () => [],
         filters: () => ({
@@ -172,6 +196,38 @@ const tags = computed(() => props.tags);
 const tagStats = computed(() => props.tagStats);
 
 const searchArea = ref<{ reset: () => void } | null>(null);
+const resultsHeading = ref<HTMLElement | null>(null);
+
+/*
+ * Gate D2: Blättern und Filtern laden nur die Listen-Props neu (Partial
+ * Reload). `tags`/`tagStats` hängen weder von Seite noch Filter ab; die
+ * geteilten Props (u. a. `auth.collections` für das Kopfmenü) bleiben aus dem
+ * vorigen Aufruf stehen. Das spart je Wechsel drei Abfragen.
+ */
+const LIST_PROPS = ['recipes', 'pagination', 'filters'];
+
+const resultText = computed(() => {
+    const { total, currentPage, lastPage } = props.pagination;
+    const count = total === 1 ? '1 Ergebnis' : `${total} Ergebnisse`;
+    return lastPage > 1
+        ? `${count} · Seite ${currentPage} von ${lastPage}`
+        : count;
+});
+
+/** Nach dem Blättern: Fokus und Sichtbereich an den Listenanfang. */
+const focusResults = async () => {
+    await nextTick();
+    const heading = resultsHeading.value;
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    const reduce = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+    ).matches;
+    heading.scrollIntoView({
+        block: 'start',
+        behavior: reduce ? 'auto' : 'smooth',
+    });
+};
 
 const hasActiveFilters = computed(() => {
     const f = props.filters ?? {};
@@ -221,10 +277,12 @@ const onUpdateFilters = (payload: FilterPayload) => {
         params.tags = payload.tags;
     }
 
+    // ohne `page`: jede Filteränderung beginnt wieder auf Seite 1 (Gate D2)
     router.get(route('recipes.index'), params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
+        only: LIST_PROPS,
     });
 };
 </script>

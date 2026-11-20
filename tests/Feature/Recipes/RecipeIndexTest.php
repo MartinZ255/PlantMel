@@ -70,9 +70,25 @@ class RecipeIndexTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('recipes/Index')
             ->has('recipes', 3)
+            // strikt: genau diese Schlüssel (keine Zutaten, Gate D2)
             ->has('recipes.0', fn (Assert $recipe) => $recipe
                 ->hasAll(['id', 'name', 'rating', 'tags', 'time', 'image'])
             )
+            ->where('recipes.0.name', 'Linsen-Bolognese') // Reihenfolge nach id
+            // Gate D2 (F-23): Seitendaten; eine Seite => keine Links
+            ->where('pagination', [
+                'currentPage' => 1,
+                'lastPage' => 1,
+                'perPage' => 24,
+                'total' => 3,
+                'from' => 1,
+                'to' => 3,
+                'prevUrl' => null,
+                'nextUrl' => null,
+                'pages' => [
+                    ['page' => 1, 'url' => 'http://localhost/rezepte?page=1', 'current' => true],
+                ],
+            ])
             ->where('tags', ['Dessert', 'Schnell', 'Vegan']) // alphabetisch
             ->has('tagStats', 3)
             ->has('tagStats.0', fn (Assert $stat) => $stat->hasAll(['key', 'label', 'count']))
