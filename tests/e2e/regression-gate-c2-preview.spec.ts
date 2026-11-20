@@ -130,6 +130,11 @@ test.describe('Gate C2 – Gesamtvorschau', () => {
                             await settle(page);
                             await loadLazyImages(page);
                             if (shot.prepare) await shot.prepare(page);
+                            // Ganzseitenbild: fixierte/klebende Elemente (Kopfzeile,
+                            // Skip-Link) zeichnet Chromium an der aktuellen Scroll-
+                            // position - deshalb vor der Aufnahme nach oben.
+                            await page.evaluate(() => window.scrollTo(0, 0));
+                            await page.waitForTimeout(200);
                             await page.screenshot({
                                 path: out(`${shot.name}-${vp.label}`),
                                 fullPage: true,
