@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SettingsShell from '@/components/auth/SettingsShell.vue';
+import SettingsShell from '@/components/settings/SettingsShell.vue';
 import Badge from '@/components/ui/Badge.vue';
 import { getInitials } from '@/composables/useInitials';
 import type { AppPageProps } from '@/types';

@@ -120,6 +120,32 @@ test.describe('E14 – Geschmacks-Bewertung auf der Rezeptdetailseite', () => {
         });
     }
 
+    test('Rezeptliste: Karten ohne Geschmacks-Bewertung zeigen einheitlich „Noch nicht bewertet“', async ({
+        page,
+    }) => {
+        // Gate C2 Integration: StarRating nutzt denselben Text wie die Detailseite
+        await page.goto('/rezepte');
+        await settle(page);
+        const card = (title: string) =>
+            page.getByRole('article').filter({
+                has: page.getByRole('heading', { name: title, exact: true }),
+            });
+        for (const recipe of [ONLY_OTHER_DIMENSION, NO_RATINGS]) {
+            await expect(card(recipe.title)).toHaveCount(1);
+            await expect(card(recipe.title)).toContainText(
+                'Noch nicht bewertet',
+            );
+            await expect(card(recipe.title)).not.toContainText(/von 5/);
+        }
+        await expect(card(RATED.title)).toContainText('5');
+        await expect(card(RATED.title)).not.toContainText(
+            'Noch nicht bewertet',
+        );
+        await expect(page.locator('#app')).not.toContainText(
+            'Noch keine Bewertung',
+        );
+    });
+
     test('320 px: Bewertungsabschnitt ohne horizontalen Ueberlauf', async ({
         page,
     }) => {

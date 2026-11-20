@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SettingsShell from '@/components/auth/SettingsShell.vue';
+import SettingsShell from '@/components/settings/SettingsShell.vue';
 import Button from '@/components/ui/Button.vue';
 import Dialog from '@/components/ui/Dialog.vue';
 import Field from '@/components/ui/Field.vue';

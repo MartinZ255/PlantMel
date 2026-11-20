@@ -27,18 +27,13 @@ export interface MainNavItem {
 }
 
 export function useAppNavigation(currentPath: Ref<string>) {
-    const page =
-        usePage<AppPageProps<{ isHost?: boolean; canRegister?: boolean }>>();
+    const page = usePage<AppPageProps<{ canRegister?: boolean }>>();
 
     const user = computed(() => page.props.auth?.user ?? null);
     const collections = computed(() => page.props.auth?.collections ?? []);
     const canRegister = computed(() => page.props.canRegister ?? true);
-    /**
-     * „Rezept erstellen“ für Hosts. Der Server teilt `is_host` nicht global
-     * (nur die Rezeptseiten liefern `isHost`); auf anderen Seiten erscheint
-     * die Aktion deshalb nicht (offener Punkt für Schritt 2).
-     */
-    const isHost = computed(() => page.props.isHost === true);
+    // Gate C2: Host-Status kommt global aus `auth.user.is_host`, siehe
+    // `components/layout/useIsHost.ts` (nicht mehr aus der Seiten-Prop).
 
     // F-21: Gäste landen auf der öffentlichen Startseite
     const startHref = computed(() =>
@@ -103,7 +98,6 @@ export function useAppNavigation(currentPath: Ref<string>) {
     return {
         user,
         canRegister,
-        isHost,
         startHref,
         startCurrent,
         items,

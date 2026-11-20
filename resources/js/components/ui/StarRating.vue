@@ -7,7 +7,7 @@ import { computed, ref, useId } from 'vue';
  *
  * Anzeige (Standard): Sterne sind Grafik (`aria-hidden`), daneben steht der
  * Wert als Text „4,5 von 5“ (bzw. kompakt „4,5“ plus „von 5“ nur für
- * Screenreader). Ohne Wert: „Noch keine Bewertung“. Bewertung hängt nie
+ * Screenreader). Ohne Wert: „Noch nicht bewertet“ (wie auf der Detailseite). Bewertung hängt nie
  * nur an der Farbe.
  *
  * Eingabe (`input`): native Radiogroup – Pfeiltasten wählen den Wert,
@@ -119,7 +119,7 @@ const stars = computed(() => Array.from({ length: props.max }, (_, i) => i + 1))
                     ({{ countText }})</span
                 >
             </template>
-            <template v-else>Noch keine Bewertung</template>
+            <template v-else>Noch nicht bewertet</template>
         </span>
     </span>
 
