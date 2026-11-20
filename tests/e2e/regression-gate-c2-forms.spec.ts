@@ -327,7 +327,10 @@ test.describe('Gate C2 – Rezeptformular: Bedienung', () => {
         await page.goto(CREATE);
         await settle(page);
         const group = page.getByRole('group', { name: 'Kategorien' });
-        const chip = group.getByRole('button', { name: 'Dessert' });
+        const chip = group.getByRole('button', {
+            name: 'Dessert',
+            exact: true,
+        });
         await expect(chip).toHaveAttribute('aria-pressed', 'false');
         await chip.click();
         await expect(chip).toHaveAttribute('aria-pressed', 'true');
