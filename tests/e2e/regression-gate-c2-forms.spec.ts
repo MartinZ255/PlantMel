@@ -156,7 +156,8 @@ test.describe('Gate C2 – Rezeptformular: Bedienung', () => {
             page.waitForRequest(isRecipeSubmit),
             page.getByRole('button', { name: 'Rezept speichern' }).click(),
         ]);
-        expect(bodies).toHaveLength(1);
+        // der Route-Handler laeuft nach dem request-Ereignis: auf ihn warten
+        await expect.poll(() => bodies.length).toBe(1);
         const body = bodies[0];
         expect(body).toContain('name="steps[0]"');
         expect(body).not.toContain('name="steps[1]"');
@@ -256,6 +257,7 @@ test.describe('Gate C2 – Rezeptformular: Bedienung', () => {
             page.waitForRequest(isRecipeSubmit),
             page.getByRole('button', { name: 'Rezept speichern' }).click(),
         ]);
+        await expect.poll(() => bodies.length).toBe(1);
         expect(bodies[0]).toMatch(
             new RegExp(`name="ratings\\[${dimId}\\]"\\r?\\n\\r?\\n3\\r?\\n`),
         );
@@ -274,6 +276,7 @@ test.describe('Gate C2 – Rezeptformular: Bedienung', () => {
             page.waitForRequest(isRecipeSubmit),
             page.getByRole('button', { name: 'Rezept speichern' }).click(),
         ]);
+        await expect.poll(() => bodies.length).toBe(2);
         expect(bodies[1]).toMatch(
             new RegExp(`name="ratings\\[${dimId}\\]"\\r?\\n\\r?\\n\\r?\\n`),
         );
