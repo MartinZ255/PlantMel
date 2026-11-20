@@ -2,8 +2,8 @@
     <!--
         Gate C2: Sammlung als organische Kachel. Oben eine Komposition in der
         Farbe der Kachel (wechselnde Töne, Blob-Formen, großer Anfangsbuchstabe);
-        liefert der Server Rezeptbilder (`images`, derzeit nicht im Vertrag),
-        werden bis zu drei davon als Collage gezeigt. Der Titel-Link deckt die
+        liefert der Server Rezeptbilder (`images`, CollectionController@index),
+        werden bis zu vier davon als Collage gezeigt (dekorativ, alt=""). Der Titel-Link deckt die
         ganze Kachel ab (Tastatur, Screenreader, Klick überall).
     -->
     <article class="group relative isolate flex h-full min-w-0 flex-col gap-4">
@@ -21,25 +21,26 @@
                 :class="[shapeClass(shape), tone.base]"
             >
                 <div
+                    data-collage
                     class="grid size-full gap-1"
-                    :class="images.length > 1 ? 'grid-cols-[1.4fr_1fr]' : ''"
+                    :class="collageGridClass"
                 >
                     <img
                         :src="images[0]"
                         alt=""
                         loading="lazy"
                         decoding="async"
-                        class="size-full object-cover"
-                        :class="images.length > 2 ? 'row-span-2' : ''"
+                        class="size-full min-h-0 object-cover"
+                        :class="images.length === 3 ? 'row-span-2' : ''"
                     />
                     <img
-                        v-for="src in images.slice(1, 3)"
-                        :key="src"
+                        v-for="(src, i) in images.slice(1)"
+                        :key="`${i}-${src}`"
                         :src="src"
                         alt=""
                         loading="lazy"
                         decoding="async"
-                        class="size-full object-cover"
+                        class="size-full min-h-0 object-cover"
                     />
                 </div>
             </div>
@@ -205,8 +206,22 @@ const initial = computed(
 );
 
 const images = computed(() =>
-    (props.collection.images ?? []).filter(Boolean).slice(0, 3),
+    (props.collection.images ?? []).filter(Boolean).slice(0, 4),
 );
+
+/** 1 Bild: voll; 2: nebeneinander; 3: groß links + zwei rechts; 4: 2 × 2 */
+const collageGridClass = computed(() => {
+    switch (images.value.length) {
+        case 1:
+            return '';
+        case 2:
+            return 'grid-cols-[1.4fr_1fr]';
+        case 3:
+            return 'grid-cols-[1.4fr_1fr] grid-rows-2';
+        default:
+            return 'grid-cols-2 grid-rows-2';
+    }
+});
 
 const countText = computed(() => {
     const n = props.collection.recipeCount ?? 0;

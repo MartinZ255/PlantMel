@@ -299,21 +299,52 @@
                                 Optional – wird z. B. für die Vorschaukarte oder
                                 Detailseite verwendet.
                             </p>
-                            <input
-                                id="image"
-                                ref="imageInput"
-                                type="file"
-                                accept="image/*"
-                                class="mt-2 block w-full min-w-0 cursor-pointer rounded-[1.1rem_0.9rem_1.2rem_1rem] border-[1.5px] border-dashed border-line-strong bg-surface p-2 text-base text-ink-muted file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-pebble file:border-0 file:bg-primary file:px-5 file:font-semibold file:text-on-primary hover:border-primary hover:file:bg-primary-hover focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus aria-[invalid=true]:border-danger"
-                                v-bind="
-                                    invalidAttrs(
-                                        'image',
-                                        'image-error',
-                                        'image-hint',
-                                    )
-                                "
-                                @change="onImageChange"
-                            />
+                            <!--
+                                Deutsche Beschriftung statt „Choose File“: der
+                                native Input bleibt fokussierbar und per Label
+                                verknüpft, ist aber visuell versteckt; der
+                                gestaltete Knopf ist aria-hidden, der
+                                Dateiname wird über aria-describedby
+                                angesagt.
+                            -->
+                            <div
+                                data-image-picker
+                                class="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-[1.1rem_0.9rem_1.2rem_1rem] border-[1.5px] border-dashed border-line-strong bg-surface p-2 hover:border-primary has-[:focus-visible]:border-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-0 has-[:focus-visible]:outline-focus has-[[aria-invalid=true]]:border-danger"
+                            >
+                                <input
+                                    id="image"
+                                    ref="imageInput"
+                                    type="file"
+                                    accept="image/*"
+                                    class="sr-only"
+                                    v-bind="
+                                        invalidAttrs(
+                                            'image',
+                                            'image-error',
+                                            'image-hint image-file-name',
+                                        )
+                                    "
+                                    @change="onImageChange"
+                                />
+                                <span
+                                    data-image-picker-button
+                                    class="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-pebble bg-primary px-5 font-semibold text-on-primary transition-colors hover:bg-primary-hover"
+                                    aria-hidden="true"
+                                    @click="imageInput?.click()"
+                                >
+                                    <ImagePlus class="size-5" />
+                                    Bild auswählen
+                                </span>
+                                <span
+                                    id="image-file-name"
+                                    data-image-file-name
+                                    class="min-w-0 text-base text-wrap-anywhere text-ink-muted"
+                                    >{{
+                                        imageFileName ??
+                                        'Keine Datei ausgewählt'
+                                    }}</span
+                                >
+                            </div>
                             <p
                                 v-if="errorFor('image')"
                                 id="image-error"
@@ -792,24 +823,45 @@
                     tone="plain"
                 >
                     <template #hint>
-                        Optional. Antippen wählt eine Kategorie aus; Doppelklick
-                        öffnet das Bearbeiten.
+                        Optional. Antippen wählt eine Kategorie aus; der Stift
+                        daneben öffnet das Bearbeiten (am Rechner auch per
+                        Doppelklick auf die Kategorie).
                     </template>
                     <div
                         class="flex flex-wrap gap-2.5"
                         role="group"
                         aria-labelledby="tags-label"
                     >
-                        <SeedToggle
+                        <!-- Umschalter + Bearbeiten-Knopf je Kategorie
+                             (Tastatur/Touch, WCAG 2.1.1 / 2.5.8) -->
+                        <span
                             v-for="category in categoryOptions"
                             :key="category.id"
-                            data-tag-chip
-                            :pressed="form.tags.includes(category.name)"
-                            @click="toggleTag(category.name)"
-                            @dblclick.stop="openTagEditModal(category)"
+                            class="inline-flex max-w-full min-w-0 items-center gap-1"
                         >
-                            {{ category.name }}
-                        </SeedToggle>
+                            <SeedToggle
+                                data-tag-chip
+                                :pressed="form.tags.includes(category.name)"
+                                @click="toggleTag(category.name)"
+                                @dblclick.stop="
+                                    openTagEditModal(category, $event)
+                                "
+                            >
+                                {{ category.name }}
+                            </SeedToggle>
+                            <button
+                                :ref="(el) => setTagEditButton(category.id, el)"
+                                type="button"
+                                data-tag-edit
+                                class="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-moss transition-colors hover:bg-tint hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                                aria-haspopup="dialog"
+                                :aria-label="`Kategorie „${category.name}“ bearbeiten`"
+                                :title="`Kategorie „${category.name}“ bearbeiten`"
+                                @click="openTagEditModal(category, $event)"
+                            >
+                                <Pencil class="size-4" aria-hidden="true" />
+                            </button>
+                        </span>
                     </div>
 
                     <div class="mt-6 flex max-w-xl min-w-0 flex-col gap-1.5">
@@ -1049,7 +1101,7 @@
             v-if="tagBeingEdited"
             :show="isTagModalOpen"
             :category="tagBeingEdited"
-            @close="isTagModalOpen = false"
+            @close="closeTagEditModal"
             @updated="onTagUpdated"
             @deleted="onTagDeleted"
         />
@@ -1790,6 +1842,8 @@ const focusButton = (button: ButtonInstance | null) => button?.$el?.focus();
 
 // F-56: Bildvorschau (neu gewählte Datei bzw. aktuelles Bild)
 const imageInput = ref<HTMLInputElement | null>(null);
+/** Name der gewählten Datei (deutsche Anzeige statt „No file chosen“) */
+const imageFileName = ref<string | null>(null);
 const previewUrl = ref<string | null>(null);
 const shownImage = computed(
     () => previewUrl.value ?? props.currentImage ?? null,
@@ -1806,10 +1860,12 @@ const onImageChange = (event: Event) => {
 
     if (!target.files || target.files.length === 0) {
         form.image = null;
+        imageFileName.value = null;
         return;
     }
 
     form.image = target.files[0];
+    imageFileName.value = target.files[0].name;
     previewUrl.value = URL.createObjectURL(target.files[0]);
 };
 
@@ -1905,6 +1961,7 @@ const resetForm = () => {
     stepIds.value = form.steps.map(() => nextRowId++);
     ingredientIds.value = form.ingredients.map(() => nextRowId++);
     clearPreview();
+    imageFileName.value = null;
     if (imageInput.value) imageInput.value.value = '';
 };
 
@@ -2028,9 +2085,40 @@ const onIngredientDeleted = (payload: { id: number; name: string }) => {
 };
 
 // Tag-Modal
-const openTagEditModal = (category: Category) => {
+/** Bearbeiten-Knöpfe je Kategorie-ID (Fokus-Rückgabe nach dem Dialog) */
+const tagEditButtons = new Map<number, HTMLElement>();
+const setTagEditButton = (id: number, el: unknown) => {
+    if (el instanceof HTMLElement) tagEditButtons.set(id, el);
+    else tagEditButtons.delete(id);
+};
+/** Auslöser des Tag-Dialogs (Stift-Knopf oder per Doppelklick der Umschalter) */
+let tagEditTrigger: HTMLElement | null = null;
+
+const openTagEditModal = (category: Category, event?: Event) => {
+    const target = event?.currentTarget;
+    tagEditTrigger =
+        target instanceof HTMLElement
+            ? target
+            : (tagEditButtons.get(category.id) ?? null);
     tagBeingEdited.value = category;
     isTagModalOpen.value = true;
+};
+
+const closeTagEditModal = async () => {
+    const category = tagBeingEdited.value;
+    isTagModalOpen.value = false;
+    await nextTick();
+    // Fokus zurück an den Auslöser; wurde die Kategorie gelöscht, auf das
+    // Feld „Neue Kategorie“ (der Auslöser existiert dann nicht mehr).
+    const fallback =
+        (category ? tagEditButtons.get(category.id) : undefined) ??
+        document.getElementById('tag-draft');
+    const target =
+        tagEditTrigger && tagEditTrigger.isConnected
+            ? tagEditTrigger
+            : fallback;
+    tagEditTrigger = null;
+    target?.focus();
 };
 
 const onTagUpdated = (payload: { oldName: string; category: Category }) => {

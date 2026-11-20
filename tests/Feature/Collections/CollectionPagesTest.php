@@ -45,12 +45,16 @@ class CollectionPagesTest extends TestCase
                     ->where('name', 'Neuere')
                     ->where('description', 'Beschreibung')
                     ->where('recipeCount', 3)
+                    // Collage: Rezepte ohne Bild liefern keine URLs
+                    ->where('images', [])
                 )
                 ->has('collections.1', fn (Assert $c) => $c
                     ->where('id', $older->id)
                     ->where('name', 'Ältere')
                     ->where('description', null)
                     ->where('recipeCount', 0)
+                    // Collage: Rezepte ohne Bild liefern keine URLs
+                    ->where('images', [])
                 )
             );
     }

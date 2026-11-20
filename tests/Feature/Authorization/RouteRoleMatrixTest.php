@@ -75,6 +75,7 @@ class RouteRoleMatrixTest extends TestCase
         'collections.show' => ['GET', 200],
         'collections.addRecipe' => ['POST', 302],
         'collections.removeRecipe' => ['DELETE', 302],
+        'collections.update' => ['PATCH', 302],
         'collections.delete' => ['DELETE', 302],
     ];
 
@@ -442,7 +443,7 @@ class RouteRoleMatrixTest extends TestCase
         $collection->recipes()->attach($recipe->id);
 
         $parameters = match ($name) {
-            'collections.show', 'collections.addRecipe', 'collections.delete' => ['collection' => $collection],
+            'collections.show', 'collections.addRecipe', 'collections.update', 'collections.delete' => ['collection' => $collection],
             'collections.removeRecipe' => ['collection' => $collection, 'recipe' => $recipe],
             default => [],
         };
@@ -456,7 +457,7 @@ class RouteRoleMatrixTest extends TestCase
     private function userPayload(string $name): array
     {
         return match ($name) {
-            'collections.store' => ['name' => 'Matrix-Sammlung'],
+            'collections.store', 'collections.update' => ['name' => 'Matrix-Sammlung'],
             'collections.addRecipe' => ['recipe_id' => Recipe::factory()->create()->id],
             default => [],
         };
