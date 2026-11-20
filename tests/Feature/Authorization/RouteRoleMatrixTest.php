@@ -5,7 +5,6 @@ namespace Tests\Feature\Authorization;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Ingredient;
-use App\Models\IngredientAlternative;
 use App\Models\Recipe;
 use App\Models\RecipeImport;
 use App\Models\User;
@@ -55,9 +54,6 @@ class RouteRoleMatrixTest extends TestCase
         'ingredients.store' => ['POST', 201],
         'ingredients.update' => ['PUT', 200],
         'ingredients.destroy' => ['DELETE', 200],
-        'ingredientAlternatives.index' => ['GET', 200],
-        'ingredientAlternatives.store' => ['POST', 201],
-        'ingredientAlternatives.destroy' => ['DELETE', 200],
     ];
 
     /**
@@ -395,7 +391,6 @@ class RouteRoleMatrixTest extends TestCase
         $recipe = Recipe::factory()->create();
         $ingredient = Ingredient::factory()->create(); // in keinem Rezept verwendet
         $category = Category::factory()->create();
-        $alternative = IngredientAlternative::factory()->create();
         $import = RecipeImport::factory()->done()->create(['user_id' => $owner->id]);
 
         $parameters = match ($name) {
@@ -403,8 +398,6 @@ class RouteRoleMatrixTest extends TestCase
             'recipes.edit', 'recipes.update', 'recipes.delete' => ['recipe' => $recipe],
             'categories.update', 'categories.destroy' => ['category' => $category],
             'ingredients.update', 'ingredients.destroy' => ['ingredient' => $ingredient],
-            'ingredientAlternatives.index', 'ingredientAlternatives.store' => ['recipe' => $recipe, 'ingredient' => $ingredient],
-            'ingredientAlternatives.destroy' => ['alternative' => $alternative],
             default => [],
         };
 
@@ -429,7 +422,6 @@ class RouteRoleMatrixTest extends TestCase
             'recipes.store', 'recipes.update' => $recipe,
             'categories.store', 'categories.update' => ['name' => 'Matrix-Kategorie'],
             'ingredients.store', 'ingredients.update' => ['name' => 'Matrix-Zutat'],
-            'ingredientAlternatives.store' => ['alternative_ingredient_id' => Ingredient::factory()->create()->id],
             // ADR-002: globales Löschen nur mit Bestätigung (sonst 409)
             'categories.destroy', 'ingredients.destroy' => ['confirmed' => 1],
             default => [],

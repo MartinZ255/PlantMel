@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
-use App\Http\Controllers\IngredientAlternativeController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeImportController;
@@ -243,21 +242,6 @@ Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
     Route::delete('/ingredients/{ingredient}', [IngredientController::class, 'destroy'])
         ->name('ingredients.destroy');
 
-    // Alternativzutaten
-    Route::get(
-        '/recipes/{recipe}/ingredients/{ingredient}/alternatives',
-        [IngredientAlternativeController::class, 'index']
-    )->name('ingredientAlternatives.index');
-
-    Route::post(
-        '/recipes/{recipe}/ingredients/{ingredient}/alternatives',
-        [IngredientAlternativeController::class, 'store']
-    )->name('ingredientAlternatives.store');
-
-    Route::delete(
-        '/ingredient-alternatives/{alternative}',
-        [IngredientAlternativeController::class, 'destroy']
-    )->name('ingredientAlternatives.destroy');
 });
 
 require __DIR__.'/settings.php';

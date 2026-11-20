@@ -119,7 +119,6 @@ Text über Bildern: nur auf eigenem Hintergrund (Dauer-Sticker `surface/90–95`
 | Baustein | Props | C1b |
 |---|---|---|
 | `Button` | `variant` (`primary`·`secondary`·`ghost`·`danger`·**`lime`**·**`berry`**·**`outline-light`**), `size`, `href`, `external`, `type`, `disabled`, `loading`, `block` | Kiesel-Form mit Hover-Atmen, Anheben, waldgrüner Schatten. `lime`/`outline-light` für Waldgrün-Flächen |
-| `Card` | `as`, `padded`, `interactive` | Papier mit organischen Ecken, Schatten statt Rahmen |
 | `Field`, `TextInput`, `Textarea` | wie bisher | Kiesel-Ecken, 1,5-px-Rahmen `line-strong`, Hover Primär |
 | `Chip` | `pressed`, `removable`, `removeLabel`, `disabled` | „Samen“-Form; gedrückt Waldgrün mit Keimling-Symbol |
 | `Badge` | `tone` (+ **`matcha`** für Waldgrün) | Samen-Form mit kleinem Korn als Punkt |

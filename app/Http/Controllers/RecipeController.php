@@ -149,7 +149,9 @@ class RecipeController extends Controller
             ->with([
                 'categories',
                 'ratings' => TasteRating::constrain($tasteDimensionId),
-                'images',
+                // F-98: Die Karte zeigt nur das erste Bild – je Rezept genau
+                // eins laden (Limit je Elternteil, Fensterfunktion).
+                'images' => fn ($query) => $query->orderBy('id')->limit(1),
             ]);
 
         // -------------------------------------------

@@ -445,3 +445,11 @@ Weitere Änderungen: Playwright-Regression läuft in der CI (`.github/workflows/
 | F-97 | P2 | Die CI mit Playwright ist noch nie real gelaufen (erst nach einem Push); Layoutmessungen unter Linux können abweichen | ersten CI-Lauf beobachten |
 | F-98 | P3 | Rezeptliste lädt pro Rezept alle Bilder, obwohl nur das erste gebraucht wird | bei Bedarf auf erstes Bild begrenzen (messen) |
 
+### Nachtrag 2026-11-20: Entscheidungen nach Gate D
+
+| ID | Status | Was geändert wurde | Regressionstest |
+|---|---|---|---|
+| F-96 | behoben | `vue-tsc` 2.2 → 3.3; `npm audit` meldet 0 Schwachstellen (auch Dev) | `npx vue-tsc --noEmit` = 0 |
+| F-98 | behoben | Rezeptliste lädt je Rezept nur das erste Bild (`images` mit `orderBy('id')->limit(1)`) | `RecipeIndexFirstImageTest` |
+| F-52 | weiter abgebaut | `ui/Card.vue` und die ungenutzten Alternativen-Endpunkte entfernt (E15, E16) | `IngredientAlternativeRoutesRemovedTest` |
+
