@@ -121,9 +121,32 @@ export async function settle(page: Page): Promise<void> {
         // Gate C1b: Bilder mit loading="lazy" weit unterhalb des Sichtbereichs laedt der
         // Browser absichtlich erst beim Scrollen - auf sie wird nicht gewartet (sonst haengt
         // settle bei langen Listen). Alle anderen unvollstaendigen Bilder wie bisher.
+        // Gate C2 Integration: dasselbe gilt fuer lazy-Bilder, die seitlich ausserhalb
+        // eines horizontal scrollenden Containers (wischbares Rezeptband) oder des
+        // Fensters liegen - Chromium laedt sie erst beim Wischen. Sichtbare lazy-Bilder
+        // (auch das erste Bild im Band) werden weiterhin abgewartet.
+        // Ohne Vorlade-Zone: Was ausserhalb liegt, ist abgeschnitten und fuer Bild und
+        // Messung unerheblich; ob der Browser es vorlaedt, ist nicht deterministisch.
+        const outsideHorizontally = (img: HTMLImageElement) => {
+            const r = img.getBoundingClientRect();
+            if (r.left >= window.innerWidth || r.right <= 0) return true;
+            for (
+                let el = img.parentElement;
+                el && el !== document.body && el !== document.documentElement;
+                el = el.parentElement
+            ) {
+                const ox = getComputedStyle(el).overflowX;
+                if (ox !== 'auto' && ox !== 'scroll') continue;
+                if (el.scrollWidth <= el.clientWidth) continue;
+                const c = el.getBoundingClientRect();
+                if (r.left >= c.right || r.right <= c.left) return true;
+            }
+            return false;
+        };
         const isDeferred = (img: HTMLImageElement) =>
             img.loading === 'lazy' &&
-            img.getBoundingClientRect().top > window.innerHeight * 1.5;
+            (img.getBoundingClientRect().top > window.innerHeight * 1.5 ||
+                outsideHorizontally(img));
         await Promise.all(
             Array.from(document.images)
                 .filter((img) => !img.complete && !isDeferred(img))
@@ -176,13 +199,15 @@ export async function measureLayout(page: Page): Promise<LayoutMetrics> {
         // Gate C1b: sichtbarer Teil eines Elements. Vorfahren mit overflow-x != visible
         // (z. B. Abschnitte mit dekorativen Blobs, das wischbare Rezeptband, SVGs) schneiden
         // ab; was dort abgeschnitten ist, ragt fuer Nutzer nicht ueber den Rand. <body> und
-        // <html> zaehlen bewusst nicht (das Legacy-CSS setzt dort overflow-x: hidden und
-        // wuerde echten Ueberlauf sonst verdecken).
+        // <html> zaehlen bewusst nicht (frueher setzte das Legacy-CSS dort overflow-x: hidden
+        // und haette echten Ueberlauf verdeckt; seit Gate C2 ist es entfernt).
         const visibleRight = (el: Element): number => {
             let right = el.getBoundingClientRect().right;
             for (
                 let cur = el.parentElement;
-                cur && cur !== document.body && cur !== document.documentElement;
+                cur &&
+                cur !== document.body &&
+                cur !== document.documentElement;
                 cur = cur.parentElement
             ) {
                 if (getComputedStyle(cur).overflowX !== 'visible')

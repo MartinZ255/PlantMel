@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { BASE_URL, ROOT } from './support/env';
 import { authFile, DATA, expect, settle, test } from './support/fixtures';
+import { LEGACY_CLASS_NAMES } from './support/legacy-classes';
 import { writeRaw } from './support/raw';
 
 /**
@@ -13,7 +14,7 @@ import { writeRaw } from './support/raw';
  *   Mobilmenue und Nutzermenue auf JEDER Seite fuer Hosts und nie fuer Nutzer/Gaeste
  * - axe: 0 Verstoesse (alle Regeln) auf allen Seiten dieses Pakets bei 390 und 1440 px
  * - 320 px: kein horizontales Scrollen
- * - keine Klassen aus resources/css/rezeptly/app.css auf diesen Seiten
+ * - keine Klassen aus der entfernten resources/css/rezeptly/app.css (Datei und Import weg)
  * - die Kopfzeile bleibt beim Scrollen oben haften
  * - Konto loeschen: Bestaetigung im Dialog statt window.confirm
  *
@@ -134,21 +135,9 @@ async function serveVerifyEmail(page: Page) {
     );
 }
 
-/** Klassennamen aus der Legacy-Datei (alle `.name`-Selektoren). */
+/** Klassennamen der entfernten Legacy-Datei (feste Liste, siehe support/legacy-classes.ts). */
 function legacyClassNames(): Set<string> {
-    const css = fs.readFileSync(
-        path.join(ROOT, 'resources', 'css', 'rezeptly', 'app.css'),
-        'utf8',
-    );
-    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
-    const names = new Set<string>();
-    // nur Selektor-Teile (vor "{"), keine Werte wie "0.15s"
-    for (const block of withoutComments.split('}')) {
-        const selector = block.split('{')[0] ?? '';
-        for (const m of selector.matchAll(/\.(-?[A-Za-z_][\w-]*)/g))
-            names.add(m[1]);
-    }
-    return names;
+    return new Set(LEGACY_CLASS_NAMES);
 }
 
 const banner = (page: Page) => page.getByRole('banner');
@@ -433,19 +422,67 @@ test.describe('Gate C2 – Layout', () => {
         writeRaw('regression', 'gate-c2-320', { rows });
     });
 
-    test('keine Klassen aus rezeptly/app.css auf den Seiten des Pakets', async ({
+    test('Legacy-Datei rezeptly/app.css ist entfernt und wird nicht mehr importiert', () => {
+        expect(
+            fs.existsSync(path.join(ROOT, 'resources', 'css', 'rezeptly')),
+            'resources/css/rezeptly existiert nicht mehr',
+        ).toBe(false);
+        const appCss = fs.readFileSync(
+            path.join(ROOT, 'resources', 'css', 'app.css'),
+            'utf8',
+        );
+        expect(appCss).not.toMatch(/@import\s+['"][^'"]*rezeptly/);
+    });
+
+    test('keine Klassen aus rezeptly/app.css auf den Seiten (Paket C und alle Hauptseiten)', async ({
         browser,
     }) => {
         const legacy = legacyClassNames();
         expect(legacy.size, 'Legacy-Klassen gelesen').toBeGreaterThan(100);
+        // Gate C2 Integration: nach dem Entfernen der Datei auch alle uebrigen Seiten
+        const more: ShellPage[] = [
+            { slug: 'landing', path: '/', role: 'guest' },
+            { slug: 'rezepte', path: '/rezepte', role: 'guest' },
+            {
+                slug: 'rezept',
+                path: `/rezept/${DATA.recipes.withImage.id}`,
+                role: 'guest',
+            },
+            { slug: 'zutatensuche', path: '/zutatensuche', role: 'guest' },
+            { slug: 'home', path: '/home', role: 'user' },
+            { slug: 'sammlungen', path: '/sammlungen', role: 'user' },
+            {
+                slug: 'sammlung-erstellen',
+                path: '/sammlungen/erstellen',
+                role: 'user',
+            },
+            {
+                slug: 'sammlung',
+                path: `/sammlung/${DATA.collections.filled.id}`,
+                role: 'user',
+            },
+            { slug: 'meine-zutaten', path: '/meineZutaten', role: 'user' },
+            {
+                slug: 'rezept-erstellen',
+                path: '/rezepte/erstellen',
+                role: 'host',
+            },
+            {
+                slug: 'rezept-bearbeiten',
+                path: `/rezept/${DATA.recipes.withImage.id}/bearbeiten`,
+                role: 'host',
+            },
+        ];
         const found: Record<string, string[]> = {};
-        for (const role of ['guest', 'user'] as const) {
+        for (const role of ['guest', 'user', 'host'] as const) {
             const context = await contextFor(browser, role, {
                 width: 1440,
                 height: 900,
             });
             const page = await context.newPage();
-            for (const p of PAGES.filter((x) => x.role === role)) {
+            for (const p of [...PAGES, ...more].filter(
+                (x) => x.role === role,
+            )) {
                 await page.goto(p.path);
                 await settle(page);
                 const classes = await page.evaluate(() => {
@@ -468,9 +505,8 @@ test.describe('Gate C2 – Layout', () => {
     test('Kopfzeile haftet beim Scrollen oben (unabhaengig vom Scroll-Container)', async ({
         page,
     }) => {
-        // Hinweis: <body> ist wegen rezeptly/app.css (html, body { height: 100%;
-        // overflow-x: hidden }) derzeit der Scroll-Container. Das wird erst beim
-        // Entfernen der Legacy-Datei behoben; dieser Test gilt in beiden Faellen.
+        // Gate C2 Integration: Seit rezeptly/app.css entfernt ist, scrollt das
+        // Fenster (nicht mehr <body>). Der Test gilt unabhaengig vom Scroll-Container.
         await page.goto('/datenschutz');
         await settle(page);
         await page.mouse.move(700, 500);

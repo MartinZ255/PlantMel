@@ -687,15 +687,8 @@ test.describe('Gate C2 – Vorschau', () => {
     );
     test.use({ storageState: authFile('host'), reducedMotion: 'reduce' });
 
-    /**
-     * rezeptly/app.css macht <body> zum Scroll-Container (height: 100%);
-     * fuer ganzseitige Aufnahmen nur in der Vorschau aufheben.
-     */
-    const unclip = (page: Page) =>
-        page.addStyleTag({
-            content:
-                'html, body { height: auto !important; overflow: visible !important; }',
-        });
+    // Gate C2 Integration: Seit rezeptly/app.css entfernt ist, scrollt das Fenster;
+    // ganzseitige Aufnahmen brauchen keinen Style-Workaround mehr.
 
     const out = (name: string) =>
         path.join(
@@ -718,14 +711,12 @@ test.describe('Gate C2 – Vorschau', () => {
             }) => {
                 await page.goto(CREATE);
                 await settle(page);
-                await unclip(page);
                 await page.screenshot({
                     path: out(`erstellen-${vp.label}`),
                     fullPage: true,
                 });
                 await page.goto(EDIT);
                 await settle(page);
-                await unclip(page);
                 await page.screenshot({
                     path: out(`bearbeiten-${vp.label}`),
                     fullPage: true,

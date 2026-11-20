@@ -570,6 +570,9 @@ for (const vp of [
                     body: document.body.scrollTop,
                     win: window.scrollY,
                     overflow: getComputedStyle(document.body).overflow,
+                    // Gate C2 Integration: Fenster (<html>) ist der Scroll-Container
+                    htmlOverflow: getComputedStyle(document.documentElement)
+                        .overflow,
                 }));
                 const vpSize = page.viewportSize()!;
                 await page.mouse.move(4, vpSize.height - 4);
@@ -580,6 +583,7 @@ for (const vp of [
                     win: window.scrollY,
                 }));
                 expect(before.overflow).toBe('hidden');
+                expect(before.htmlOverflow).toBe('hidden');
                 expect(after).toEqual({ body: before.body, win: before.win });
                 // Hintergrund ist inert
                 expect(
