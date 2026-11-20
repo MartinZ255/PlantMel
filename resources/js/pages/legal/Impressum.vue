@@ -1,73 +1,130 @@
 <template>
-    <AppLayout page-title="Impressum">
-        <article class="content-section legal-page" aria-labelledby="legal-h1">
-            <h1 id="legal-h1" class="legal-page__title">Impressum</h1>
-
-            <p v-if="!legal.filled" class="legal-draft-notice" role="note">
-                <strong>Entwurf – Angaben des Betreibers fehlen noch.</strong>
-                Markierte Stellen in eckigen Klammern sind Platzhalter.
-            </p>
-
-            <section aria-labelledby="imprint-provider">
-                <h2 id="imprint-provider">Angaben gemäß § 5 DDG</h2>
-                <address class="legal-page__address">
-                    <LegalValue :value="legal.operator_name" /><br />
-                    <LegalValue :value="legal.operator_street" /><br />
-                    <LegalValue :value="legal.operator_postal_city" />
-                    <template v-if="legal.operator_country">
-                        <br /><LegalValue :value="legal.operator_country" />
-                    </template>
-                </address>
-            </section>
-
-            <section aria-labelledby="imprint-contact">
-                <h2 id="imprint-contact">Kontakt</h2>
-                <p>
-                    E-Mail:
-                    <a
-                        v-if="isRealValue(legal.operator_email)"
-                        :href="`mailto:${legal.operator_email}`"
-                        >{{ legal.operator_email }}</a
-                    >
-                    <LegalValue v-else :value="legal.operator_email" />
-                    <template v-if="legal.operator_phone">
-                        <br />Telefon:
-                        <LegalValue :value="legal.operator_phone" />
-                    </template>
-                </p>
-            </section>
-
-            <section aria-labelledby="imprint-responsible">
-                <h2 id="imprint-responsible">
-                    Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV
-                </h2>
-                <address
-                    v-if="legal.content_responsible_name"
-                    class="legal-page__address"
+    <AppLayout page-title="Impressum" bleed>
+        <article aria-labelledby="legal-h1">
+            <!-- Gate C2: ruhiger Kopf auf Naturgrund, darunter eine Lesespalte (~68 Zeichen) -->
+            <header class="relative overflow-hidden">
+                <BlobBackdrop tone="light" />
+                <LeafOrnament
+                    variant="sprig"
+                    class="pointer-events-none absolute top-6 right-[5%] hidden h-32 rotate-[18deg] text-tint-strong sm:block lg:h-40"
+                />
+                <div
+                    class="relative mx-auto w-full max-w-(--content-max) px-4 pt-10 pb-8 sm:px-6 sm:pt-14 lg:px-8"
                 >
-                    <LegalValue :value="legal.content_responsible_name" />
-                    <template v-if="legal.content_responsible_address">
-                        <br /><LegalValue
-                            :value="legal.content_responsible_address"
+                    <p
+                        class="mb-3 inline-flex items-center gap-2 rounded-seed bg-surface/80 px-3.5 py-1.5 text-sm font-semibold text-primary shadow-card"
+                    >
+                        <LeafOrnament
+                            variant="sprout"
+                            class="size-4 text-moss"
                         />
-                    </template>
-                </address>
-                <address v-else class="legal-page__address">
-                    <LegalValue :value="legal.operator_name" /><br />
-                    <LegalValue :value="legal.operator_street" /><br />
-                    <LegalValue :value="legal.operator_postal_city" />
-                </address>
-                <p class="legal-check">
-                    [PRÜFEN: Diese Angabe ist nur bei
-                    journalistisch-redaktionell gestalteten Inhalten
-                    vorgeschrieben. Klären, ob sie für PlantMel nötig ist; sonst
-                    den Abschnitt entfernen.]
-                </p>
-            </section>
+                        Rechtliches
+                    </p>
+                    <h1
+                        id="legal-h1"
+                        class="font-display-wonk text-[clamp(2.3rem,9vw,4.5rem)] leading-[1.02] font-semibold text-balance text-wrap-anywhere text-ink"
+                    >
+                        Impressum
+                    </h1>
+                    <p class="mt-4 max-w-2xl text-lg text-ink-muted sm:text-xl">
+                        Wer hinter PlantMel steht und wie du uns erreichst.
+                    </p>
 
-            <p class="legal-page__updated">
-                Stand: <LegalValue :value="legal.last_updated" />
-            </p>
+                    <p
+                        v-if="!legal.filled"
+                        class="mt-6 flex max-w-[68ch] items-start gap-3 rounded-[1.25rem_1rem_1.4rem_0.9rem] border-[1.5px] border-warning/40 bg-warning-surface px-4 py-3 text-warning"
+                        role="note"
+                        data-legal-draft-notice
+                    >
+                        <TriangleAlert
+                            class="mt-0.5 size-5 shrink-0"
+                            aria-hidden="true"
+                        />
+                        <span class="min-w-0">
+                            <strong
+                                >Entwurf – Angaben des Betreibers fehlen
+                                noch.</strong
+                            >
+                            Markierte Stellen in eckigen Klammern sind
+                            Platzhalter.
+                        </span>
+                    </p>
+                </div>
+            </header>
+
+            <div
+                class="relative mx-auto w-full max-w-(--content-max) overflow-x-clip px-4 pb-16 sm:px-6 lg:px-8"
+            >
+                <LeafOrnament
+                    variant="eucalyptus"
+                    class="pointer-events-none absolute top-16 right-[6%] hidden h-72 rotate-[14deg] text-tint-strong xl:block"
+                />
+                <div
+                    class="relative legal-prose max-w-[calc(68ch+5rem)] rounded-[2rem_1.6rem_2.25rem_1.5rem] bg-surface px-5 py-7 shadow-card sm:px-10 sm:py-10 lg:ml-[6%]"
+                >
+                    <section aria-labelledby="imprint-provider">
+                        <h2 id="imprint-provider">Angaben gemäß § 5 DDG</h2>
+                        <address>
+                            <LegalValue :value="legal.operator_name" /><br />
+                            <LegalValue :value="legal.operator_street" /><br />
+                            <LegalValue :value="legal.operator_postal_city" />
+                            <template v-if="legal.operator_country">
+                                <br /><LegalValue
+                                    :value="legal.operator_country"
+                                />
+                            </template>
+                        </address>
+                    </section>
+
+                    <section aria-labelledby="imprint-contact">
+                        <h2 id="imprint-contact">Kontakt</h2>
+                        <p>
+                            E-Mail:
+                            <a
+                                v-if="isRealValue(legal.operator_email)"
+                                :href="`mailto:${legal.operator_email}`"
+                                >{{ legal.operator_email }}</a
+                            >
+                            <LegalValue v-else :value="legal.operator_email" />
+                            <template v-if="legal.operator_phone">
+                                <br />Telefon:
+                                <LegalValue :value="legal.operator_phone" />
+                            </template>
+                        </p>
+                    </section>
+
+                    <section aria-labelledby="imprint-responsible">
+                        <h2 id="imprint-responsible">
+                            Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV
+                        </h2>
+                        <address v-if="legal.content_responsible_name">
+                            <LegalValue
+                                :value="legal.content_responsible_name"
+                            />
+                            <template v-if="legal.content_responsible_address">
+                                <br /><LegalValue
+                                    :value="legal.content_responsible_address"
+                                />
+                            </template>
+                        </address>
+                        <address v-else>
+                            <LegalValue :value="legal.operator_name" /><br />
+                            <LegalValue :value="legal.operator_street" /><br />
+                            <LegalValue :value="legal.operator_postal_city" />
+                        </address>
+                        <p data-legal-check>
+                            [PRÜFEN: Diese Angabe ist nur bei
+                            journalistisch-redaktionell gestalteten Inhalten
+                            vorgeschrieben. Klären, ob sie für PlantMel nötig
+                            ist; sonst den Abschnitt entfernen.]
+                        </p>
+                    </section>
+
+                    <p data-legal-updated>
+                        Stand: <LegalValue :value="legal.last_updated" />
+                    </p>
+                </div>
+            </div>
         </article>
     </AppLayout>
 </template>
@@ -77,6 +134,9 @@
 // Alle Betreiberangaben kommen aus config/legal.php (Prop `legal`).
 // Pruefliste: docs/modernization/RECHTSTEXTE.md
 import AppLayout from '@/components/layout/AppLayout.vue';
+import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import { TriangleAlert } from 'lucide-vue-next';
 import { defineComponent, h, type PropType } from 'vue';
 
 interface LegalInfo {
@@ -108,7 +168,7 @@ const LegalValue = defineComponent({
             isPlaceholder(props.value)
                 ? h(
                       'mark',
-                      { class: 'legal-placeholder' },
+                      { 'data-legal-placeholder': '' },
                       props.value || '[FEHLT]',
                   )
                 : h('span', props.value ?? '');

@@ -24,12 +24,14 @@ class SharedInertiaPropsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 // Slice 4 (F-08): email_verified_at als ISO-8601 (UTC);
-                // weiterhin kein is_host, kein avatar
+                // kein avatar. Gate C2: is_host (bool) wird jetzt geteilt,
+                // siehe tests/Feature/SharedIsHostPropTest.php
                 ->where('auth.user', [
                     'id' => $user->id,
                     'name' => 'Erika',
                     'email' => 'erika@example.test',
                     'email_verified_at' => '2026-11-14T08:15:00Z',
+                    'is_host' => false,
                 ])
                 ->has('name')
                 // Slice 3: `quote` und `sidebarOpen` entfallen (von keinem Vue-Code gelesen).
