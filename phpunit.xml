@@ -18,6 +18,10 @@
             defaultTestSuite oben), sondern nur gezielt mit der Option
             testsuite=KnownDefects (XML-Kommentare erlauben keinen Doppelstrich).
             Siehe tests/KnownDefects/README.md.
+            Derzeit leer (Gate D3): Die Suite bleibt fuer kuenftige Soll-Tests
+            bestehen; die CI erkennt den leeren Zustand ausdruecklich (Job
+            known-defects, Schritt "Check Suite") statt "No tests executed!"
+            still als Erfolg zu werten.
         -->
         <testsuite name="KnownDefects">
             <directory>tests/KnownDefects</directory>
