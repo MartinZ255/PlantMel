@@ -120,16 +120,16 @@ test('F-10 Registrierung zeigt Datenschutz-Hinweis mit Link, ohne Pflicht-Checkb
 }) => {
     await page.goto('/register');
     await settle(page);
-    const note = page.locator('.auth-form .auth-privacy-note');
+    // Gate C2: Hinweis im Registrierungsformular (Datenattribut statt Legacy-Klasse)
+    const form = page.getByRole('form', { name: 'Registrieren' });
+    const note = form.locator('[data-auth-privacy-note]');
     await expect(note).toContainText(
         'Mit der Registrierung gilt unsere Datenschutzerklärung',
     );
     await expect(
         note.getByRole('link', { name: 'Datenschutzerklärung' }),
     ).toHaveAttribute('href', /\/datenschutz$/);
-    await expect(page.locator('.auth-form input[type="checkbox"]')).toHaveCount(
-        0,
-    );
+    await expect(form.locator('input[type="checkbox"]')).toHaveCount(0);
 });
 
 test('F-10 Rechtsseiten: Entwurf-Hinweis, genau ein h1, Titel mit PlantMel', async ({
@@ -146,21 +146,21 @@ test('F-10 Rechtsseiten: Entwurf-Hinweis, genau ein h1, Titel mit PlantMel', asy
         await expect(page.locator('h1'), path).toHaveCount(1);
         expect(await page.title(), path).toBe(title);
         await expect(
-            page.locator('main .legal-draft-notice'),
+            page.locator('main [data-legal-draft-notice]'),
             path,
         ).toContainText('Entwurf – Angaben des Betreibers fehlen noch');
         await expect(
-            page.locator('main .legal-placeholder').first(),
+            page.locator('main mark[data-legal-placeholder]').first(),
         ).toBeVisible();
         // Hinweis nur auf den Seiten, nicht im Footer
-        await expect(footer(page).locator('.legal-draft-notice')).toHaveCount(
-            0,
-        );
+        await expect(
+            footer(page).locator('[data-legal-draft-notice]'),
+        ).toHaveCount(0);
     }
     // Auf anderen Seiten kein Entwurf-Hinweis
     await page.goto('/rezepte');
     await settle(page);
-    await expect(page.locator('.legal-draft-notice')).toHaveCount(0);
+    await expect(page.locator('[data-legal-draft-notice]')).toHaveCount(0);
 });
 
 test('F-58 Schrift wird von /build/ geladen, kein Request an fonts.bunny.net', async ({

@@ -235,7 +235,8 @@ test.describe('Gast', () => {
         await page.locator('#email').fill('niemand@example.test');
         await page.locator('#password').fill('falsches-passwort');
         await page.getByRole('button', { name: 'Einloggen' }).click();
-        const error = page.locator('.auth-form .error').first();
+        // Gate C2: Feldfehler ueber die feste ID aus Field (aria-describedby)
+        const error = page.locator('#email-error');
         await expect(error).toBeVisible();
         await expect(error).toHaveText(
             'Diese Zugangsdaten stimmen nicht mit unseren Daten überein.',
@@ -255,7 +256,10 @@ test.describe('Gast', () => {
         ]) {
             await page.goto(path);
             await settle(page);
-            const brand = page.locator('a.auth-brand');
+            // Gate C2: Wortmarke im waldgruenen Kopf der Auth-Seiten
+            const brand = page
+                .getByRole('banner')
+                .getByRole('link', { name: 'PlantMel – Startseite' });
             await expect(brand, `${path}: Logo`).toBeVisible();
             expect(new URL((await brand.getAttribute('href'))!).pathname).toBe(
                 '/',
@@ -291,10 +295,12 @@ test.describe('Gast', () => {
         });
         await page.goto('/login');
         await settle(page);
-        const status = page.locator('.status-message');
+        const status = page.getByRole('main').getByRole('status');
         await expect(status).toHaveText('E2E Statusmeldung');
         const s = (await status.boundingBox())!;
-        const f = (await page.locator('.auth-form').boundingBox())!;
+        const f = (await page
+            .getByRole('form', { name: 'Anmelden' })
+            .boundingBox())!;
         expect(
             s.y + s.height,
             'Meldung endet oberhalb des Formulars',
@@ -311,7 +317,7 @@ test.describe('Gast', () => {
         await page.locator('#email').fill('niemand@example.test');
         await page.locator('#password').fill('egal');
         await page.getByRole('button', { name: 'Einloggen' }).click();
-        const alert = page.locator('.flash-message--error[role="alert"]');
+        const alert = page.getByRole('main').getByRole('alert');
         await expect(alert).toHaveText(
             'Die Sitzung ist abgelaufen. Bitte versuche es erneut.',
         );
@@ -422,8 +428,7 @@ test.describe('Gast', () => {
             for (let i = 0; i < count + 3; i++) {
                 await page.keyboard.press('Tab');
                 const inMenu = await page.evaluate(
-                    () =>
-                        !!document.activeElement?.closest('#mobile-menu'),
+                    () => !!document.activeElement?.closest('#mobile-menu'),
                 );
                 if (!inMenu)
                     outside.push(
@@ -496,7 +501,11 @@ test.describe('Gast', () => {
                     hidden: e?.getAttribute('aria-hidden') ?? null,
                 };
             });
-            expect(hit).toEqual({ inMenu: false, inApp: false, hidden: 'true' });
+            expect(hit).toEqual({
+                inMenu: false,
+                inApp: false,
+                hidden: 'true',
+            });
             await page.mouse.click(20, 500);
             await expect(mobileMenu(page)).toHaveCount(0);
             await expect(menuButton(page)).toHaveAttribute(
@@ -681,9 +690,9 @@ test.describe('Nutzer', () => {
     }) => {
         await page.goto(`/sammlung/${DATA.collections.filled.id}`);
         await settle(page);
-        expect(
-            new URL((await logo(page).getAttribute('href'))!).pathname,
-        ).toBe('/home');
+        expect(new URL((await logo(page).getAttribute('href'))!).pathname).toBe(
+            '/home',
+        );
         await expect(logo(page)).not.toHaveAttribute('aria-current', 'page');
         // Gate C: die eigenen Sammlungen (frueher in der Seitenleiste) liegen im Menue "Sammlungen"
         await expect(collectionsButton(page)).toHaveAttribute(

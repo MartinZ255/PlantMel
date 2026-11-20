@@ -2,6 +2,7 @@
 import BrandLogo from '@/components/layout/BrandLogo.vue';
 import CollectionsMenu from '@/components/layout/CollectionsMenu.vue';
 import { navLinkBase, navLinkState } from '@/components/layout/navStyles';
+import { useIsHost } from '@/components/layout/useIsHost';
 import UserMenu from '@/components/layout/UserMenu.vue';
 import Button from '@/components/ui/Button.vue';
 import { useAppNavigation } from '@/composables/useAppNavigation';
@@ -27,7 +28,9 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'open-menu'): void }>();
 
 const nav = useAppNavigation(toRef(props, 'currentPath'));
-const { user, canRegister, isHost, startHref, startCurrent, items } = nav;
+const { user, canRegister, startHref, startCurrent, items } = nav;
+// Gate C2: global geteiltes Host-Recht statt Seiten-Prop
+const isHost = useIsHost();
 const collectionLinks = nav.collectionLinks;
 </script>
 

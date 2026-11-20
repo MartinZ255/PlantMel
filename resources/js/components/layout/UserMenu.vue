@@ -5,10 +5,11 @@ import {
     dropdownPanelBase,
     dropdownPanelState,
 } from '@/components/layout/navStyles';
+import { useIsHost } from '@/components/layout/useIsHost';
 import { useDisclosure } from '@/composables/useDisclosure';
 import { getInitials } from '@/composables/useInitials';
 import { Link } from '@inertiajs/vue3';
-import { ChevronDown } from 'lucide-vue-next';
+import { ChevronDown, Plus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -17,6 +18,8 @@ import { route } from 'ziggy-js';
  * Slice 1 (F-04): geschlossen unsichtbar, nicht klickbar und `inert`;
  * Escape schließt mit Fokus zurück, Außenklick und Fokusverlust schließen.
  * Disclosure-Muster (kein `role="menu"`): Tab führt durch die Einträge.
+ * Gate C2: Hosts finden hier zusätzlich „Rezept erstellen“ (auch mobil,
+ * wo der Knopf der Kopfzeile ausgeblendet ist).
  */
 const props = defineProps<{ name: string; settingsCurrent: boolean }>();
 
@@ -24,6 +27,7 @@ const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLElement | null>(null);
 const menu = useDisclosure({ root, trigger });
 const isOpen = menu.isOpen;
+const isHost = useIsHost();
 
 const initials = computed(() => getInitials(props.name));
 </script>
@@ -67,6 +71,18 @@ const initials = computed(() => getInitials(props.name));
                 <span class="font-semibold text-ink">{{ name }}</span>
             </p>
             <ul class="mt-1 flex flex-col gap-0.5">
+                <li v-if="isHost">
+                    <Link
+                        :href="route('recipes.create')"
+                        :class="[
+                            dropdownItem,
+                            'gap-2 font-semibold text-primary',
+                        ]"
+                    >
+                        <Plus class="size-4" aria-hidden="true" />
+                        Rezept erstellen
+                    </Link>
+                </li>
                 <li>
                     <Link
                         :href="route('settings.index')"

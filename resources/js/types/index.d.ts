@@ -8,6 +8,11 @@ export interface SharedUser {
     email: string;
     /** ISO-8601 (UTC) oder null; seit Slice 4 immer vorhanden (F-08). */
     email_verified_at: string | null;
+    /**
+     * Gate C2: Host-Recht (users.is_host), global geteilt. Steuert nur die
+     * Anzeige von „Rezept erstellen“; die Routen prüft der Server.
+     */
+    is_host: boolean;
 }
 
 export interface SharedCollection {

@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import AppFooter from '@/components/layout/AppFooter.vue';
-import type { AppPageProps } from '@/types';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import AuthShell from '@/components/auth/AuthShell.vue';
+import { authLinkClass } from '@/components/auth/authStyles';
+import Button from '@/components/ui/Button.vue';
+import Field from '@/components/ui/Field.vue';
+import TextInput from '@/components/ui/TextInput.vue';
+import { Link, useForm } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
-
-const page = usePage<AppPageProps>();
-const flashError = computed(() => page.props.flash?.error ?? null);
 
 const form = useForm({
     name: '',
@@ -23,92 +22,109 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Registrieren" />
+    <AuthShell
+        page-title="Registrieren"
+        eyebrow="Registrieren"
+        title="Dein Rezeptgarten beginnt hier"
+        description="Lege ein kostenloses Konto an und sammle deine Lieblingsrezepte."
+        quote="Jedes Lieblingsrezept war einmal"
+        quote-accent="ein erster Versuch."
+    >
+        <template #title>
+            Dein Rezept<span class="accent-word text-primary">garten</span>
+            beginnt hier
+        </template>
 
-    <div class="auth-container">
-        <Link :href="route('landing')" class="auth-brand">PlantMel</Link>
-
-        <p
-            v-if="flashError"
-            class="flash-message flash-message--error"
-            role="alert"
+        <form
+            class="flex flex-col gap-5"
+            aria-label="Registrieren"
+            @submit.prevent="submit"
         >
-            {{ flashError }}
-        </p>
-
-        <form @submit.prevent="submit" class="auth-form">
-            <h1 class="auth-form-title">Registrieren</h1>
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input
-                    id="name"
+            <Field
+                id="name"
+                v-slot="field"
+                label="Name"
+                required
+                :error="form.errors.name"
+            >
+                <TextInput
                     v-model="form.name"
+                    v-bind="field.inputAttrs"
                     type="text"
                     autocomplete="name"
-                    required
                 />
-                <div v-if="form.errors.name" class="error">
-                    {{ form.errors.name }}
-                </div>
-            </div>
+            </Field>
 
-            <div class="form-group">
-                <label for="email">E-Mail</label>
-                <input
-                    id="email"
+            <Field
+                id="email"
+                v-slot="field"
+                label="E-Mail"
+                required
+                :error="form.errors.email"
+            >
+                <TextInput
                     v-model="form.email"
+                    v-bind="field.inputAttrs"
                     type="email"
                     autocomplete="email"
-                    required
                 />
-                <div v-if="form.errors.email" class="error">
-                    {{ form.errors.email }}
-                </div>
-            </div>
+            </Field>
 
-            <div class="form-group">
-                <label for="password">Passwort</label>
-                <input
-                    id="password"
+            <Field
+                id="password"
+                v-slot="field"
+                label="Passwort"
+                required
+                :error="form.errors.password"
+            >
+                <TextInput
                     v-model="form.password"
+                    v-bind="field.inputAttrs"
                     type="password"
                     autocomplete="new-password"
-                    required
                 />
-                <div v-if="form.errors.password" class="error">
-                    {{ form.errors.password }}
-                </div>
-            </div>
+            </Field>
 
-            <div class="form-group">
-                <label for="password_confirmation">Passwort bestätigen</label>
-                <input
-                    id="password_confirmation"
+            <Field
+                id="password_confirmation"
+                v-slot="field"
+                label="Passwort bestätigen"
+                required
+                :error="form.errors.password_confirmation"
+            >
+                <TextInput
                     v-model="form.password_confirmation"
+                    v-bind="field.inputAttrs"
                     type="password"
                     autocomplete="new-password"
-                    required
                 />
-                <div v-if="form.errors.password_confirmation" class="error">
-                    {{ form.errors.password_confirmation }}
-                </div>
-            </div>
+            </Field>
 
             <!-- Slice 4 (F-10): Informationspflicht, keine Einwilligung (keine Checkbox) -->
-            <p class="auth-privacy-note">
+            <p
+                class="rounded-[1.1rem_0.9rem_1.2rem_0.85rem] bg-tint px-4 py-3 text-sm text-ink-muted"
+                data-auth-privacy-note
+            >
                 Mit der Registrierung gilt unsere
-                <a :href="route('legal.privacy')">Datenschutzerklärung</a>.
+                <Link
+                    :href="route('legal.privacy')"
+                    class="font-semibold text-primary underline decoration-berry/70 decoration-2 underline-offset-4 hover:text-primary-hover"
+                    >Datenschutzerklärung</Link
+                >.
             </p>
 
-            <button type="submit" :disabled="form.processing">
+            <Button type="submit" size="lg" block :loading="form.processing">
                 Konto erstellen
-            </button>
-
-            <div class="auth-links">
-                <a :href="route('login')"> Bereits registriert? Zum Login </a>
-            </div>
+            </Button>
         </form>
 
-        <AppFooter variant="auth" />
-    </div>
+        <template #after>
+            <p class="text-ink-muted">
+                Bereits registriert?
+                <Link :href="route('login')" :class="authLinkClass">
+                    Zum Login
+                </Link>
+            </p>
+        </template>
+    </AuthShell>
 </template>

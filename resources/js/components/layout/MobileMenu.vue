@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIsHost } from '@/components/layout/useIsHost';
 import Button from '@/components/ui/Button.vue';
 import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import { useAppNavigation } from '@/composables/useAppNavigation';
@@ -21,7 +22,9 @@ const props = defineProps<{ open: boolean; currentPath: string }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 
 const nav = useAppNavigation(toRef(props, 'currentPath'));
-const { user, canRegister, isHost, startHref, startCurrent, items } = nav;
+const { user, canRegister, startHref, startCurrent, items } = nav;
+// Gate C2: global geteiltes Host-Recht statt Seiten-Prop
+const isHost = useIsHost();
 const collectionLinks = nav.collectionLinks;
 
 const panel = ref<HTMLElement | null>(null);

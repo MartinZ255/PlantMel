@@ -51,13 +51,17 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user()
                     ? [
-                        'id'    => $request->user()->id,
-                        'name'  => $request->user()->name,
+                        'id' => $request->user()->id,
+                        'name' => $request->user()->name,
                         'email' => $request->user()->email,
                         // F-08/E2: ISO-8601 (UTC) oder null. Der Profilhinweis
                         // (settings/Profile.vue) prueft zusaetzlich
                         // `mustVerifyEmail`, erscheint also nur bei Schalter AN.
                         'email_verified_at' => $request->user()->email_verified_at?->copy()->utc()->toIso8601ZuluString(),
+                        // Gate C2: Host-Recht global (Kopfnavigation, Mobil- und
+                        // Nutzermenue zeigen "Rezept erstellen" auf jeder Seite).
+                        // Nur Anzeige; die Routen schuetzt weiter EnsureUserIsHost.
+                        'is_host' => (bool) $request->user()->is_host,
                     ]
                     : null,
                 'collections' => $request->user()
@@ -66,7 +70,7 @@ class HandleInertiaRequests extends Middleware
                         ->orderByDesc('updated_at')
                         ->get(['id', 'name'])
                         ->map(fn ($collection) => [
-                            'id'   => $collection->id,
+                            'id' => $collection->id,
                             'name' => $collection->name,
                         ])
                         ->values()
