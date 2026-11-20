@@ -8,6 +8,7 @@ use App\Models\User;
 use Database\Factories\RecipeImportFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -85,7 +86,7 @@ class RecipeCreateWithImportTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('unfinishedStates')]
+    #[DataProvider('unfinishedStates')]
     public function test_unfinished_own_import_is_not_used(string $state): void
     {
         $host = $this->actingAsHost();

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Database\Factories\RecipeIngredientFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class RecipeIngredient extends Model
 {
-    /** @use HasFactory<\Database\Factories\RecipeIngredientFactory> */
+    /** @use HasFactory<RecipeIngredientFactory> */
     use HasFactory;
 
     protected $table = 'recipe_ingredients';

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Database\Factories\RecipeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Recipe extends Model
 {
-    /** @use HasFactory<\Database\Factories\RecipeFactory> */
+    /** @use HasFactory<RecipeFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -20,7 +21,7 @@ class Recipe extends Model
 
     protected $casts = [
         'duration_minutes' => 'integer',
-        'servings'         => 'integer',
+        'servings' => 'integer',
     ];
 
     // Beziehungen

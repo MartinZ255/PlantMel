@@ -1,16 +1,20 @@
 <?php
 
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\IngredientAlternativeController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\RecipeController;
-use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\RecipeImportController;
 use App\Models\Category;
-use App\Models\Recipe;
+use App\Models\Collection;
 use App\Models\Ingredient;
+use App\Models\Recipe;
+use App\Models\RecipeImport;
 use App\Services\TasteRating;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
@@ -33,7 +37,7 @@ Route::get('/', function () {
         ->map(fn (Recipe $recipe) => [
             'id' => $recipe->id,
             'name' => $recipe->title,
-            'image' => \Illuminate\Support\Facades\Storage::disk('public')->url($recipe->images->first()->image_path),
+            'image' => Storage::disk('public')->url($recipe->images->first()->image_path),
             'categories' => $recipe->categories->pluck('name')->values()->all(),
             'duration_minutes' => $recipe->duration_minutes,
         ])
@@ -90,7 +94,6 @@ Route::get('/datenschutz', fn () => Inertia::render('legal/Datenschutz', [
     ],
 ]))->name('legal.privacy');
 
-
 // Authentifizierte, verifizierte Benutzer (Sammlungen etc.)
 // 'verified' wirkt nur bei plantmel.require_email_verification = true (F-08/E2).
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -98,7 +101,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $user = $request->user();
 
         $totalRecipes = Recipe::count();
-        $totalCollections = \App\Models\Collection::where('user_id', $user->id)->count();
+        $totalCollections = Collection::where('user_id', $user->id)->count();
 
         $latestRecipes = Recipe::with(['categories', 'images'])
             ->orderByDesc('created_at')
@@ -107,7 +110,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->map(function (Recipe $recipe) {
                 $firstImage = $recipe->images->first();
                 $imageUrl = $firstImage?->image_path
-                    ? \Illuminate\Support\Facades\Storage::disk('public')->url($firstImage->image_path)
+                    ? Storage::disk('public')->url($firstImage->image_path)
                     : null;
 
                 return [
@@ -127,7 +130,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('home');
 
-
     Route::get('/meineZutaten', function () {
         // F-03: Die Seite braucht die Prop `ingredients`. Gespeicherte
         // "eigene Zutaten" gibt es noch nicht (Feature folgt), daher leer.
@@ -135,7 +137,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'ingredients' => [],
         ]);
     })->name('myIngredients');
-
 
     Route::get('/sammlungen', [CollectionController::class, 'index'])
         ->name('collections.index');
@@ -178,7 +179,7 @@ Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
         // Ergebnis eines TikTok-Imports als Formular-Vorbelegung laden
         $importedRecipe = null;
         if ($request->filled('import')) {
-            $import = \App\Models\RecipeImport::where('id', $request->integer('import'))
+            $import = RecipeImport::where('id', $request->integer('import'))
                 ->where('user_id', $request->user()->id)
                 ->where('status', 'done')
                 ->first();
@@ -197,17 +198,17 @@ Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
 
         return Inertia::render('recipes/Create', [
             'ratingDimensions' => $ratingDimensions,
-            'categories'       => $categories,
-            'ingredients'      => $ingredients,
-            'importedRecipe'   => $importedRecipe,
+            'categories' => $categories,
+            'ingredients' => $ingredients,
+            'importedRecipe' => $importedRecipe,
         ]);
     })->name('recipes.create');
 
     // TikTok-Rezeptimport
-    Route::post('/rezept-import', [\App\Http\Controllers\RecipeImportController::class, 'store'])
+    Route::post('/rezept-import', [RecipeImportController::class, 'store'])
         ->name('recipeImports.store')->middleware('throttle:recipe-imports');
 
-    Route::get('/rezept-import/{recipeImport}', [\App\Http\Controllers\RecipeImportController::class, 'show'])
+    Route::get('/rezept-import/{recipeImport}', [RecipeImportController::class, 'show'])
         ->name('recipeImports.show');
 
     Route::post('/recipes', [RecipeController::class, 'store'])
@@ -221,7 +222,6 @@ Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
 
     Route::delete('/rezept/{recipe}', [RecipeController::class, 'delete'])
         ->name('recipes.delete');
-
 
     // Kategorien
     Route::post('/categories', [CategoryController::class, 'store'])

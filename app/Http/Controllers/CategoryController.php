@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,12 +16,12 @@ class CategoryController extends Controller
         ]);
 
         $category = Category::create([
-            'name'        => $data['name'],
+            'name' => $data['name'],
             'description' => null,
         ]);
 
         return response()->json([
-            'id'   => $category->id,
+            'id' => $category->id,
             'name' => $category->name,
         ], 201);
     }
@@ -34,7 +33,7 @@ class CategoryController extends Controller
                 'required',
                 'string',
                 'max:100', // Spalte categories.name (F-22)
-                'unique:categories,name,' . $category->id,
+                'unique:categories,name,'.$category->id,
             ],
         ]);
 
@@ -43,7 +42,7 @@ class CategoryController extends Controller
         ]);
 
         return response()->json([
-            'id'   => $category->id,
+            'id' => $category->id,
             'name' => $category->name,
             // F-07: Umbenennen wirkt global – Zahl der betroffenen Rezepte für einen Hinweis
             'recipes_count' => $category->recipes()->count(),

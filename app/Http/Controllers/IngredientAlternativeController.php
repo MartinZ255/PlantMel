@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\IngredientAlternative;
 use App\Models\Ingredient;
+use App\Models\IngredientAlternative;
 use App\Models\Recipe;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,11 +18,11 @@ class IngredientAlternativeController extends Controller
             ->get()
             ->map(function (IngredientAlternative $alt) {
                 return [
-                    'id'                      => $alt->id,
-                    'ingredient_id'           => $alt->ingredient_id,
+                    'id' => $alt->id,
+                    'ingredient_id' => $alt->ingredient_id,
                     'alternative_ingredient_id' => $alt->alternative_ingredient_id,
-                    'alternative'             => [
-                        'id'   => $alt->alternativeIngredient?->id,
+                    'alternative' => [
+                        'id' => $alt->alternativeIngredient?->id,
                         'name' => $alt->alternativeIngredient?->name,
                     ],
                 ];
@@ -49,20 +48,20 @@ class IngredientAlternativeController extends Controller
         ]);
 
         $alt = IngredientAlternative::create([
-            'recipe_id'              => $recipe->id,
-            'ingredient_id'          => $ingredient->id,
+            'recipe_id' => $recipe->id,
+            'ingredient_id' => $ingredient->id,
             'alternative_ingredient_id' => $data['alternative_ingredient_id'],
-            'note'                   => null,
+            'note' => null,
         ]);
 
         $alt->load('alternativeIngredient');
 
         return response()->json([
-            'id'                      => $alt->id,
-            'ingredient_id'           => $alt->ingredient_id,
+            'id' => $alt->id,
+            'ingredient_id' => $alt->ingredient_id,
             'alternative_ingredient_id' => $alt->alternative_ingredient_id,
-            'alternative'             => [
-                'id'   => $alt->alternativeIngredient?->id,
+            'alternative' => [
+                'id' => $alt->alternativeIngredient?->id,
                 'name' => $alt->alternativeIngredient?->name,
             ],
         ], 201);

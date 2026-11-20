@@ -3,14 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Collection;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
-use Inertia\Response;
 use App\Models\Recipe;
 use App\Services\TasteRating;
 use Illuminate\Http\RedirectResponse;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CollectionController extends Controller
 {
@@ -107,7 +106,7 @@ class CollectionController extends Controller
                 'rating' => TasteRating::roundedForList($recipe->ratings, $tasteDimensionId),
                 'tags' => $recipe->categories->pluck('name')->all(),
                 'time' => $recipe->duration_minutes
-                    ? $recipe->duration_minutes . ' Min'
+                    ? $recipe->duration_minutes.' Min'
                     : '–',
                 'image' => $imageUrl,
             ];

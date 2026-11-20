@@ -3,30 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\Ingredient;
 use App\Models\Collection;
+use App\Models\Ingredient;
 use App\Models\IngredientAlternative;
-use Illuminate\Container\Attributes\Tag;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Recipe;
-use Inertia\Inertia;
-use App\Http\Controllers\Controller;
 use App\Models\RecipeImage;
 use App\Models\RecipeIngredient;
 use App\Models\RecipeRating;
 use App\Services\TasteRating;
+use Closure;
+use Illuminate\Container\Attributes\Tag;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 use Inertia\Response;
-use Closure;
 use Throwable;
 
 class RecipeController extends Controller
 {
-
     public function show(Request $request, Recipe $recipe): Response
     {
         // E14: nur die Geschmacks-Bewertung laden, andere Dimensionen bleiben unberührt
@@ -59,7 +57,7 @@ class RecipeController extends Controller
                 return [
                     // aktuell speichern wir die Menge als note (z. B. "200 g")
                     'amount' => $ri->note,
-                    'name'   => $ri->ingredient?->name,
+                    'name' => $ri->ingredient?->name,
                     'alternatives' => $alternativesByIngredient->get(
                         $ri->ingredient_id,
                         [],
@@ -76,7 +74,7 @@ class RecipeController extends Controller
 
         // E14: einzige Bewertung ist Geschmack (Durchschnitt, eine Nachkommastelle)
         $ratingCount = $recipe->ratings->count();
-        $ratingAvg   = $ratingCount > 0
+        $ratingAvg = $ratingCount > 0
             ? round($recipe->ratings->avg('value'), 1)
             : null;
 
@@ -88,38 +86,37 @@ class RecipeController extends Controller
 
         return Inertia::render('recipes/Show', [
             'recipe' => [
-                'id'          => $recipe->id,
-                'name'        => $recipe->title,
+                'id' => $recipe->id,
+                'name' => $recipe->title,
                 'description' => $recipe->description,
-                'image'       => $primaryImage
+                'image' => $primaryImage
                     ? Storage::disk('public')->url($primaryImage->image_path)
                     : null,
 
                 'duration_minutes' => $recipe->duration_minutes,
-                'categories'       => $recipe->categories->pluck('name')->all(),
-                'tags'             => [],
+                'categories' => $recipe->categories->pluck('name')->all(),
+                'tags' => [],
 
-                'servings'         => $servings,
+                'servings' => $servings,
 
                 // Bewertung (E14): nur Geschmack
-                'rating'           => $ratingAvg,          // Ø Geschmack (z. B. 4.3) oder null
-                'ratingCount'      => $ratingCount,        // Anzahl Geschmacks-Bewertungen
+                'rating' => $ratingAvg,          // Ø Geschmack (z. B. 4.3) oder null
+                'ratingCount' => $ratingCount,        // Anzahl Geschmacks-Bewertungen
                 'ratingDimensions' => [],                  // bleibt leer (Props-Vertrag, E14)
 
                 // F-15: Feld „Quelle“ entfällt (Entscheidung des Auftraggebers).
 
                 'ingredients' => $ingredients,
-                'steps'       => $steps,
-                'notes'       => $notes,
+                'steps' => $steps,
+                'notes' => $notes,
 
-                'createdAt'   => $recipe->created_at?->toDateString(),
-                'updatedAt'   => $recipe->updated_at?->toDateString(),
+                'createdAt' => $recipe->created_at?->toDateString(),
+                'updatedAt' => $recipe->updated_at?->toDateString(),
             ],
             'collections' => $collections,
-            'isHost'      => (bool) optional($request->user())->is_host,
+            'isHost' => (bool) optional($request->user())->is_host,
         ]);
     }
-
 
     /** Gate D2 (F-23): Rezepte je Seite in der öffentlichen Liste. */
     public const INDEX_PER_PAGE = 24;
@@ -160,7 +157,7 @@ class RecipeController extends Controller
         // -------------------------------------------
         if ($search && trim($search) !== '') {
             $searchTerm = trim($search);
-            $like = '%' . $searchTerm . '%';
+            $like = '%'.$searchTerm.'%';
 
             $query->where(function ($q) use ($like) {
                 $q->where('title', 'like', $like)
@@ -173,9 +170,9 @@ class RecipeController extends Controller
         // -------------------------------------------
         // Enthaltene Zutaten: Rezept muss JEDE davon haben
         // -------------------------------------------
-        if (!empty($includeIngredients)) {
+        if (! empty($includeIngredients)) {
             foreach ($includeIngredients as $ingredientName) {
-                $like = '%' . $ingredientName . '%';
+                $like = '%'.$ingredientName.'%';
 
                 $query->whereHas('recipeIngredients.ingredient', function ($q) use ($like) {
                     $q->where('name', 'like', $like);
@@ -187,9 +184,9 @@ class RecipeController extends Controller
         // Auszuschließende Zutaten:
         // Rezept darf KEINE der angegebenen Zutaten enthalten
         // -------------------------------------------
-        if (!empty($excludeIngredients)) {
+        if (! empty($excludeIngredients)) {
             foreach ($excludeIngredients as $ingredientName) {
-                $like = '%' . $ingredientName . '%';
+                $like = '%'.$ingredientName.'%';
 
                 $query->whereDoesntHave('recipeIngredients.ingredient', function ($q) use ($like) {
                     $q->where('name', 'like', $like);
@@ -200,7 +197,7 @@ class RecipeController extends Controller
         // -------------------------------------------
         // Tags (Kategorienamen): Rezept muss alle gewählten Tags haben
         // -------------------------------------------
-        if (!empty($tags)) {
+        if (! empty($tags)) {
             foreach ($tags as $tagName) {
                 $query->whereHas('categories', function ($q) use ($tagName) {
                     $q->where('name', $tagName);
@@ -245,7 +242,7 @@ class RecipeController extends Controller
                     : null;
 
                 return [
-                    'id'   => $recipe->id,
+                    'id' => $recipe->id,
                     'name' => $recipe->title,
 
                     // 0–5, ganzzahlig, nur Geschmack (E14)
@@ -256,7 +253,7 @@ class RecipeController extends Controller
 
                     // Dauer als fertiger String
                     'time' => $recipe->duration_minutes
-                        ? $recipe->duration_minutes . ' Min'
+                        ? $recipe->duration_minutes.' Min'
                         : '–',
 
                     'image' => $imageUrl,
@@ -273,24 +270,24 @@ class RecipeController extends Controller
         $tagStats = fn () => Category::withCount('recipes')
             ->get()
             ->map(fn (Category $cat) => [
-                'key'   => $cat->slug ?? $cat->name,
+                'key' => $cat->slug ?? $cat->name,
                 'label' => $cat->name,
                 'count' => $cat->recipes_count,
             ]);
 
         return Inertia::render('recipes/Index', [
             // Gate D2: nur die Rezepte der aktuellen Seite (Form wie bisher)
-            'recipes'    => $recipes,
+            'recipes' => $recipes,
             'pagination' => $this->paginationProps($paginator),
-            'tags'     => $allTags,
+            'tags' => $allTags,
             'tagStats' => $tagStats,
-            'filters'  => [
-                'search'             => $search ?? '',
+            'filters' => [
+                'search' => $search ?? '',
                 'includeIngredients' => $includeIngredients,
                 'excludeIngredients' => $excludeIngredients,
-                'tags'               => $tags,
+                'tags' => $tags,
             ],
-            'isHost'   => (bool) optional($request->user())->is_host,
+            'isHost' => (bool) optional($request->user())->is_host,
         ]);
     }
 
@@ -346,14 +343,14 @@ class RecipeController extends Controller
 
         return [
             'currentPage' => $current,
-            'lastPage'    => $last,
-            'perPage'     => $paginator->perPage(),
-            'total'       => $paginator->total(),
-            'from'        => $paginator->firstItem(),
-            'to'          => $paginator->lastItem(),
-            'prevUrl'     => $paginator->previousPageUrl(),
-            'nextUrl'     => $paginator->nextPageUrl(),
-            'pages'       => $pages,
+            'lastPage' => $last,
+            'perPage' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'from' => $paginator->firstItem(),
+            'to' => $paginator->lastItem(),
+            'prevUrl' => $paginator->previousPageUrl(),
+            'nextUrl' => $paginator->nextPageUrl(),
+            'pages' => $pages,
         ];
     }
 
@@ -405,46 +402,45 @@ class RecipeController extends Controller
         $tasteDimensionId = TasteRating::dimensionId();
 
         $validated = $request->validate([
-            'name'                 => ['required', 'string', 'max:255'],
-            'description'          => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
-            'duration_minutes'     => ['nullable', 'integer', 'min:0'],
-            'servings'             => ['nullable', 'integer', 'min:1'],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
+            'duration_minutes' => ['nullable', 'integer', 'min:0'],
+            'servings' => ['nullable', 'integer', 'min:1'],
             // F-15: kein Feld „source“ mehr; ein mitgesendetes wird ignoriert.
 
             // Tags aus dem Frontend (werden auf Categories gemappt)
-            'tags'                 => ['array'],
-            'tags.*'               => ['string', 'max:255'],
+            'tags' => ['array'],
+            'tags.*' => ['string', 'max:255'],
 
             // Zutaten aus dem Formular
-            'ingredients'                          => ['required', 'array'],
+            'ingredients' => ['required', 'array'],
             // max:255 = recipe_ingredients.note bzw. ingredients.name (F-22)
-            'ingredients.*.amount'                 => ['nullable', 'string', 'max:255'],
-            'ingredients.*.name'                   => ['required', 'string', 'max:255'],
-            'ingredients.*.alternativeIngredientIds'   => ['array'],
+            'ingredients.*.amount' => ['nullable', 'string', 'max:255'],
+            'ingredients.*.name' => ['required', 'string', 'max:255'],
+            'ingredients.*.alternativeIngredientIds' => ['array'],
             'ingredients.*.alternativeIngredientIds.*' => ['integer', 'exists:ingredients,id'],
 
-
             // Zubereitungsschritte
-            'steps'                => ['required', 'array'],
-            'steps.*'              => ['required', 'string', 'max:65535'],
+            'steps' => ['required', 'array'],
+            'steps.*' => ['required', 'string', 'max:65535'],
 
             // Notizen (hängen wir unten an instructions an)
-            'notes'                => ['nullable', 'string', 'max:65535'],
+            'notes' => ['nullable', 'string', 'max:65535'],
 
             // Ratings: { [dimensionId]: value }
-            'ratings'              => ['array', $this->ratingDimensionKeysRule($tasteDimensionId)],
-            'ratings.*'            => ['nullable', 'integer', 'min:1', 'max:5'],
+            'ratings' => ['array', $this->ratingDimensionKeysRule($tasteDimensionId)],
+            'ratings.*' => ['nullable', 'integer', 'min:1', 'max:5'],
 
             // Bild-Upload (optional)
-            'image'                => ['nullable', 'image', 'max:16384'], // 16MB
+            'image' => ['nullable', 'image', 'max:16384'], // 16MB
         ]);
 
         // Falls bestimmte Arrays nicht gesetzt sind, auf leere Arrays setzen, um Fehler zu vermeiden
-        $validated['tags']        = $validated['tags']        ?? [];
+        $validated['tags'] = $validated['tags'] ?? [];
         $validated['ingredients'] = $validated['ingredients'] ?? [];
-        $validated['steps']       = $validated['steps']       ?? [];
-        $validated['ratings']     = $validated['ratings']     ?? [];
-        $validated['notes']       = $validated['notes']       ?? null;
+        $validated['steps'] = $validated['steps'] ?? [];
+        $validated['ratings'] = $validated['ratings'] ?? [];
+        $validated['notes'] = $validated['notes'] ?? null;
 
         $recipe = null;
         $storedImagePath = null;
@@ -452,21 +448,20 @@ class RecipeController extends Controller
         try {
             DB::transaction(function () use (&$recipe, &$storedImagePath, $request, $validated, $tasteDimensionId) {
                 // 1) Recipe selbst anlegen
-                $recipe           = new Recipe();
-                $recipe->title    = $validated['name'];
+                $recipe = new Recipe;
+                $recipe->title = $validated['name'];
                 $recipe->description = $validated['description'] ?? null;
                 $recipe->duration_minutes = $validated['duration_minutes'] ?? null;
-                $recipe->servings        = $validated['servings'] ?? null;
+                $recipe->servings = $validated['servings'] ?? null;
 
                 // instructions aus steps (+ optional notes) zusammenbauen
                 $stepsText = $this->buildInstructionsText($validated['steps'], $validated['notes']);
                 $recipe->instructions = $stepsText;
 
-
                 $recipe->save();
 
                 // 2) Kategorien per Tag-Namen verknüpfen (tags -> categories)
-                if (!empty($validated['tags'])) {
+                if (! empty($validated['tags'])) {
                     $categoryIds = Category::whereIn('name', $validated['tags'])->pluck('id');
                     if ($categoryIds->isNotEmpty()) {
                         $recipe->categories()->sync($categoryIds);
@@ -480,9 +475,9 @@ class RecipeController extends Controller
                 $tasteValue = $this->tasteValueFrom($validated['ratings'], $tasteDimensionId);
                 if ($tasteValue !== null) {
                     RecipeRating::create([
-                        'recipe_id'    => $recipe->id,
+                        'recipe_id' => $recipe->id,
                         'dimension_id' => $tasteDimensionId,
-                        'value'        => $tasteValue,
+                        'value' => $tasteValue,
                     ]);
                 }
 
@@ -491,7 +486,7 @@ class RecipeController extends Controller
                     $storedImagePath = $request->file('image')->store('recipes', 'public');
 
                     RecipeImage::create([
-                        'recipe_id'  => $recipe->id,
+                        'recipe_id' => $recipe->id,
                         'image_path' => $storedImagePath, // im Frontend per Storage::url() auflösen
                     ]);
                 }
@@ -676,11 +671,11 @@ class RecipeController extends Controller
 
         // Ingredients für Formular
         $ingredients = $recipe->recipeIngredients
-            ->map(function ($ri) use ($alternativesByIngredient){
+            ->map(function ($ri) use ($alternativesByIngredient) {
                 return [
                     'amount' => $ri->note ?? '',
-                    'name'   => $ri->ingredient?->name ?? '',
-                    'alternativeIngredientIds'=> $alternativesByIngredient->get($ri->ingredient_id, []),
+                    'name' => $ri->ingredient?->name ?? '',
+                    'alternativeIngredientIds' => $alternativesByIngredient->get($ri->ingredient_id, []),
                 ];
             })
             ->values()
@@ -708,25 +703,25 @@ class RecipeController extends Controller
 
         return Inertia::render('recipes/Edit', [
             'ratingDimensions' => $ratingDimensions,
-            'categories'       => $categories,
-            'ingredients'      => $allIngredients,
-            'recipe'           => [
-                'id'               => $recipe->id,
-                'name'             => $recipe->title,
-                'description'      => $recipe->description,
-                'image'            => $primaryImage
+            'categories' => $categories,
+            'ingredients' => $allIngredients,
+            'recipe' => [
+                'id' => $recipe->id,
+                'name' => $recipe->title,
+                'description' => $recipe->description,
+                'image' => $primaryImage
                     ? Storage::disk('public')->url($primaryImage->image_path)
                     : null,
                 'duration_minutes' => $recipe->duration_minutes,
-                'servings'         => $recipe->servings,
+                'servings' => $recipe->servings,
                 // F-15: Feld „Quelle“ entfällt
-                'tags'             => $tags,
-                'ingredients'      => $ingredients,
-                'steps'            => $steps,
-                'notes'            => $notes,
-                'ratings'          => $ratings,
+                'tags' => $tags,
+                'ingredients' => $ingredients,
+                'steps' => $steps,
+                'notes' => $notes,
+                'ratings' => $ratings,
             ],
-            'isHost'           => (bool) optional($request->user())->is_host,
+            'isHost' => (bool) optional($request->user())->is_host,
         ]);
     }
 
@@ -795,46 +790,45 @@ class RecipeController extends Controller
         $tasteDimensionId = TasteRating::dimensionId();
 
         $validated = $request->validate([
-            'name'                 => ['required', 'string', 'max:255'],
-            'description'          => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
-            'duration_minutes'     => ['nullable', 'integer', 'min:0'],
-            'servings'             => ['nullable', 'integer', 'min:1'],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:65535'], // TEXT-Spalte (F-22)
+            'duration_minutes' => ['nullable', 'integer', 'min:0'],
+            'servings' => ['nullable', 'integer', 'min:1'],
             // F-15: kein Feld „source“ mehr; ein mitgesendetes wird ignoriert.
 
             // Tags aus dem Frontend (werden auf Categories gemappt)
-            'tags'                 => ['array'],
-            'tags.*'               => ['string', 'max:255'],
+            'tags' => ['array'],
+            'tags.*' => ['string', 'max:255'],
 
             // Zutaten aus dem Formular
-            'ingredients'                          => ['required', 'array'],
+            'ingredients' => ['required', 'array'],
             // max:255 = recipe_ingredients.note bzw. ingredients.name (F-22)
-            'ingredients.*.amount'                 => ['nullable', 'string', 'max:255'],
-            'ingredients.*.name'                   => ['required', 'string', 'max:255'],
-            'ingredients.*.alternativeIngredientIds'   => ['array'],
+            'ingredients.*.amount' => ['nullable', 'string', 'max:255'],
+            'ingredients.*.name' => ['required', 'string', 'max:255'],
+            'ingredients.*.alternativeIngredientIds' => ['array'],
             'ingredients.*.alternativeIngredientIds.*' => ['integer', 'exists:ingredients,id'],
 
-
             // Zubereitungsschritte
-            'steps'                => ['required', 'array'],
-            'steps.*'              => ['required', 'string', 'max:65535'],
+            'steps' => ['required', 'array'],
+            'steps.*' => ['required', 'string', 'max:65535'],
 
             // Notizen (hängen wir unten an instructions an)
-            'notes'                => ['nullable', 'string', 'max:65535'],
+            'notes' => ['nullable', 'string', 'max:65535'],
 
             // Ratings: { [dimensionId]: value }
-            'ratings'              => ['array', $this->ratingDimensionKeysRule($tasteDimensionId)],
-            'ratings.*'            => ['nullable', 'integer', 'min:1', 'max:5'],
+            'ratings' => ['array', $this->ratingDimensionKeysRule($tasteDimensionId)],
+            'ratings.*' => ['nullable', 'integer', 'min:1', 'max:5'],
 
             // Bild-Upload (optional, darf bei Update leer bleiben)
-            'image'                => ['nullable', 'image', 'max:16384'], // 16MB
+            'image' => ['nullable', 'image', 'max:16384'], // 16MB
         ]);
 
         // Defaults wie in store()
-        $validated['tags']        = $validated['tags']        ?? [];
+        $validated['tags'] = $validated['tags'] ?? [];
         $validated['ingredients'] = $validated['ingredients'] ?? [];
-        $validated['steps']       = $validated['steps']       ?? [];
-        $validated['ratings']     = $validated['ratings']     ?? [];
-        $validated['notes']       = $validated['notes']       ?? null;
+        $validated['steps'] = $validated['steps'] ?? [];
+        $validated['ratings'] = $validated['ratings'] ?? [];
+        $validated['notes'] = $validated['notes'] ?? null;
 
         // F-19: Dateien erst nach dem Commit löschen bzw. bei Rollback die neue entfernen
         $newImagePath = null;
@@ -843,10 +837,10 @@ class RecipeController extends Controller
         try {
             DB::transaction(function () use (&$recipe, &$newImagePath, &$replacedImagePaths, $request, $validated, $tasteDimensionId) {
                 // 1) Grunddaten aktualisieren
-                $recipe->title            = $validated['name'];
-                $recipe->description      = $validated['description'] ?? null;
+                $recipe->title = $validated['name'];
+                $recipe->description = $validated['description'] ?? null;
                 $recipe->duration_minutes = $validated['duration_minutes'] ?? null;
-                $recipe->servings         = $validated['servings'] ?? null;
+                $recipe->servings = $validated['servings'] ?? null;
 
                 // instructions aus steps (+ optional notes) zusammenbauen
                 $stepsText = $this->buildInstructionsText($validated['steps'], $validated['notes']);
@@ -855,7 +849,7 @@ class RecipeController extends Controller
                 $recipe->save();
 
                 // 2) Kategorien per Tag-Namen verknüpfen (tags -> categories)
-                if (!empty($validated['tags'])) {
+                if (! empty($validated['tags'])) {
                     $categoryIds = Category::whereIn('name', $validated['tags'])->pluck('id');
                     $recipe->categories()->sync($categoryIds);
                 } else {
@@ -893,7 +887,7 @@ class RecipeController extends Controller
                     $newImagePath = $request->file('image')->store('recipes', 'public');
 
                     RecipeImage::create([
-                        'recipe_id'  => $recipe->id,
+                        'recipe_id' => $recipe->id,
                         'image_path' => $newImagePath,
                     ]);
                 }

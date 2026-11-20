@@ -15,8 +15,8 @@ class IngredientController extends Controller
             ->get(['id', 'name'])
             ->map(function (Ingredient $ingredient) {
                 return [
-                    'id'       => $ingredient->id,
-                    'name'     => $ingredient->name,
+                    'id' => $ingredient->id,
+                    'name' => $ingredient->name,
                 ];
             });
 
@@ -28,15 +28,15 @@ class IngredientController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'        => ['required', 'string', 'max:255', 'unique:ingredients,name'],
+            'name' => ['required', 'string', 'max:255', 'unique:ingredients,name'],
             'description' => ['nullable', 'string'],
         ]);
 
         $ingredient = Ingredient::create($data);
 
         return response()->json([
-            'id'          => $ingredient->id,
-            'name'        => $ingredient->name,
+            'id' => $ingredient->id,
+            'name' => $ingredient->name,
             'description' => $ingredient->description,
         ], 201);
     }
@@ -44,11 +44,11 @@ class IngredientController extends Controller
     public function update(Request $request, Ingredient $ingredient)
     {
         $data = $request->validate([
-            'name'        => [
+            'name' => [
                 'required',
                 'string',
                 'max:255',
-                'unique:ingredients,name,' . $ingredient->id,
+                'unique:ingredients,name,'.$ingredient->id,
             ],
             'description' => ['nullable', 'string'],
         ]);
@@ -56,8 +56,8 @@ class IngredientController extends Controller
         $ingredient->update($data);
 
         return response()->json([
-            'id'          => $ingredient->id,
-            'name'        => $ingredient->name,
+            'id' => $ingredient->id,
+            'name' => $ingredient->name,
             'description' => $ingredient->description,
             // F-07: Umbenennen wirkt global – Zahl der betroffenen Rezepte für einen Hinweis
             'recipes_count' => $this->recipesUsingCount($ingredient),
@@ -126,5 +126,4 @@ class IngredientController extends Controller
             'status' => 'deleted',
         ]);
     }
-
 }

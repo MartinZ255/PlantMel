@@ -46,18 +46,12 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
-      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 27 Style-Issues
-      # in 28 Dateien (docs/modernization/baseline/lint-pint.txt). Die Ausnahme wird
-      # entfernt, sobald der Altbestand bereinigt ist.
+      # Blockierend seit Gate D (2026-11-20): Altbestand mit Pint bereinigt, 0 Befunde.
       - name: Pint (check)
-        continue-on-error: true
         run: vendor/bin/pint --test
 
-      # Ausnahme (2026-11-13): Am unveränderten Altbestand gemessen 36 nicht
-      # Prettier-konforme Dateien (docs/modernization/baseline/lint-prettier.txt).
-      # Die Ausnahme wird entfernt, sobald der Altbestand bereinigt ist.
+      # Blockierend seit Gate D (2026-11-20): Altbestand mit Prettier bereinigt, 0 Befunde.
       - name: Prettier (check)
-        continue-on-error: true
         run: npm run format:check
 
       # Blockierend seit Slice 3 (2026-11-14): 0 Fehler. Bewusst nicht `npm run lint` (enthält --fix).

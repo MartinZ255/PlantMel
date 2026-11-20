@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -11,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, MustVerifyEmailTrait, Notifiable;
 
     /**
@@ -51,10 +52,10 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function casts(): array
     {
         return [
-            'email_verified_at'       => 'datetime',
-            'password'                => 'hashed',
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
-            'is_host'                 => 'boolean',
+            'is_host' => 'boolean',
         ];
     }
 
