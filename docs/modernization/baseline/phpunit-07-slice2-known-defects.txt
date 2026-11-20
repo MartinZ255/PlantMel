@@ -1,0 +1,147 @@
+
+   FAIL  Tests\KnownDefects\Backend\CollectionFlashTest
+  ⨯ success flash is shared with following page                                                                  0.50s  
+
+   FAIL  Tests\KnownDefects\Backend\CollectionIndexQueryCountTest
+  ⨯ collections index runs constant number of queries                                                            0.05s  
+
+   FAIL  Tests\KnownDefects\Security\EmailVerificationEnforcementTest
+  ⨯ unverified user is redirected to verification notice from home                                               0.02s  
+  ⨯ unverified user cannot create collection                                                                     0.03s  
+  ⨯ registration sends email verification notification                                                           0.05s  
+
+   FAIL  Tests\KnownDefects\TwoFactorSettingsPageTest
+  ⨯ two factor settings page can be rendered                                                                     0.02s  
+  ⨯ two factor settings page does not requires password confirmation when disabled                               0.03s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\Backend\CollectionFlashTest > success flash is shared with following page                 
+  Property [flash.success] does not exist.
+Failed asserting that false is true.
+
+  at tests\KnownDefects\Backend\CollectionFlashTest.php:36
+     32▕         $this->get(route('collections.index'))
+     33▕             ->assertOk()
+     34▕             ->assertInertia(fn (Assert $page) => $page
+     35▕                 ->component('collections/Index')
+  ➜  36▕                 ->where('flash.success', 'Sammlung wurde erstellt.')
+     37▕             );
+     38▕     }
+     39▕ }
+     40▕
+
+  1   vendor\inertiajs\inertia-laravel\src\Testing\TestResponseMacros.php:26
+  2   vendor\laravel\framework\src\Illuminate\Macroable\Traits\Macroable.php:132
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\Backend\CollectionIndexQueryCountTest > collections index runs constant number of quer…   
+  collections.index: 4 Queries bei 2 Sammlungen, 12 Queries bei 10 Sammlungen (F-23, N+1).
+Failed asserting that 12 is identical to 4.
+
+  at tests\KnownDefects\Backend\CollectionIndexQueryCountTest.php:40
+     36▕         Collection::factory()->for($user)->count(8)->create()
+     37▕             ->each(fn (Collection $c) => $c->recipes()->attach($recipes));
+     38▕         $withTen = $this->countQueries($user);
+     39▕ 
+  ➜  40▕         $this->assertSame(
+     41▕             $withTwo,
+     42▕             $withTen,
+     43▕             "collections.index: {$withTwo} Queries bei 2 Sammlungen, {$withTen} Queries bei 10 Sammlungen (F-23, N+1).",
+     44▕         );
+
+  1   tests\KnownDefects\Backend\CollectionIndexQueryCountTest.php:40
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\Security\EmailVerificationEnforcementTest > unverified user is redirected to verificat…   
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 200.
+Failed asserting that false is true.
+
+  at tests\KnownDefects\Security\EmailVerificationEnforcementTest.php:36
+     32▕         $user = User::factory()->unverified()->withoutTwoFactor()->create();
+     33▕ 
+     34▕         $this->actingAs($user)
+     35▕             ->get(route('home'))
+  ➜  36▕             ->assertRedirect(route('verification.notice'));
+     37▕     }
+     38▕ 
+     39▕     public function test_unverified_user_cannot_create_collection(): void
+     40▕     {
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\Security\EmailVerificationEnforcementTest > unverified user cannot create collection      
+  Failed asserting that two strings are equal.
+--- Expected
++++ Actual
+@@ @@
+-'http://localhost/email/verify'
++'http://localhost/sammlungen'
+
+  at tests\KnownDefects\Security\EmailVerificationEnforcementTest.php:45
+     41▕         $user = User::factory()->unverified()->withoutTwoFactor()->create();
+     42▕ 
+     43▕         $this->actingAs($user)
+     44▕             ->post(route('collections.store'), ['name' => 'Unverifiziert'])
+  ➜  45▕             ->assertRedirect(route('verification.notice'));
+     46▕ 
+     47▕         $this->assertDatabaseCount('collections', 0);
+     48▕     }
+     49▕
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\Security\EmailVerificationEnforcementTest > registration sends email verification noti…   
+  The expected [Illuminate\Auth\Notifications\VerifyEmail] notification was not sent.
+Failed asserting that false is true.
+
+  at vendor\laravel\framework\src\Illuminate\Support\Testing\Fakes\NotificationFake.php:89
+     85▕         if (is_numeric($callback)) {
+     86▕             return $this->assertSentToTimes($notifiable, $notification, $callback);
+     87▕         }
+     88▕ 
+  ➜  89▕         PHPUnit::assertTrue(
+     90▕             $this->sent($notifiable, $notification, $callback)->count() > 0,
+     91▕             "The expected [{$notification}] notification was not sent."
+     92▕         );
+     93▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Testing\Fakes\NotificationFake.php:89
+  2   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:363
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\TwoFactorSettingsPageTest > two factor settings page can be rend…  AssertionFailedError   
+  Inertia page component file [settings/TwoFactor] does not exist.
+
+  at vendor\inertiajs\inertia-laravel\src\Testing\AssertableInertia.php:112
+    108▕         if ($shouldExist || (is_null($shouldExist) && config('inertia.testing.ensure_pages_exist', true))) {
+    109▕             try {
+    110▕                 app('inertia.testing.view-finder')->find($value);
+    111▕             } catch (InvalidArgumentException $exception) {
+  ➜ 112▕                 PHPUnit::fail(sprintf('Inertia page component file [%s] does not exist.', $value));
+    113▕             }
+    114▕         }
+    115▕ 
+    116▕         return $this;
+
+  1   vendor\inertiajs\inertia-laravel\src\Testing\AssertableInertia.php:112
+  2   tests\KnownDefects\TwoFactorSettingsPageTest.php:44
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\TwoFactorSettingsPageTest > two factor settings page does not re…  AssertionFailedError   
+  Inertia page component file [settings/TwoFactor] does not exist.
+
+  at vendor\inertiajs\inertia-laravel\src\Testing\AssertableInertia.php:112
+    108▕         if ($shouldExist || (is_null($shouldExist) && config('inertia.testing.ensure_pages_exist', true))) {
+    109▕             try {
+    110▕                 app('inertia.testing.view-finder')->find($value);
+    111▕             } catch (InvalidArgumentException $exception) {
+  ➜ 112▕                 PHPUnit::fail(sprintf('Inertia page component file [%s] does not exist.', $value));
+    113▕             }
+    114▕         }
+    115▕ 
+    116▕         return $this;
+
+  1   vendor\inertiajs\inertia-laravel\src\Testing\AssertableInertia.php:112
+  2   tests\KnownDefects\TwoFactorSettingsPageTest.php:66
+
+
+  Tests:    7 failed (43 assertions)
+  Duration: 0.98s
+

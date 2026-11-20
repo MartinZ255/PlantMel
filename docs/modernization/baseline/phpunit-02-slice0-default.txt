@@ -1,0 +1,416 @@
+
+   PASS  Tests\Unit\ExampleTest
+  ✓ that true is true                                                                                            0.66s  
+
+   PASS  Tests\Feature\Auth\AuthenticationTest
+  ✓ login screen can be rendered                                                                                 0.14s  
+  ✓ users can authenticate using the login screen                                                                0.10s  
+  ✓ users with two factor enabled are redirected to two factor challenge                                         0.02s  
+  ✓ users can not authenticate with invalid password                                                             0.02s  
+  ✓ users can logout                                                                                             0.02s  
+  ✓ users are rate limited                                                                                       0.02s  
+
+   PASS  Tests\Feature\Auth\EmailVerificationTest
+  ✓ email verification screen can be rendered                                                                    0.02s  
+  ✓ email can be verified                                                                                        0.02s  
+  ✓ email is not verified with invalid hash                                                                      0.02s  
+  ✓ email is not verified with invalid user id                                                                   0.02s  
+  ✓ verified user is redirected to landing from verification prompt                                              0.02s  
+  ✓ already verified user visiting verification link is redirected without firing event again                    0.02s  
+
+   PASS  Tests\Feature\Auth\PasswordConfirmationTest
+  ✓ confirm password screen can be rendered                                                                      0.03s  
+  ✓ password confirmation requires authentication                                                                0.01s  
+
+   PASS  Tests\Feature\Auth\PasswordResetTest
+  ✓ reset password link screen can be rendered                                                                   0.02s  
+  ✓ reset password link can be requested                                                                         0.25s  
+  ✓ reset password screen can be rendered                                                                        0.24s  
+  ✓ password can be reset with valid token                                                                       0.26s  
+  ✓ password cannot be reset with invalid token                                                                  0.24s  
+
+   PASS  Tests\Feature\Auth\RegistrationTest
+  ✓ registration screen can be rendered                                                                          0.02s  
+  ✓ new users can register                                                                                       0.02s  
+
+   PASS  Tests\Feature\Auth\TwoFactorChallengeTest
+  ✓ two factor challenge redirects to login when not authenticated                                               0.02s  
+  ✓ two factor challenge can be rendered                                                                         0.02s  
+
+   PASS  Tests\Feature\Auth\VerificationNotificationTest
+  ✓ sends verification notification                                                                              0.02s  
+  ✓ does not send verification notification if email is verified                                                 0.02s  
+
+   PASS  Tests\Feature\Authorization\ApiRouteAuthorizationTest
+  ✓ api write route for guest with data set " p o s t api/recipes"                                               0.02s  
+  ✓ api write route for guest with data set " p u t api/recipes/{recipe}"                                        0.02s  
+  ✓ api write route for guest with data set " d e l e t e api/recipes/{recipe}"                                  0.02s  
+  ✓ api write route for non host via acting as with data set " p o s t api/recipes"                              0.02s  
+  ✓ api write route for non host via acting as with data set " p u t api/recipes/{recipe}"                       0.02s  
+  ✓ api write route for non host via acting as with data set " d e l e t e api/recipes/{recipe}"                 0.02s  
+  ✓ api write route for host via acting as with data set " p o s t api/recipes"                                  0.03s  
+  ✓ api write route for host via acting as with data set " p u t api/recipes/{recipe}"                           0.04s  
+  ✓ api write route for host via acting as with data set " d e l e t e api/recipes/{recipe}"                     0.05s  
+  ✓ api read route rating dimensions is public                                                                   0.01s  
+  ✓ api routes run without session middleware                                                                    0.01s  
+  ✓ real session login is not recognized by api routes                                                           0.03s  
+
+   PASS  Tests\Feature\Authorization\AuthorizationGapsTest
+  ✓ f45 unverified host reaches host routes                                                                      0.03s  
+  ✓ f45 any host can delete any recipe because recipes have no owner                                             0.02s  
+  ✓ f08 unverified user reaches home                                                                             0.02s  
+
+   PASS  Tests\Feature\Authorization\HostMiddlewareResponseTest
+  ✓ inertia request of non host gets plain html 403                                                              0.02s  
+  ✓ json request of non host gets json 403 with message                                                          0.02s  
+  ✓ plain browser request of non host gets html 403                                                              0.02s  
+
+   PASS  Tests\Feature\Authorization\RouteRoleMatrixTest
+  ✓ host route redirects guest to login with data set "recipes.create"                                           0.04s  
+  ✓ host route redirects guest to login with data set "recipe imports.store"                                     0.02s  
+  ✓ host route redirects guest to login with data set "recipe imports.show"                                      0.03s  
+  ✓ host route redirects guest to login with data set "recipes.store"                                            0.02s  
+  ✓ host route redirects guest to login with data set "recipes.edit"                                             0.02s  
+  ✓ host route redirects guest to login with data set "recipes.update"                                           0.02s  
+  ✓ host route redirects guest to login with data set "recipes.delete"                                           0.02s  
+  ✓ host route redirects guest to login with data set "categories.store"                                         0.02s  
+  ✓ host route redirects guest to login with data set "categories.update"                                        0.02s  
+  ✓ host route redirects guest to login with data set "categories.destroy"                                       0.02s  
+  ✓ host route redirects guest to login with data set "ingredients.store"                                        0.02s  
+  ✓ host route redirects guest to login with data set "ingredients.update"                                       0.02s  
+  ✓ host route redirects guest to login with data set "ingredients.destroy"                                      0.02s  
+  ✓ host route redirects guest to login with data set "ingredient alternatives.index"                            0.03s  
+  ✓ host route redirects guest to login with data set "ingredient alternatives.store"                            0.02s  
+  ✓ host route redirects guest to login with data set "ingredient alternatives.destroy"                          0.02s  
+  ✓ host route forbids non host without changing data with data set "recipes.create"                             0.02s  
+  ✓ host route forbids non host without changing data with data set "recipe imports.store"                       0.02s  
+  ✓ host route forbids non host without changing data with data set "recipe imports.show"                        0.02s  
+  ✓ host route forbids non host without changing data with data set "recipes.store"                              0.03s  
+  ✓ host route forbids non host without changing data with data set "recipes.edit"                               0.02s  
+  ✓ host route forbids non host without changing data with data set "recipes.update"                             0.02s  
+  ✓ host route forbids non host without changing data with data set "recipes.delete"                             0.02s  
+  ✓ host route forbids non host without changing data with data set "categories.store"                           0.02s  
+  ✓ host route forbids non host without changing data with data set "categories.update"                          0.02s  
+  ✓ host route forbids non host without changing data with data set "categories.destroy"                         0.02s  
+  ✓ host route forbids non host without changing data with data set "ingredients.store"                          0.02s  
+  ✓ host route forbids non host without changing data with data set "ingredients.update"                         0.02s  
+  ✓ host route forbids non host without changing data with data set "ingredients.destroy"                        0.02s  
+  ✓ host route forbids non host without changing data with data set "ingredient alternatives.index"              0.02s  
+  ✓ host route forbids non host without changing data with data set "ingredient alternatives.store"              0.02s  
+  ✓ host route forbids non host without changing data with data set "ingredient alternatives.destroy"            0.02s  
+  ✓ host route is reachable for host with data set "recipes.create"                                              0.02s  
+  ✓ host route is reachable for host with data set "recipe imports.store"                                        0.03s  
+  ✓ host route is reachable for host with data set "recipe imports.show"                                         0.02s  
+  ✓ host route is reachable for host with data set "recipes.store"                                               0.04s  
+  ✓ host route is reachable for host with data set "recipes.edit"                                                0.03s  
+  ✓ host route is reachable for host with data set "recipes.update"                                              0.02s  
+  ✓ host route is reachable for host with data set "recipes.delete"                                              0.02s  
+  ✓ host route is reachable for host with data set "categories.store"                                            0.02s  
+  ✓ host route is reachable for host with data set "categories.update"                                           0.02s  
+  ✓ host route is reachable for host with data set "categories.destroy"                                          0.02s  
+  ✓ host route is reachable for host with data set "ingredients.store"                                           0.02s  
+  ✓ host route is reachable for host with data set "ingredients.update"                                          0.02s  
+  ✓ host route is reachable for host with data set "ingredients.destroy"                                         0.02s  
+  ✓ host route is reachable for host with data set "ingredient alternatives.index"                               0.02s  
+  ✓ host route is reachable for host with data set "ingredient alternatives.store"                               0.03s  
+  ✓ host route is reachable for host with data set "ingredient alternatives.destroy"                             0.02s  
+  ✓ user route redirects guest to login with data set "home"                                                     0.02s  
+  ✓ user route redirects guest to login with data set "my ingredients"                                           0.02s  
+  ✓ user route redirects guest to login with data set "collections.index"                                        0.02s  
+  ✓ user route redirects guest to login with data set "collections.create"                                       0.02s  
+  ✓ user route redirects guest to login with data set "collections.store"                                        0.02s  
+  ✓ user route redirects guest to login with data set "collections.show"                                         0.02s  
+  ✓ user route redirects guest to login with data set "collections.add recipe"                                   0.02s  
+  ✓ user route redirects guest to login with data set "collections.remove recipe"                                0.02s  
+  ✓ user route redirects guest to login with data set "collections.delete"                                       0.02s  
+  ✓ user route succeeds for verified user with data set "home"                                                   0.02s  
+  ✓ user route succeeds for verified user with data set "my ingredients"                                         0.02s  
+  ✓ user route succeeds for verified user with data set "collections.index"                                      0.02s  
+  ✓ user route succeeds for verified user with data set "collections.create"                                     0.02s  
+  ✓ user route succeeds for verified user with data set "collections.store"                                      0.02s  
+  ✓ user route succeeds for verified user with data set "collections.show"                                       0.05s  
+  ✓ user route succeeds for verified user with data set "collections.add recipe"                                 0.02s  
+  ✓ user route succeeds for verified user with data set "collections.remove recipe"                              0.02s  
+  ✓ user route succeeds for verified user with data set "collections.delete"                                     0.02s  
+  ✓ settings route redirects guest to login with data set "settings.index"                                       0.02s  
+  ✓ settings route redirects guest to login with data set "profile.edit"                                         0.01s  
+  ✓ settings route redirects guest to login with data set "profile.update"                                       0.01s  
+  ✓ settings route redirects guest to login with data set "profile.destroy"                                      0.01s  
+  ✓ settings route redirects guest to login with data set "user-password.edit"                                   0.01s  
+  ✓ settings route redirects guest to login with data set "user-password.update"                                 0.01s  
+  ✓ settings route redirects guest to login with data set "appearance.edit"                                      0.01s  
+  ✓ settings route redirects guest to login with data set "two-factor.show"                                      0.02s  
+  ✓ public route is reachable for guest with data set "landing"                                                  0.02s  
+  ✓ public route is reachable for guest with data set "recipes.index"                                            0.02s  
+  ✓ public route is reachable for guest with data set "recipes.show"                                             0.02s  
+  ✓ public route is reachable for guest with data set " ingredient search"                                       0.02s  
+  ✓ route lists match the middleware declared in route files                                                     0.01s  
+  ✓ every app route is covered by exactly one matrix list                                                        0.01s  
+
+   PASS  Tests\Feature\Catalog\CatalogPagesTest
+  ✓ rating dimensions api is public and sorted by name                                                           0.08s  
+  ✓ rating dimensions api returns empty array                                                                    0.01s  
+  ✓ ingredient search page lists ingredients with id and name only f02                                           0.02s  
+  ✓ ingredient search page with authenticated user                                                               0.02s  
+  ✓ my ingredients page renders without props f03                                                                0.02s  
+  ✓ my ingredients requires login                                                                                0.01s  
+
+   PASS  Tests\Feature\Catalog\CategoryEndpointsTest
+  ✓ store creates category and returns 201                                                                       0.03s  
+  ✓ store rejects duplicate and missing name                                                                     0.03s  
+  ✓ update renames category                                                                                      0.02s  
+  ✓ update allows same name but rejects other existing name                                                      0.02s  
+  ✓ destroy detaches category from recipes f07                                                                   0.02s  
+  ✓ unknown category returns 404                                                                                 0.02s  
+
+   PASS  Tests\Feature\Catalog\IngredientAlternativeEndpointsTest
+  ✓ index returns alternatives of recipe and ingredient only                                                     0.02s  
+  ✓ index returns empty array                                                                                    0.02s  
+  ✓ store creates alternative and returns 201                                                                    0.02s  
+  ✓ store validation                                                                                             0.02s  
+  ✓ store accepts ingredient that is not part of recipe                                                          0.02s  
+  ✓ store accepts ingredient as its own alternative                                                              0.02s  
+  ✓ destroy deletes alternative only                                                                             0.02s  
+
+   PASS  Tests\Feature\Catalog\IngredientEndpointsTest
+  ✓ store creates ingredient and returns 201                                                                     0.02s  
+  ✓ store without description                                                                                    0.02s  
+  ✓ store validation                                                                                             0.02s  
+  ✓ update changes name and description                                                                          0.02s  
+  ✓ destroy unused ingredient                                                                                    0.02s  
+  ✓ destroy base ingredient of alternative cascades silently                                                     0.02s  
+  ✓ destroy ingredient used in recipe returns 422                                                                0.02s  
+
+   PASS  Tests\Feature\Collections\CollectionMutationsTest
+  ✓ store creates collection for current user and redirects                                                      0.02s  
+  ✓ store without description saves null                                                                         0.02s  
+  ✓ store validation with data set "name fehlt"                                                                  0.02s  
+  ✓ store validation with data set "name leer"                                                                   0.02s  
+  ✓ store validation with data set "name zu lang (256)"                                                          0.02s  
+  ✓ store validation with data set "name kein string"                                                            0.02s  
+  ✓ store validation with data set "description kein string"                                                     0.02s  
+  ✓ store accepts name with 255 characters                                                                       0.02s  
+  ✓ add recipe is idempotent                                                                                     0.02s  
+  ✓ add recipe validation with data set "recipe id fehlt"                                                        0.02s  
+  ✓ add recipe validation with data set "recipe id existiert nicht"                                              0.02s  
+  ✓ remove recipe detaches and redirects to show                                                                 0.02s  
+  ✓ delete removes collection and pivot but not recipes                                                          0.02s  
+  ✓ deleting user cascades to collections and pivot                                                              0.02s  
+  ✓ foreign user gets 403 and nothing changes with data set "show"                                               0.02s  
+  ✓ foreign user gets 403 and nothing changes with data set "add recipe"                                         0.02s  
+  ✓ foreign user gets 403 and nothing changes with data set "remove recipe"                                      0.02s  
+  ✓ foreign user gets 403 and nothing changes with data set "delete"                                             0.02s  
+  ✓ add recipe to foreign collection is checked before validation                                                0.02s  
+  ✓ unknown collection returns 404                                                                               0.02s  
+
+   PASS  Tests\Feature\Collections\CollectionPagesTest
+  ✓ index lists only own collections with recipe count                                                           0.04s  
+  ✓ index is empty for user without collections                                                                  0.02s  
+  ✓ create renders component                                                                                     0.02s  
+  ✓ show renders owner collection with recipes                                                                   0.09s  
+  ✓ show image url uses default disk f49                                                                         0.05s  
+
+   PASS  Tests\Feature\HomeTest
+  ✓ guests are redirected to the login page                                                                      0.02s  
+  ✓ authenticated users can visit home                                                                           0.02s  
+
+   PASS  Tests\Feature\Import\ImportTikTokRecipeJobTest
+  ✓ caption path marks import done with normalized result                                                        0.14s  
+  ✓ caption shorter than 40 characters is not analyzed and video path is used                                    0.15s  
+  ✓ incomplete caption falls back to video analysis                                                              0.17s  
+  ✓ ytdlp failure marks import failed and rethrows                                                               0.08s  
+  ✓ unreadable ytdlp output marks import failed                                                                  0.08s  
+  ✓ gemini http 500 marks import failed                                                                          0.08s  
+  ✓ error message is truncated to 900 characters                                                                 0.08s  
+  ✓ failed method marks running import as failed                                                                 0.02s  
+  ✓ failed method does not overwrite finished imports                                                            0.02s  
+  ✓ job configuration                                                                                            0.01s  
+
+   PASS  Tests\Feature\Import\RecipeCreateWithImportTest
+  ✓ own done import prefills form and maps tags case insensitive                                                 0.03s  
+  ✓ without import parameter imported recipe is null                                                             0.02s  
+  ✓ foreign done import is not used                                                                              0.02s  
+  ✓ unfinished own import is not used with data set "pending"                                                    0.03s  
+  ✓ unfinished own import is not used with data set "failed"                                                     0.02s  
+  ✓ running own import with result is not used                                                                   0.02s  
+  ✓ unknown or non numeric import parameter yields null                                                          0.02s  
+
+   PASS  Tests\Feature\Import\RecipeImportEndpointsTest
+  ✓ store accepts tiktok urls and dispatches job with data set "www"                                             0.02s  
+  ✓ store accepts tiktok urls and dispatches job with data set "vm"                                              0.02s  
+  ✓ store accepts tiktok urls and dispatches job with data set "vt"                                              0.02s  
+  ✓ store accepts tiktok urls and dispatches job with data set "m"                                               0.02s  
+  ✓ store accepts tiktok urls and dispatches job with data set "ohne subdomain"                                  0.02s  
+  ✓ store accepts tiktok urls and dispatches job with data set " großschreibung"                                 0.02s  
+  ✓ store accepts tiktok urls and dispatches job with data set "http"                                            0.02s  
+  ✓ store rejects invalid urls with data set "anderer host"                                                      0.02s  
+  ✓ store rejects invalid urls with data set "tiktok.com als subdomain- präfix"                                  0.02s  
+  ✓ store rejects invalid urls with data set "tiktok.com im query"                                               0.02s  
+  ✓ store rejects invalid urls with data set "unbekannte subdomain"                                              0.02s  
+  ✓ store rejects invalid urls with data set " option als u r l"                                                 0.02s  
+  ✓ store rejects invalid urls with data set "leer"                                                              0.02s  
+  ✓ store rejects invalid urls with data set "javascript"                                                        0.02s  
+  ✓ store rejects invalid urls with data set "ohne pfad- slash"                                                  0.02s  
+  ✓ store rejects invalid urls with data set " userinfo- trick"                                                  0.02s  
+  ✓ store rejects invalid urls with data set " array"                                                            0.02s  
+  ✓ store without url field                                                                                      0.02s  
+  ✓ store regex message is german                                                                                0.02s  
+  ✓ show returns status for pending import                                                                       0.02s  
+  ✓ show returns status for done import without result                                                           0.02s  
+  ✓ show returns error for failed import                                                                         0.02s  
+  ✓ show of foreign import is forbidden                                                                          0.02s  
+  ✓ show of unknown import returns 404                                                                           0.02s  
+  ✓ imports are deleted with their user                                                                          0.01s  
+
+   PASS  Tests\Feature\LandingTest
+  ✓ guests can view the landing page                                                                             0.04s  
+
+   PASS  Tests\Feature\Pages\HomePageTest
+  ✓ home renders stats and latest four recipes                                                                   0.03s  
+  ✓ home with empty database                                                                                     0.02s  
+
+   PASS  Tests\Feature\Pages\SharedInertiaPropsTest
+  ✓ auth user contains exactly id name email                                                                     0.02s  
+  ✓ auth collections contains only own collections newest first                                                  0.02s  
+  ✓ guest has null user and empty collections                                                                    0.02s  
+  ✓ sidebar state cookie false closes sidebar                                                                    0.02s  
+  ✓ flash is currently not shared f17                                                                            0.02s  
+
+   PASS  Tests\Feature\Recipes\RecipeCurrentDefectBehaviourTest
+  ✓ update currently ignores alternative ids f13                                                                 0.03s  
+  ✓ update currently keeps alternatives of removed ingredient f13                                                0.04s  
+  ✓ multiline step is currently split on edit f14                                                                0.03s  
+  ✓ multiline step with notizen line currently turns following steps into notes f14                              0.02s  
+  ✓ numbered note lines currently lose their numbering                                                           0.03s  
+  ✓ source is currently not persisted f15                                                                        0.03s  
+  ✓ delete currently leaves image file on disk f19                                                               0.02s  
+  ✓ create and edit currently order by missing sort order column f12                                             0.03s  
+  ✓ array search parameter currently throws type error f22                                                       0.02s  
+  ✓ unknown rating dimension currently throws query exception f22                                                0.02s  
+  ✓ index currently returns all recipes without pagination f23                                                   0.04s  
+
+   PASS  Tests\Feature\Recipes\RecipeDeleteTest
+  ✓ delete removes recipe and dependent rows and redirects to index                                              0.03s  
+  ✓ delete unknown recipe returns 404                                                                            0.02s  
+
+   PASS  Tests\Feature\Recipes\RecipeEditUpdateTest
+  ✓ edit props round trip what store saved                                                                       0.04s  
+  ✓ edit without notes returns null notes                                                                        0.02s  
+  ✓ edit unknown recipe returns 404                                                                              0.02s  
+  ✓ update replaces fields ingredients ratings and tags                                                          0.04s  
+  ✓ update without tags detaches all categories                                                                  0.02s  
+  ✓ update with new image replaces record and deletes old file                                                   0.05s  
+  ✓ update without new image keeps old image                                                                     0.03s  
+  ✓ update validation error keeps recipe unchanged                                                               0.03s  
+
+   PASS  Tests\Feature\Recipes\RecipeIndexTest
+  ✓ guest sees index component with expected prop structure                                                      0.03s  
+  ✓ recipe entry maps title tags time rating and image                                                           0.03s  
+  ✓ tag stats count recipes per category and use name as key                                                     0.03s  
+  ✓ search matches title                                                                                         0.03s  
+  ✓ search matches ingredient name                                                                               0.03s  
+  ✓ search term is trimmed                                                                                       0.03s  
+  ✓ include ingredients requires every listed ingredient                                                         0.03s  
+  ✓ include ingredients accepts a single string and partial names                                                0.03s  
+  ✓ exclude ingredients removes recipes containing any listed ingredient                                         0.03s  
+  ✓ empty filter entries are dropped                                                                             0.03s  
+  ✓ tag filter requires all selected tags with exact name                                                        0.04s  
+  ✓ filters can be combined                                                                                      0.03s  
+  ✓ no match returns empty recipe list                                                                           0.03s  
+  ✓ is host flag reflects role                                                                                   0.04s  
+
+   PASS  Tests\Feature\Recipes\RecipeShowTest
+  ✓ guest sees show component with expected prop structure                                                       0.03s  
+  ✓ instructions are split into steps and notes                                                                  0.02s  
+  ✓ instructions without numbering or notes header                                                               0.02s  
+  ✓ rating is aggregated per dimension and overall                                                               0.03s  
+  ✓ image url uses first image on public disk                                                                    0.02s  
+  ✓ ingredients include amount name and alternative names                                                        0.03s  
+  ✓ guest gets empty collections                                                                                 0.02s  
+  ✓ user gets only own collections sorted by name                                                                0.02s  
+  ✓ host flag is true for host                                                                                   0.02s  
+  ✓ unknown recipe returns 404                                                                                   0.01s  
+  ✓ factory instructions format matches show parser                                                              0.02s  
+
+   PASS  Tests\Feature\Recipes\RecipeStoreTest
+  ✓ create form renders for host with lookup props                                                               0.03s  
+  ✓ store persists complete payload and redirects to show                                                        0.03s  
+  ✓ store with minimal payload has no image ratings or categories                                                0.02s  
+  ✓ stored recipe round trips through show                                                                       0.03s  
+
+   PASS  Tests\Feature\Recipes\RecipeStoreValidationTest
+  ✓ missing name is rejected                                                                                     0.02s  
+  ✓ name longer than 255 is rejected                                                                             0.03s  
+  ✓ empty ingredient row is rejected with indexed key                                                            0.04s  
+  ✓ empty step is rejected with indexed key                                                                      0.04s  
+  ✓ missing ingredients and steps are rejected                                                                   0.02s  
+  ✓ form defaults with only title produce row errors f06                                                         0.02s  
+  ✓ non image upload is rejected                                                                                 0.02s  
+  ✓ rating outside one to five is rejected with data set " wert 0 zu klein"                                      0.02s  
+  ✓ rating outside one to five is rejected with data set " wert 6 zu groß"                                       0.02s  
+  ✓ non existing alternative id is rejected                                                                      0.03s  
+  ✓ negative duration and zero servings are rejected                                                             0.02s  
+
+   PASS  Tests\Feature\Security\CsrfProtectionTest
+  ✓ state changing web route rejects request without csrf token with data set "collections.store ( nutzer)"      0.03s  
+  ✓ state changing web route rejects request without csrf token with data set "profile.update ( nutzer)"         0.02s  
+  ✓ state changing web route rejects request without csrf token with data set "profile.destroy ( nutzer)"        0.02s  
+  ✓ state changing web route rejects request without csrf token with data set "user-password.update ( nutzer)"   0.02s  
+  ✓ state changing web route rejects request without csrf token with data set "categories.store ( host)"         0.02s  
+  ✓ state changing web route rejects request without csrf token with data set "recipes.store ( host)"            0.02s  
+  ✓ state changing web route rejects request without csrf token with data set "logout ( nutzer)"                 0.02s  
+  ✓ state changing web route rejects request without csrf token with data set "login ( gast)"                    0.02s  
+  ✓ state changing web route rejects request without csrf token with data set "register ( gast)"                 0.01s  
+  ✓ wrong csrf token is rejected                                                                                 0.02s  
+  ✓ valid csrf token in body is accepted                                                                         0.02s  
+  ✓ valid csrf token in header is accepted                                                                       0.02s  
+  ✓ reading requests do not need a token                                                                         0.02s  
+  ✓ no web uri is excluded from csrf check                                                                       0.01s  
+
+   PASS  Tests\Feature\Security\PasswordUpdateThrottleTest
+  ✓ password update is throttled after six attempts per minute                                                   0.06s  
+
+   PASS  Tests\Feature\Security\PrivilegeEscalationTest
+  ✓ newly registered user is not a host                                                                          0.02s  
+  ✓ registration ignores injected is host flag                                                                   0.02s  
+  ✓ profile update ignores injected is host flag                                                                 0.02s  
+  ✓ promoted non host cannot use host route after profile update                                                 0.02s  
+
+   PASS  Tests\Feature\Settings\PasswordUpdateTest
+  ✓ password update page is displayed                                                                            0.02s  
+  ✓ password can be updated                                                                                      0.02s  
+  ✓ correct password must be provided to update password                                                         0.02s  
+
+   PASS  Tests\Feature\Settings\ProfileUpdateTest
+  ✓ profile page is displayed                                                                                    0.02s  
+  ✓ profile information can be updated                                                                           0.02s  
+  ✓ email verification status is unchanged when the email address is unchanged                                   0.02s  
+  ✓ user can delete their account                                                                                0.02s  
+  ✓ correct password must be provided to delete account                                                          0.02s  
+
+   PASS  Tests\Feature\Settings\TwoFactorAuthenticationTest
+  ✓ two factor settings page requires password confirmation when enabled                                         0.02s  
+  ✓ two factor settings page returns forbidden response when two factor is disabled                              0.02s  
+
+   PASS  Tests\Feature\Support\FactoriesTest
+  ✓ foreign keys are enforced in the test database                                                               0.01s  
+  ✓ user factory host state                                                                                      0.01s  
+  ✓ acting as user logs in verified non host without two factor                                                  0.01s  
+  ✓ acting as host logs in verified host without two factor                                                      0.01s  
+  ✓ recipe factory uses numbered instructions format                                                             0.01s  
+  ✓ recipe image factory                                                                                         0.01s  
+  ✓ ingredient factory produces unique names                                                                     0.02s  
+  ✓ recipe ingredient factory                                                                                    0.01s  
+  ✓ ingredient alternative factory                                                                               0.02s  
+  ✓ category factory and recipe pivot                                                                            0.01s  
+  ✓ rating dimension and recipe rating factories                                                                 0.02s  
+  ✓ collection factory and recipe pivot                                                                          0.01s  
+  ✓ comment factory                                                                                              0.01s  
+  ✓ recipe import factory states                                                                                 0.02s  
+  ✓ unfaked http request throws                                                                                  0.01s  
+  ✓ unfaked process throws                                                                                       0.02s  
+  ✓ faked process is still allowed                                                                               0.01s  
+
+  Tests:    334 passed (1892 assertions)
+  Duration: 10.15s
+

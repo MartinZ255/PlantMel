@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use Database\Factories\CommentFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Comment extends Model
 {
+    /** @use HasFactory<CommentFactory> */
+    use HasFactory;
+
     protected $table = 'comments';
 
     public $timestamps = false; // wenn du nur created_at hast und keine updated_at

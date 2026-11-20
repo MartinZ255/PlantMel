@@ -1,45 +1,77 @@
 name: linter
 
+# Prüfmodus: Dieser Workflow verändert keine Dateien (kein --fix, kein --write).
 on:
   push:
     branches:
-      - develop
-      - main
+      - master
   pull_request:
-    branches:
-      - develop
-      - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          tools: composer:v2
+          coverage: none
 
-      - name: Install Dependencies
-        run: |
-          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm install
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
 
-      - name: Run Pint
-        run: vendor/bin/pint
+      - name: Validate composer.json
+        run: composer validate --strict
 
-      - name: Format Frontend
-        run: npm run format
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
 
-      - name: Lint Frontend
-        run: npm run lint
+      - name: Install Node Dependencies
+        run: npm ci
 
-      # - name: Commit Changes
-      #   uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: fix code style
-      #     commit_options: '--no-verify'
+      # Blockierend seit Gate D (2026-11-20): Altbestand mit Pint bereinigt, 0 Befunde.
+      - name: Pint (check)
+        run: vendor/bin/pint --test
+
+      # Blockierend seit Gate D (2026-11-20): Altbestand mit Prettier bereinigt, 0 Befunde.
+      - name: Prettier (check)
+        run: npm run format:check
+
+      # Blockierend seit Slice 3 (2026-11-14): 0 Fehler. Bewusst nicht `npm run lint` (enthält --fix).
+      - name: ESLint (check)
+        run: npx eslint .
+
+      # Erzeugt die gitignorierten Wayfinder-Dateien (resources/js/actions, routes,
+      # wayfinder), die der Typecheck benötigt. Läuft nach Prettier/ESLint, damit
+      # generierter Code nicht mitgeprüft wird. Benötigt keine .env (gemessen 2026-11-13).
+      - name: Generate Wayfinder Types
+        run: php artisan wayfinder:generate --with-form
+
+      # Blockierend seit Slice 3 (2026-11-14): 0 Typfehler.
+      - name: Typecheck (vue-tsc)
+        run: npx vue-tsc --noEmit
+
+      # Blockierend seit Slice 1 (Paket-Update): 0 Advisories. Neue Meldungen lassen den Lauf scheitern.
+      - name: Composer Audit
+        run: composer audit
+
+      # Blockierend seit Slice 1 (Paket-Update): 0 Schwachstellen. Neue Meldungen lassen den Lauf scheitern.
+      - name: npm Audit (production)
+        run: npm audit --omit=dev

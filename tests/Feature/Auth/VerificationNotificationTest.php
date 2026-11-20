@@ -12,15 +12,28 @@ class VerificationNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * F-08/E2 (Slice 4): Diese Starter-Tests pruefen den Ablauf bei
+     * EINGESCHALTETER Verifizierung. Default (AUS): EmailVerificationDisabledTest.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['plantmel.require_email_verification' => true]);
+    }
+
     public function test_sends_verification_notification(): void
     {
         Notification::fake();
 
         $user = User::factory()->unverified()->create();
 
+        // Fortify antwortet mit back(); ohne Referer ist das die Startseite.
         $this->actingAs($user)
             ->post(route('verification.send'))
-            ->assertRedirect(route('home'));
+            ->assertRedirect(route('landing'))
+            ->assertSessionHas('status', 'verification-link-sent');
 
         Notification::assertSentTo($user, VerifyEmail::class);
     }
@@ -33,7 +46,7 @@ class VerificationNotificationTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('verification.send'))
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('home', absolute: false));
 
         Notification::assertNothingSent();
     }

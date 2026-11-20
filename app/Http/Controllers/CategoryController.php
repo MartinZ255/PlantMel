@@ -2,25 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CategoryController extends Controller
 {
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
+            // max:100 entspricht der Spalte categories.name (F-22)
+            'name' => ['required', 'string', 'max:100', 'unique:categories,name'],
         ]);
 
         $category = Category::create([
-            'name'        => $data['name'],
+            'name' => $data['name'],
             'description' => null,
         ]);
 
         return response()->json([
-            'id'   => $category->id,
+            'id' => $category->id,
             'name' => $category->name,
         ], 201);
     }
@@ -31,8 +32,8 @@ class CategoryController extends Controller
             'name' => [
                 'required',
                 'string',
-                'max:255',
-                'unique:categories,name,' . $category->id,
+                'max:100', // Spalte categories.name (F-22)
+                'unique:categories,name,'.$category->id,
             ],
         ]);
 
@@ -41,22 +42,52 @@ class CategoryController extends Controller
         ]);
 
         return response()->json([
-            'id'   => $category->id,
+            'id' => $category->id,
             'name' => $category->name,
+            // F-07: Umbenennen wirkt global – Zahl der betroffenen Rezepte für einen Hinweis
+            'recipes_count' => $category->recipes()->count(),
         ]);
     }
 
-    public function destroy(Category $category)
+    /**
+     * ADR-002 (F-07): Löschen nur mit Request-Parameter `confirmed` (truthy).
+     * Ohne Bestätigung: 409 mit der Zahl der Rezepte, aus denen die Kategorie
+     * entfernt würde; es wird nichts gelöscht.
+     */
+    public function destroy(Request $request, Category $category)
     {
-        // Pivot zu Recipes lösen, wenn Beziehung existiert
-        if (method_exists($category, 'recipes')) {
-            $category->recipes()->detach();
+        if (! $request->boolean('confirmed')) {
+            $recipesCount = $category->recipes()->count();
+
+            return response()->json([
+                'message' => $this->confirmationMessage($category, $recipesCount),
+                'requires_confirmation' => true,
+                'recipes_count' => $recipesCount,
+            ], 409);
         }
 
-        $category->delete();
+        DB::transaction(function () use ($category) {
+            // Pivot zu Recipes lösen, wenn Beziehung existiert
+            if (method_exists($category, 'recipes')) {
+                $category->recipes()->detach();
+            }
+
+            $category->delete();
+        });
 
         return response()->json([
             'status' => 'deleted',
         ]);
+    }
+
+    private function confirmationMessage(Category $category, int $recipesCount): string
+    {
+        $usage = match ($recipesCount) {
+            0 => 'wird in keinem Rezept verwendet',
+            1 => 'wird in einem Rezept verwendet und dort entfernt',
+            default => "wird in {$recipesCount} Rezepten verwendet und dort überall entfernt",
+        };
+
+        return "Die Kategorie „{$category->name}“ {$usage}. Bitte bestätige das Löschen.";
     }
 }

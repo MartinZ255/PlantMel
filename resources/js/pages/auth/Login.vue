@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import AuthShell from '@/components/auth/AuthShell.vue';
+import { authLinkClass } from '@/components/auth/authStyles';
+import Button from '@/components/ui/Button.vue';
+import Field from '@/components/ui/Field.vue';
+import TextInput from '@/components/ui/TextInput.vue';
+import { Link, useForm } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 
-const props = defineProps<{
+defineProps<{
     canResetPassword: boolean;
     canRegister: boolean;
     status: string | null;
@@ -22,70 +27,87 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Login" />
+    <AuthShell
+        page-title="Anmelden"
+        eyebrow="Anmelden"
+        title="Willkommen zurück"
+        description="Melde dich an, um deine Sammlungen und Zutaten zu öffnen."
+        :status="status"
+    >
+        <template #title>
+            Willkommen
+            <span class="accent-word text-primary">zurück</span>
+        </template>
 
-    <div class="auth-container">
-
-        <p v-if="status" class="status-message">
-            {{ status }}
-        </p>
-
-        <form @submit.prevent="submit" class="auth-form">
-            <h1 class="auth-form-title">Login</h1>
-            <div class="form-group">
-                <label for="email">E-Mail</label>
-                <input
-                    id="email"
+        <form
+            class="flex flex-col gap-5"
+            aria-label="Anmelden"
+            @submit.prevent="submit"
+        >
+            <Field
+                id="email"
+                v-slot="field"
+                label="E-Mail"
+                required
+                :error="form.errors.email"
+            >
+                <TextInput
                     v-model="form.email"
+                    v-bind="field.inputAttrs"
                     type="email"
                     autocomplete="email"
-                    required
                 />
-                <div v-if="form.errors.email" class="error">
-                    {{ form.errors.email }}
-                </div>
-            </div>
+            </Field>
 
-            <div class="form-group">
-                <label for="password">Passwort</label>
-                <input
-                    id="password"
+            <Field
+                id="password"
+                v-slot="field"
+                label="Passwort"
+                required
+                :error="form.errors.password"
+            >
+                <TextInput
                     v-model="form.password"
+                    v-bind="field.inputAttrs"
                     type="password"
                     autocomplete="current-password"
-                    required
                 />
-                <div v-if="form.errors.password" class="error">
-                    {{ form.errors.password }}
-                </div>
-            </div>
+            </Field>
 
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" v-model="form.remember" />
+            <div
+                class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1"
+            >
+                <label
+                    class="inline-flex min-h-11 cursor-pointer items-center gap-2.5 text-[0.9375rem] text-ink"
+                >
+                    <input
+                        v-model="form.remember"
+                        type="checkbox"
+                        class="size-5 shrink-0 cursor-pointer accent-primary"
+                    />
                     Angemeldet bleiben
                 </label>
-            </div>
-
-            <button type="submit" :disabled="form.processing">
-                Einloggen
-            </button>
-
-            <div class="auth-links">
                 <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
+                    :class="authLinkClass"
                 >
                     Passwort vergessen?
                 </Link>
-
-                <Link
-                    v-if="canRegister"
-                    :href="route('register')"
-                >
-                    Noch kein Konto? Registrieren
-                </Link>
             </div>
+
+            <Button type="submit" size="lg" block :loading="form.processing">
+                Einloggen
+            </Button>
         </form>
-    </div>
+
+        <template v-if="canRegister" #after>
+            <p class="text-ink-muted">
+                Noch kein Konto?
+                <Link :href="route('register')" :class="authLinkClass">
+                    Registrieren
+                </Link>
+            </p>
+        </template>
+    </AuthShell>
 </template>

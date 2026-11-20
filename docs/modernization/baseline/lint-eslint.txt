@@ -1,0 +1,23 @@
+# Messprotokoll Slice 0 - Pruefmodus, keine Dateien geaendert
+# Datum: 2026-11-13
+# Stand: Commit 16add69 (Branch chore/slice-0-ci-workflows)
+# Umgebung: Windows 11, PHP 8.4.0 (Herd), Node v22.19.0, npm 10.9.3; keine .env vorhanden
+# Befehl: npx eslint .  (ohne --fix)
+# Exit-Code: 1
+# Befund: 4 Fehler, 0 Warnungen (alle @typescript-eslint/no-unused-vars 'props'); identisch mit/ohne generierte Wayfinder-Dateien
+# ---
+
+<repo>\resources\js\pages\auth\Login.vue
+  5:7  error  'props' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+<repo>\resources\js\pages\recipes\Create.vue
+  81:7  error  'props' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+<repo>\resources\js\pages\recipes\Edit.vue
+  65:7  error  'props' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+<repo>\resources\js\pages\settings\Profile.vue
+  8:7  error  'props' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 4 problems (4 errors, 0 warnings)
+

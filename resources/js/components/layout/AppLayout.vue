@@ -1,221 +1,176 @@
 <template>
-    <div class="app-shell">
-        <!-- HEADER -->
-        <header class="app-header">
-            <!-- Hamburger: steuert Sidebar immer, egal welche Bildschirmbreite -->
-            <button
-                class="app-header__icon app-header__icon--menu"
-                type="button"
-                title="Navigation"
-                @click="toggleSidebar"
-            >
-                ☰
-            </button>
+    <Head :title="pageTitle" />
 
-            <a
-                :href="route('home')"
-                class="app-header__logo"
-            >
-                PlantMel
-            </a>
-            <div class="app-header__title">{{ pageTitle }}</div>
-            <div class="app-header__spacer"></div>
-            <div class="app-header__icons user-menu">
-                <button
-                    class="app-header__icon"
-                    type="button"
-                    title="Profil"
-                    @click="toggleUserMenu"
-                >
-                    <!-- Minimalistisches Outline-User-Icon, passend zum UI-Stil -->
-                    <svg
-                        class="user-avatar-icon"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                    >
-                        <circle cx="12" cy="8" r="4" />
-                        <path
-                            d="M5 19c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                    </svg>
-                </button>
+    <div class="flex min-h-dvh flex-col">
+        <!-- F-42: erstes fokussierbares Element -->
+        <a
+            href="#main-content"
+            class="fixed top-2 left-3 z-(--z-skip-link) -translate-y-[200%] rounded-pebble bg-forest px-4 py-2.5 text-sm font-semibold text-on-forest shadow-float focus:translate-y-0"
+        >
+            Zum Inhalt springen
+        </a>
 
+        <AppHeader
+            :current-path="currentPath"
+            :menu-open="isMobileMenuOpen"
+            @open-menu="openMobileMenu"
+        />
+
+        <MobileMenu
+            :open="isMobileMenuOpen"
+            :current-path="currentPath"
+            @close="closeMobileMenu"
+        />
+
+        <main
+            id="main-content"
+            tabindex="-1"
+            class="w-full min-w-0 flex-1 focus:outline-none"
+        >
+            <!-- F-17: zentrale Rückmeldung; nimmt keinen Fokus -->
+            <div
+                v-if="flashSuccess || flashError"
+                class="mx-auto w-full max-w-(--content-max) px-4 pt-4 sm:px-6 lg:px-8"
+            >
                 <div
-                    class="user-menu__dropdown"
-                    :class="{ 'is-open': isUserMenuOpen }"
+                    v-if="flashSuccess"
+                    class="flex items-start gap-3 rounded-[1.25rem_1rem_1.4rem_0.9rem] border border-primary/30 bg-success-surface py-2.5 pr-2 pl-4 text-sm text-success shadow-card"
+                    role="status"
                 >
-                    <template v-if="currentUser">
-                        <div class="user-menu__item user-menu__item--label">
-                            Eingeloggt als {{ currentUser.name }}
-                        </div>
-                        <a
-                            :href="route('settings.index')"
-                            class="user-menu__item"
-                        >
-                            Einstellungen
-                        </a>
-                        <Link
-                            :href="route('logout')"
-                            method="post"
-                            as="button"
-                            class="user-menu__item user-menu__item--danger"
-                        >
-                            Abmelden
-                        </Link>
-                    </template>
-
-                    <template v-else>
-                        <a
-                            :href="route('login')"
-                            class="user-menu__item"
-                        >
-                            Anmelden
-                        </a>
-                        <a
-                            v-if="canRegister"
-                            :href="route('register')"
-                            class="user-menu__item"
-                        >
-                            Registrieren
-                        </a>
-                    </template>
+                    <CircleCheck
+                        class="mt-0.5 size-5 shrink-0"
+                        aria-hidden="true"
+                    />
+                    <p
+                        class="min-w-0 flex-1 py-0.5 font-medium text-wrap-anywhere"
+                    >
+                        {{ flashSuccess }}
+                    </p>
+                    <button
+                        type="button"
+                        class="inline-flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-tint-strong"
+                        aria-label="Meldung schließen"
+                        @click="flashSuccess = null"
+                    >
+                        <X class="size-4" aria-hidden="true" />
+                    </button>
+                </div>
+                <div
+                    v-if="flashError"
+                    class="mt-2 flex items-start gap-3 rounded-[1.25rem_1rem_1.4rem_0.9rem] border border-danger/40 bg-danger-surface py-2.5 pr-2 pl-4 text-sm text-danger shadow-card first:mt-0"
+                    role="alert"
+                >
+                    <CircleAlert
+                        class="mt-0.5 size-5 shrink-0"
+                        aria-hidden="true"
+                    />
+                    <p
+                        class="min-w-0 flex-1 py-0.5 font-medium text-wrap-anywhere"
+                    >
+                        {{ flashError }}
+                    </p>
+                    <button
+                        type="button"
+                        class="inline-flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-white/60"
+                        aria-label="Meldung schließen"
+                        @click="flashError = null"
+                    >
+                        <X class="size-4" aria-hidden="true" />
+                    </button>
                 </div>
             </div>
-        </header>
 
-        <!-- MAIN -->
-        <div
-            class="app-main"
-            :class="{ 'app-main--sidebar-closed': !isSidebarOpen }"
-        >
-
-            <!-- Backdrop: nur wenn Sidebar offen -->
+            <!-- Musterseiten gestalten die volle Breite selbst (bleed);
+                 alle übrigen Seiten bekommen den bisherigen Inhaltsrahmen -->
+            <slot v-if="bleed" />
             <div
-                v-if="isSidebarOpen"
-                class="sidebar-backdrop"
-                @click="toggleSidebar"
-            ></div>
-
-            <!-- SIDEBAR -->
-            <aside
-                class="sidebar"
-                :class="{ 'sidebar--closed': !isSidebarOpen }"
+                v-else
+                class="mx-auto flex w-full max-w-(--content-max) flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8"
             >
-                <div>
-                    <div class="sidebar-section__title">Allgemein</div>
-                    <nav class="sidebar-nav">
-                        <a
-                            :href="route('home')"
-                            class="sidebar-collection-pill"
-                            type="button"
-                        >
-                            Start
-                        </a>
-                        <button
-                            class="sidebar-collection-pill sidebar-link--submenu-toggle"
-                            :class="{ 'sidebar-link--open': isSearchMenuOpen }"
-                            type="button"
-                            @click="toggleSearchMenu"
-                        >
-                            <span class="sidebar-pill-label">Suche</span>
-                            <span class="sidebar-chevron">{{ searchChevron }}</span>
-                        </button>
-                    </nav>
-                </div>
-
-                <div>
-                    <div class="sidebar-section__title">Rezepte</div>
-                    <nav class="sidebar-nav">
-                        <a
-                            :href="route('collections.index')"
-                            class="sidebar-collection-pill" type="button"
-                        >
-                            Sammlungen
-                        </a>
-                        <button class="sidebar-collection-pill" type="button">
-                            Meine Zutaten
-                        </button>
-                    </nav>
-                </div>
-
-                <div>
-                    <div class="sidebar-section__title">Sammlungen</div>
-                    <div class="sidebar-collections">
-                        <template v-if="userCollections.length">
-                            <a
-                                v-for="collection in userCollections"
-                                :key="collection.id"
-                                :href="route('collections.show', collection.id)"
-                                class="sidebar-collection-pill"
-                            >
-                                {{ collection.name }}
-                            </a>
-                        </template>
-                        <template v-else>
-                            <div class="sidebar-collection-pill sidebar-collection-pill--empty">
-                                Noch keine Sammlungen
-                            </div>
-                        </template>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Sidebar-Untermenü -->
-            <SidebarSearchSubmenu :open="isSearchMenuOpen" />
-
-            <!-- CONTENT-SLOT -->
-            <main class="app-content">
                 <slot />
-            </main>
-        </div>
+            </div>
+        </main>
+
+        <AppFooter />
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { usePage, Link } from '@inertiajs/vue3';
-import { route } from 'ziggy-js';
-import SidebarSearchSubmenu from '@/components/widgets/SidebarSearchSubmenu.vue';
+import AppFooter from '@/components/layout/AppFooter.vue';
+import AppHeader from '@/components/layout/AppHeader.vue';
+import MobileMenu from '@/components/layout/MobileMenu.vue';
+import { normalizePath } from '@/composables/useAppNavigation';
+import type { AppPageProps, Flash } from '@/types';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { CircleAlert, CircleCheck, X } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 interface Props {
     pageTitle?: string;
+    /** Inhalt ohne Rahmen (volle Breite), für neu gestaltete Seiten */
+    bleed?: boolean;
 }
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), { pageTitle: undefined, bleed: false });
 
-const page = usePage();
+const page = usePage<AppPageProps>();
 
-const isSearchMenuOpen = ref(false);
-const isSidebarOpen = ref(true);
-const isUserMenuOpen = ref(false);
+const currentPath = computed(() => normalizePath(page.url));
 
-const currentUser = computed(() => (page.props as any).auth?.user ?? null);
-const userCollections = computed(
-    () => ((page.props as any).auth?.collections as Array<{ id: number | string; name: string }>) ?? [],
+// --- Mobilmenü (< md) ---------------------------------------------------------
+/** Tailwind `md` = 48rem; darüber gibt es kein Mobilmenü */
+const DESKTOP_QUERY = '(min-width: 48rem)';
+const isMobileMenuOpen = ref(false);
+
+const openMobileMenu = () => {
+    isMobileMenuOpen.value = true;
+};
+const closeMobileMenu = () => {
+    isMobileMenuOpen.value = false;
+};
+
+let mediaQuery: MediaQueryList | null = null;
+const onMediaChange = (event: MediaQueryListEvent) => {
+    if (event.matches) closeMobileMenu();
+};
+
+// --- Flash-Meldungen (F-17) ----------------------------------------------------
+const SUCCESS_TIMEOUT_MS = 6000;
+const flashSuccess = ref<string | null>(null);
+const flashError = ref<string | null>(null);
+let successTimer: ReturnType<typeof setTimeout> | undefined;
+
+function showFlash(flash: Flash | undefined) {
+    clearTimeout(successTimer);
+    flashSuccess.value = flash?.success ?? null;
+    flashError.value = flash?.error ?? null;
+    if (flashSuccess.value) {
+        successTimer = setTimeout(() => {
+            flashSuccess.value = null;
+        }, SUCCESS_TIMEOUT_MS);
+    }
+}
+
+// Jede Antwort liefert ein neues flash-Objekt: neue Meldung anzeigen bzw. alte
+// beim nächsten Seitenwechsel ausblenden. Partielle Reloads lassen es unverändert.
+watch(
+    () => page.props.flash,
+    (flash) => showFlash(flash),
 );
-const canRegister = computed(
-    () => ((page.props as any).canRegister as boolean | undefined) ?? true,
-);
-// Typische Pfeile: geschlossen = ▸ (rechts), offen = ▾ (unten)
-const searchChevron = computed(() => (isSearchMenuOpen.value ? '▾' : '▸'));
+
+let stopNavigateListener: (() => void) | null = null;
 
 onMounted(() => {
-    if (window.matchMedia('(max-width: 900px)').matches) {
-        isSidebarOpen.value = false;
-    }
+    showFlash(page.props.flash);
+    mediaQuery = window.matchMedia(DESKTOP_QUERY);
+    mediaQuery.addEventListener('change', onMediaChange);
+    // Menü schließt nach jeder Inertia-Navigation
+    stopNavigateListener = router.on('navigate', () => closeMobileMenu());
 });
 
-const toggleSearchMenu = () => {
-    isSearchMenuOpen.value = !isSearchMenuOpen.value;
-};
-
-const toggleSidebar = () => {
-    isSidebarOpen.value = !isSidebarOpen.value;
-};
-
-const toggleUserMenu = () => {
-    isUserMenuOpen.value = !isUserMenuOpen.value;
-};
+onBeforeUnmount(() => {
+    clearTimeout(successTimer);
+    mediaQuery?.removeEventListener('change', onMediaChange);
+    stopNavigateListener?.();
+});
 </script>

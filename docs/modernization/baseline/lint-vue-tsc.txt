@@ -1,0 +1,22 @@
+# Messprotokoll Slice 0 - Pruefmodus, keine Dateien geaendert
+# Datum: 2026-11-13
+# Stand: Commit 16add69 (Branch chore/slice-0-ci-workflows)
+# Umgebung: Windows 11, PHP 8.4.0 (Herd), Node v22.19.0, npm 10.9.3; keine .env vorhanden
+# Befehl: npx vue-tsc --noEmit --pretty false  (nach wayfinder:generate)
+# Exit-Code: 2
+# Befund: 6 Typfehler (TS2322, TS2339, TS2344, TS2345, TS2589, TS2719) in 5 Dateien
+# ---
+resources/js/components/recipes/RecipeForm.vue(17,30): error TS2589: Type instantiation is excessively deep and possibly infinite.
+resources/js/pages/auth/ForgotPassword.vue(65,32): error TS2339: Property 'route' does not exist on type 'CreateComponentPublicInstanceWithMixins<ToResolvedProps<Props, {}>, { Head: InertiaHead; Link: InertiaLink; form: InertiaForm<{ email: string; }>; submit: () => void; }, ... 23 more ..., {}>'.
+resources/js/pages/Home.vue(20,22): error TS2344: Type '{ stats?: HomeStats | undefined; latestRecipes?: LatestRecipe[] | undefined; }' does not satisfy the constraint 'PageProps'.
+  Type '{ stats?: HomeStats | undefined; latestRecipes?: LatestRecipe[] | undefined; }' is missing the following properties from type 'PageProps': name, quote, auth, sidebarOpen
+resources/js/pages/MyIngredients.vue(4,10): error TS2345: Argument of type '{ tags: string[]; tagStats: TagStat[]; 'onUpdate:filters': any; 'onUpdate:results': any; }' is not assignable to parameter of type '{ readonly tags: string[]; readonly tagStats: TagStat[]; readonly ingredients: Ingredient[]; readonly "onUpdate:results"?: ((ingredients: Ingredient[]) => any) | undefined; readonly "onUpdate:filters"?: ((payload: { ...; }) => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps & Record<....'.
+  Property 'ingredients' is missing in type '{ tags: string[]; tagStats: TagStat[]; 'onUpdate:filters': any; 'onUpdate:results': any; }' but required in type '{ readonly tags: string[]; readonly tagStats: TagStat[]; readonly ingredients: Ingredient[]; readonly "onUpdate:results"?: ((ingredients: Ingredient[]) => any) | undefined; readonly "onUpdate:filters"?: ((payload: { ...; }) => any) | undefined; }'.
+resources/js/pages/MyIngredients.vue(7,14): error TS2322: Type '(results: Ingredient[]) => void' is not assignable to type '(ingredients: Ingredient[]) => any'.
+  Types of parameters 'results' and 'ingredients' are incompatible.
+    Type 'Ingredient[]' is not assignable to type 'Ingredient[]'. Two different types with this name exist, but they are unrelated.
+      Property 'tags' is missing in type 'Ingredient' but required in type 'Ingredient'.
+resources/js/pages/recipes/Edit.vue(16,18): error TS2719: Type 'RecipeFormInput' is not assignable to type 'RecipeFormInput'. Two different types with this name exist, but they are unrelated.
+  Types of property 'description' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.

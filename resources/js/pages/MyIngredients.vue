@@ -1,113 +1,124 @@
 <template>
-    <AppLayout page-title="Meine Zutaten">
-        <!-- Such- / Filterbereich -->
-        <IngredientSearchArea
-            :tags="ingredientTags"
-            :tag-stats="ingredientTagStats"
-            @update:results="handleResultsUpdate"
-            @update:filters="handleFiltersUpdate"
-        />
+    <AppLayout page-title="Meine Zutaten" bleed>
+        <section class="relative overflow-hidden">
+            <BlobBackdrop tone="light" />
+            <LeafOrnament
+                variant="eucalyptus"
+                class="pointer-events-none absolute top-4 right-[5%] hidden h-44 animate-sway text-tint-strong [--float-rotate:-14deg] md:block lg:h-56"
+            />
+            <div
+                class="relative mx-auto flex w-full max-w-(--content-max) flex-col gap-8 px-4 pt-8 pb-10 sm:px-6 lg:px-8 lg:pt-12 lg:pb-14"
+            >
+                <PageHeader
+                    title="Meine Zutaten"
+                    eyebrow="Dein Vorrat"
+                    description="Hier speicherst du die Zutaten, die du zu Hause hast."
+                    size="xl"
+                >
+                    <template #title>
+                        Meine
+                        <span class="accent-word text-primary">Zutaten</span>
+                    </template>
+                </PageHeader>
 
-        <!-- Ergebnisliste / Karten -->
-        <section class="content-section">
-            <div class="section-header">
-                <div>
-                    <div class="section-header__title">Zutaten</div>
-                    <div class="section-header__subtitle">
-                        Alle Zutaten, die du in deinen Rezepten verwendest.
-                    </div>
-                </div>
-
-                <div class="section-header__meta">
-                    {{ ingredientCards.length }} Zutaten gefunden
-                </div>
-            </div>
-
-            <div class="recipes-grid">
-                <IngredientCard
-                    v-for="ingredient in ingredientCards"
-                    :key="ingredient.id"
-                    :ingredient="ingredient"
+                <!-- Such- / Filterbereich nur, wenn es gespeicherte Zutaten gibt -->
+                <IngredientSearchArea
+                    v-if="allIngredients.length"
+                    :ingredients="allIngredients"
+                    @update:results="handleResultsUpdate"
                 />
             </div>
+        </section>
+
+        <section
+            class="mx-auto w-full max-w-(--content-max) px-4 pt-2 pb-16 sm:px-6 lg:px-8"
+            aria-labelledby="my-ingredients-title"
+        >
+            <h2 id="my-ingredients-title" class="sr-only">
+                Gespeicherte Zutaten
+            </h2>
+
+            <!-- Ehrlicher Leerzustand: Speichern ist noch nicht gebaut (F-03, Entscheidung E3) -->
+            <div v-if="!allIngredients.length" class="relative">
+                <!-- kleiner „Vorratskorb“ aus Blobs und Blättern über dem Leerzustand -->
+                <div
+                    class="pointer-events-none relative z-10 mx-auto -mb-10 flex h-24 w-56 items-end justify-center"
+                    aria-hidden="true"
+                >
+                    <span
+                        class="absolute bottom-2 left-6 size-14 rounded-[58%_42%_52%_48%/46%_54%_46%_54%] bg-berry shadow-berry"
+                    ></span>
+                    <span
+                        class="absolute right-8 bottom-4 size-10 rounded-[42%_58%_61%_39%/52%_38%_62%_48%] bg-matcha shadow-card"
+                    ></span>
+                    <LeafOrnament
+                        variant="sprig"
+                        class="absolute bottom-0 left-1/2 h-24 -translate-x-1/2 rotate-[8deg] text-moss"
+                    />
+                </div>
+                <EmptyState
+                    :icon="ShoppingBasket"
+                    title="Noch nichts im Vorrat"
+                    description="Du hast noch keine Zutaten gespeichert. Diese Funktion wird gerade ausgebaut."
+                    :heading-level="3"
+                >
+                    <template #actions>
+                        <Button :href="route('IngredientSearch')">
+                            Zur Zutatensuche
+                        </Button>
+                        <Button
+                            :href="route('recipes.index')"
+                            variant="secondary"
+                        >
+                            Rezepte entdecken
+                        </Button>
+                    </template>
+                </EmptyState>
+            </div>
+
+            <template v-else>
+                <EmptyState
+                    v-if="!ingredientCards.length"
+                    :icon="SearchX"
+                    title="Keine Zutaten gefunden"
+                    description="Keine gespeicherte Zutat passt zu deiner Suche."
+                    :heading-level="3"
+                />
+                <IngredientGrid v-else :ingredients="ingredientCards" />
+            </template>
         </section>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import IngredientGrid from '@/components/ingredients/IngredientGrid.vue';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import IngredientSearchArea from '@/components/recipes/IngredientSearchArea.vue';
-import IngredientCard from '@/components/recipes/IngredientCard.vue';
-
-interface TagStat {
-    key: string;
-    label: string;
-    count: number;
-}
+import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
+import Button from '@/components/ui/Button.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import LeafOrnament from '@/components/ui/LeafOrnament.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import { SearchX, ShoppingBasket } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { route } from 'ziggy-js';
 
 interface Ingredient {
     id: number;
     name: string;
-    category: string;
-    tags: string[];
+    category?: string[] | null;
 }
 
-/**
- * Tags, die in der IngredientSearchArea angezeigt werden
- * – später gerne aus der DB / API laden.
- */
-const ingredientTags: string[] = [
-    'alle',
-    'gemüse',
-    'obst',
-    'gewürz',
-    'käse',
-    'nüsse',
-    'vegan',
-    'glutenfrei',
-];
+// Die Route liefert `ingredients` (derzeit leer); fehlt die Prop, gilt ebenfalls [].
+const props = defineProps<{
+    ingredients?: Ingredient[];
+}>();
 
-/**
- * Statistiken für das Tag-Panel
- * – derzeit nur Dummywerte, später serverseitig befüllen.
- */
-const ingredientTagStats: TagStat[] = [
-    { key: 'gemüse',      label: 'Gemüse',      count: 14 },
-    { key: 'obst',        label: 'Obst',        count: 7 },
-    { key: 'gewürz',      label: 'Gewürze',     count: 9 },
-    { key: 'käse',        label: 'Käse',        count: 4 },
-    { key: 'nüsse',       label: 'Nüsse',       count: 5 },
-    { key: 'vegan',       label: 'Vegan',       count: 21 },
-    { key: 'glutenfrei',  label: 'Glutenfrei',  count: 18 },
-];
+const allIngredients = computed<Ingredient[]>(() => props.ingredients ?? []);
 
-/**
- * Ergebnisliste, die aus IngredientSearchArea kommt.
- * IngredientSearchArea filtert aktuell auf Basis eigener Dummydaten
- * und emittiert die gefilterte Liste via @update:results.
- */
-const ingredientCards = ref<Ingredient[]>([]);
+const ingredientCards = ref<Ingredient[]>([...allIngredients.value]);
 
-/**
- * Wird aufgerufen, wenn IngredientSearchArea neue gefilterte
- * Ergebnisse emittiert.
- */
 const handleResultsUpdate = (results: Ingredient[]) => {
     ingredientCards.value = results;
-};
-
-/**
- * Optional: wenn du später serverseitig filtern willst, kannst du
- * dieses Event nutzen, um einen API-/Inertia-Call auszulösen.
- */
-const handleFiltersUpdate = (payload: {
-    searchTerm: string;
-    includeIngredients: string;
-    excludeIngredients: string;
-    activeTag: string;
-}) => {
-    // TODO: später durch echten Request ersetzen
-    console.log('Aktive Zutaten-Filter:', payload);
 };
 </script>

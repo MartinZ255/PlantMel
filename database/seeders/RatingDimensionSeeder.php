@@ -14,19 +14,19 @@ class RatingDimensionSeeder extends Seeder
     {
         $dimensions = [
             [
-                'name'        => 'Schwierigkeit',
+                'name' => 'Schwierigkeit',
                 'description' => 'Wie anspruchsvoll ist das Rezept in der Zubereitung?',
             ],
             [
-                'name'        => 'Geschmack',
+                'name' => 'Geschmack',
                 'description' => 'Subjektive geschmackliche Bewertung des Rezepts.',
             ],
             [
-                'name'        => 'Aufwand',
+                'name' => 'Aufwand',
                 'description' => 'Zeitlicher und organisatorischer Aufwand.',
             ],
             [
-                'name'        => 'Gesamt',
+                'name' => 'Gesamt',
                 'description' => 'Gesamtbewertung des Rezepts.',
             ],
         ];

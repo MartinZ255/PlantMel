@@ -73,7 +73,18 @@ return [
     |
     */
 
-    'home' => '/',
+    // E1 (Slice 3): Ziel nach Login, Registrierung, E-Mail-Verifizierung und
+    // Passwortbestaetigung. Fortify liest es ueber Fortify::redirects($name),
+    // das zuerst `redirects.$name`, dann den Default des Aufrufers und zuletzt
+    // `home` liefert (vendor/laravel/fortify/src/Fortify.php).
+    'home' => '/home',
+
+    // Logout endet auf der oeffentlichen Landing-Seite (`/home` schickt Gaeste
+    // zum Login). Fortify nutzt fuer `logout` ohnehin '/' als Default; der
+    // Eintrag macht das Ziel explizit.
+    'redirects' => [
+        'logout' => '/',
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -116,7 +127,6 @@ return [
 
     'limiters' => [
         'login' => 'login',
-        'two-factor' => 'two-factor',
     ],
 
     /*
@@ -147,11 +157,9 @@ return [
         Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
-        Features::twoFactorAuthentication([
-            'confirm' => true,
-            'confirmPassword' => true,
-            // 'window' => 0
-        ]),
+        // F-20 (Slice 3): Zwei-Faktor-Authentifizierung ist bewusst abgeschaltet
+        // (Entscheidung des Auftraggebers). Die Spalten two_factor_* bleiben in
+        // der Datenbank, werden aber nicht mehr ausgewertet.
     ],
 
 ];

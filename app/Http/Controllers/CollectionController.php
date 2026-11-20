@@ -3,29 +3,51 @@
 namespace App\Http\Controllers;
 
 use App\Models\Collection;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
-use Inertia\Response;
 use App\Models\Recipe;
+use App\Services\TasteRating;
 use Illuminate\Http\RedirectResponse;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CollectionController extends Controller
 {
+    /** Höchstzahl der Rezeptbilder je Sammlung für die Collage der Übersicht */
+    private const COLLAGE_IMAGES = 4;
+
     public function index(Request $request)
     {
         $collections = Collection::query()
             ->where('user_id', $request->user()->id)
             ->withCount('recipes')
+            // Collage: nur Rezepte mit Bild, höchstens 4 je Sammlung (Limit je
+            // Sammlung per Eager Loading, keine Abfrage pro Sammlung/Rezept).
+            ->with([
+                'recipes' => fn ($query) => $query
+                    ->whereHas('images')
+                    ->with(['images' => fn ($images) => $images->orderBy('id')])
+                    ->orderByDesc('recipes.id')
+                    ->limit(self::COLLAGE_IMAGES),
+            ])
             ->orderByDesc('updated_at')
             ->get()
             ->map(function (Collection $collection) {
+                $images = $collection->recipes
+                    ->map(fn (Recipe $recipe) => $recipe->images->first()?->image_path)
+                    ->filter()
+                    // gleiche Disk wie RecipeController/Home (Rezeptbilder liegen auf "public")
+                    ->map(fn (string $path) => Storage::disk('public')->url($path))
+                    ->take(self::COLLAGE_IMAGES)
+                    ->values()
+                    ->all();
+
                 return [
                     'id' => $collection->id,
                     'name' => $collection->name,
                     'description' => $collection->description,
-                    'recipeCount' => $collection->recipes()->count(),
+                    'recipeCount' => $collection->recipes_count,
+                    'images' => $images,
                 ];
             });
 
@@ -63,15 +85,16 @@ class CollectionController extends Controller
             abort(403);
         }
 
+        // E14: nur Geschmacks-Bewertungen laden und einrechnen
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $collection->load([
             'recipes.categories',
-            'recipes.ratings',
+            'recipes.ratings' => TasteRating::constrain($tasteDimensionId),
             'recipes.images',
         ]);
 
-        $recipes = $collection->recipes->map(function ($recipe) {
-            $avgRating = $recipe->ratings->avg('value');
-
+        $recipes = $collection->recipes->map(function ($recipe) use ($tasteDimensionId) {
             $firstImage = $recipe->images->first();
             $imageUrl = $firstImage?->image_path
                 ? Storage::url($firstImage->image_path)
@@ -80,10 +103,10 @@ class CollectionController extends Controller
             return [
                 'id' => $recipe->id,
                 'name' => $recipe->title,
-                'rating' => $avgRating ? (int)round($avgRating) : 0,
+                'rating' => TasteRating::roundedForList($recipe->ratings, $tasteDimensionId),
                 'tags' => $recipe->categories->pluck('name')->all(),
                 'time' => $recipe->duration_minutes
-                    ? $recipe->duration_minutes . ' Min'
+                    ? $recipe->duration_minutes.' Min'
                     : '–',
                 'image' => $imageUrl,
             ];
@@ -98,6 +121,29 @@ class CollectionController extends Controller
             ],
             'recipes' => $recipes,
         ]);
+    }
+
+    public function update(Request $request, Collection $collection): RedirectResponse
+    {
+        // Gleiche Besitzprüfung wie show/delete: fremde Sammlung -> 403
+        // (vor der Validierung, damit nichts über fremde Daten verrät).
+        if ((int) $collection->user_id !== (int) $request->user()->id) {
+            abort(403, 'Diese Sammlung gehört dir nicht.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $collection->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('collections.show', $collection)
+            ->with('success', 'Sammlung wurde gespeichert.');
     }
 
     public function addRecipe(Request $request, Collection $collection)

@@ -1,39 +1,48 @@
-import { InertiaLinkProps } from '@inertiajs/vue3';
-import type { LucideIcon } from 'lucide-vue-next';
+/** Geteilter Nutzer aus HandleInertiaRequests::share. */
+export interface SharedUser {
+    id: number;
+    name: string;
+    email: string;
+    /** ISO-8601 (UTC) oder null; seit Slice 4 immer vorhanden (F-08). */
+    email_verified_at: string | null;
+    /**
+     * Gate C2: Host-Recht (users.is_host), global geteilt. Steuert nur die
+     * Anzeige von „Rezept erstellen“; die Routen prüft der Server.
+     */
+    is_host: boolean;
+}
+
+export interface SharedCollection {
+    id: number | string;
+    name: string;
+}
 
 export interface Auth {
-    user: User;
+    user: SharedUser | null;
+    collections: SharedCollection[];
 }
 
-export interface BreadcrumbItem {
-    title: string;
-    href: string;
-}
-
-export interface NavItem {
-    title: string;
-    href: NonNullable<InertiaLinkProps['href']>;
-    icon?: LucideIcon;
-    isActive?: boolean;
+/** F-17: Meldungen aus `->with('success'|'error', …)`; null, wenn nichts gesetzt ist. */
+export interface Flash {
+    success: string | null;
+    error: string | null;
 }
 
 export type AppPageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
     name: string;
-    quote: { message: string; author: string };
     auth: Auth;
-    sidebarOpen: boolean;
+    flash: Flash;
 };
 
-export interface User {
+/** Gate C1b: Rezept-Auswahl der Startseite (routes/web.php, Route `landing`). */
+export interface FeaturedRecipe {
     id: number;
     name: string;
-    email: string;
-    avatar?: string;
-    email_verified_at: string | null;
-    created_at: string;
-    updated_at: string;
+    /** öffentliche URL über die Disk `public` (immer gesetzt) */
+    image: string;
+    /** Kategorienamen */
+    categories: string[];
+    duration_minutes: number | null;
 }
-
-export type BreadcrumbItemType = BreadcrumbItem;

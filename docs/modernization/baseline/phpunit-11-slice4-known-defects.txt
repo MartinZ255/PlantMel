@@ -1,0 +1,25 @@
+
+   FAIL  Tests\KnownDefects\Backend\CollectionIndexQueryCountTest
+  ⨯ collections index runs constant number of queries                                                            0.46s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\KnownDefects\Backend\CollectionIndexQueryCountTest > collections index runs constant number of quer…   
+  collections.index: 4 Queries bei 2 Sammlungen, 12 Queries bei 10 Sammlungen (F-23, N+1).
+Failed asserting that 12 is identical to 4.
+
+  at tests\KnownDefects\Backend\CollectionIndexQueryCountTest.php:40
+     36▕         Collection::factory()->for($user)->count(8)->create()
+     37▕             ->each(fn (Collection $c) => $c->recipes()->attach($recipes));
+     38▕         $withTen = $this->countQueries($user);
+     39▕ 
+  ➜  40▕         $this->assertSame(
+     41▕             $withTwo,
+     42▕             $withTen,
+     43▕             "collections.index: {$withTwo} Queries bei 2 Sammlungen, {$withTen} Queries bei 10 Sammlungen (F-23, N+1).",
+     44▕         );
+
+  1   tests\KnownDefects\Backend\CollectionIndexQueryCountTest.php:40
+
+
+  Tests:    1 failed (3 assertions)
+  Duration: 0.73s
+

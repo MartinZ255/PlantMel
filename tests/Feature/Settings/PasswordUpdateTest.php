@@ -5,6 +5,7 @@ namespace Tests\Feature\Settings;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class PasswordUpdateTest extends TestCase
@@ -37,7 +38,14 @@ class PasswordUpdateTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('user-password.edit'));
+            ->assertRedirect(route('user-password.edit'))
+            ->assertSessionHas('success', 'Passwort geändert.');
+
+        $this->get(route('user-password.edit'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('settings/Password')
+                ->where('flash.success', 'Passwort geändert.')
+            );
 
         $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
     }
@@ -56,7 +64,8 @@ class PasswordUpdateTest extends TestCase
             ]);
 
         $response
-            ->assertSessionHasErrors('current_password')
+            ->assertSessionHasErrors(['current_password' => 'Das Passwort ist falsch.'])
+            ->assertSessionMissing('success')
             ->assertRedirect(route('user-password.edit'));
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -36,41 +35,52 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
-
         return [
             ...parent::share($request),
 
             'name' => config('app.name'),
-            'quote' => [
-                'message' => trim($message),
-                'author'  => trim($author),
+
+            // F-17: Erfolgs- und Fehlermeldungen aus `->with('success'|'error', …)`.
+            // Lazy ausgewertet; null, wenn nichts gesetzt ist oder keine Session
+            // existiert (z. B. 404 ohne passende Route).
+            'flash' => [
+                'success' => fn () => $request->hasSession() ? $request->session()->get('success') : null,
+                'error' => fn () => $request->hasSession() ? $request->session()->get('error') : null,
             ],
 
             'auth' => [
                 'user' => $request->user()
                     ? [
-                        'id'    => $request->user()->id,
-                        'name'  => $request->user()->name,
+                        'id' => $request->user()->id,
+                        'name' => $request->user()->name,
                         'email' => $request->user()->email,
+                        // F-08/E2: ISO-8601 (UTC) oder null. Der Profilhinweis
+                        // (settings/Profile.vue) prueft zusaetzlich
+                        // `mustVerifyEmail`, erscheint also nur bei Schalter AN.
+                        'email_verified_at' => $request->user()->email_verified_at?->copy()->utc()->toIso8601ZuluString(),
+                        // Gate C2: Host-Recht global (Kopfnavigation, Mobil- und
+                        // Nutzermenue zeigen "Rezept erstellen" auf jeder Seite).
+                        // Nur Anzeige; die Routen schuetzt weiter EnsureUserIsHost.
+                        'is_host' => (bool) $request->user()->is_host,
                     ]
                     : null,
-                'collections' => $request->user()
+                // F-23 (Gate D2): Gebraucht auf jeder Seite mit Kopfzeile
+                // (Menue "Sammlungen" in AppHeader/MobileMenu ueber
+                // useAppNavigation) und auf Home; deshalb weiter geteilt, aber
+                // lazy: Partial Reloads ohne `auth` (z. B. Blaettern und Filtern
+                // in recipes/Index.vue) sparen die Abfrage. Gaeste: keine Abfrage.
+                'collections' => fn () => $request->user()
                     ? $request->user()
                         ->collections()
                         ->orderByDesc('updated_at')
                         ->get(['id', 'name'])
                         ->map(fn ($collection) => [
-                            'id'   => $collection->id,
+                            'id' => $collection->id,
                             'name' => $collection->name,
                         ])
                         ->values()
                     : [],
             ],
-
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state')
-                || $request->cookie('sidebar_state') === 'true',
         ];
     }
-
 }
