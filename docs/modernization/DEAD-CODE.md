@@ -29,8 +29,8 @@ Bewertung: **sicher tot** = keine statische oder dynamische Verwendung, kein Dat
 
 | # | Kandidat | Belege | Empfehlung |
 |---|---|---|---|
-| O1 | `resources/js/components/recipes/RecipeList.vue` | kein Import (`from '@/components/recipes/RecipeList'` → 0 Treffer, relativ ebenso); `DESIGN-SYSTEM.md:179`, `GATE-C-BERICHT.md:67`, `ROADMAP.md:137` nennen sie ungenutzt. | Rezeptliste-Komponente → Besitz D2. Nach Integration von D2 löschen, falls D2 sie nicht wiederverwendet. |
-| O2 | `RecipeController::create()` (`app/Http/Controllers/RecipeController.php:315–336`) | Docblock bestätigt: keine Route; `recipes.create` ist eine Closure in `routes/web.php`. | Besitz D2. Entweder Methode löschen oder die Closure in die Methode verschieben (dann ist die Closure tot) – Entscheidung mit D2. |
+| O1 | `resources/js/components/recipes/RecipeList.vue` | kein Import (`from '@/components/recipes/RecipeList'` → 0 Treffer, relativ ebenso); `DESIGN-SYSTEM.md:179`, `GATE-C-BERICHT.md:67`, `ROADMAP.md:137` nennen sie ungenutzt. | **Erledigt (D2, fde815f): gelöscht.** |
+| O2 | `RecipeController::create()` (`app/Http/Controllers/RecipeController.php:315–336`) | Docblock bestätigt: keine Route; `recipes.create` ist eine Closure in `routes/web.php`. | **Erledigt (D2, fde815f): Methode gelöscht, Closure bleibt.** |
 
 ## Unklar – nur aufgelistet, nicht gelöscht
 

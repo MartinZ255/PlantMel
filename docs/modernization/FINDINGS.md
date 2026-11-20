@@ -423,3 +423,25 @@ Branch `feat/gate-c-redesign` (lokal, kein Push). Details und Testzahlen in `GAT
 | F-93 | erledigt (723badb) | Sammlungskacheln zeigten keine Bilder der enthaltenen Rezepte. | umgesetzt: Collage mit Rezeptbildern |
 | F-94 | erledigt (723badb) | Sammlungen ließen sich nicht umbenennen. | umgesetzt: Dialog „Bearbeiten“ auf der Sammlungsseite, Route `collections.update`, Feature-Test `CollectionUpdateAndCollageTest` |
 | F-95 | P1 (Release) | E14 findet die Bewertungs-Dimension per Name „Geschmack“ (`config/plantmel.php`). Ob sie in der Produktions-Datenbank genau so heißt, ist ungeprüft; sonst zeigt die App keine Bewertungen. | vor dem Release lesend prüfen (mit Freigabe), ggf. Konfiguration anpassen |
+
+## 17. Nachtrag Gate D (2026-11-20): Aufräumen, Tastatur, Pagination, CI
+
+Branch `feat/gate-c-redesign` (lokal, kein Push). Merges D1 435ff2e, D3, D2, Formatierung f70ce1d.
+
+| ID | Status | Was geändert wurde | Regressionstest |
+|---|---|---|---|
+| F-38 | behoben | Zutaten und Schritte per „nach oben/unten“-Knöpfen umsortierbar (Fokus bleibt, Ansage per `aria-live`), Drag-Griff nicht mehr fokussierbar; Zutaten-Vorschläge als ARIA-Combobox (Pfeiltasten, Enter, Escape). Der alte Soll-Test zielte auf einen tastaturfähigen Drag-Griff und wurde durch die neue Spec ersetzt | `tests/e2e/regression-keyboard-reorder.spec.ts` |
+| F-23 | behoben | Rezeptliste serverseitig paginiert (24 je Seite, Filter bleiben erhalten, Seite hinter der letzten → Redirect auf letzte Seite), ungenutztes Eager Loading `recipeIngredients.ingredient` entfernt, `auth.collections` als Closure (keine Abfrage bei Partial Reloads/Gästen). Konstant 8 Abfragen für die Liste unabhängig von der Rezeptzahl | `RecipeIndexPaginationTest`, `RecipeIndexQueryCountTest`, `tests/e2e/regression-pagination.spec.ts` |
+| F-52 | teilweise | Entfernt: `RecipeController::create()`, `RecipeList.vue`, ungenutzte Helfer in `lib/utils.ts` und Typen, `components.json`, npm-Pakete `reka-ui`, `@vueuse/core`, `class-variance-authority`. Offen (unklar, Entscheidung nötig): siehe `DEAD-CODE.md` U1–U15; `Comment` bleibt (Datenbezug) | Build-Hashes vor/nach Löschung identisch; PHPUnit, Playwright grün |
+| F-76 | teilweise | `RatingDimensionController` entfernt (Model, Tabelle, Seeder bleiben). Offen: Aufbewahrung `failed_jobs`, Import-Limit zählt abgelehnte Versuche | – |
+
+Weitere Änderungen: Playwright-Regression läuft in der CI (`.github/workflows/tests.yml`, Job `e2e`, ohne Pixel-Vergleiche wegen Windows-Baselines); leere KnownDefects-Suite wird in der CI sichtbar übersprungen; Pint- und Prettier-Altbestand formatiert (39 Dateien, reine Formatierung), beide Prüfungen in `lint.yml` jetzt blockierend; `npm audit fix` ohne `--force` (9 → 3 moderate, nur Dev; Rest braucht vue-tsc 3).
+
+### Offene Punkte nach Gate D
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-96 | P3 | 3 moderate npm-Meldungen (minimatch über `vue-tsc` 2.x), nur Entwicklungswerkzeuge; `npm audit --omit=dev` = 0 | Update auf vue-tsc 3 als eigenes kleines Paket |
+| F-97 | P2 | Die CI mit Playwright ist noch nie real gelaufen (erst nach einem Push); Layoutmessungen unter Linux können abweichen | ersten CI-Lauf beobachten |
+| F-98 | P3 | Rezeptliste lädt pro Rezept alle Bilder, obwohl nur das erste gebraucht wird | bei Bedarf auf erstes Bild begrenzen (messen) |
+
