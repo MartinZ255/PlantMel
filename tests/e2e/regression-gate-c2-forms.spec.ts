@@ -97,11 +97,11 @@ test.describe('Gate C2 – Rezeptformular: Bedienung', () => {
         await name.fill('linsen');
         await expect(suggestions).toBeVisible();
         await expect(
-            suggestions.getByRole('button', { name: 'Rote Linsen' }),
+            suggestions.getByRole('option', { name: 'Rote Linsen' }),
         ).toBeVisible();
         // gefiltert: Brokkoli passt nicht zu "linsen"
         await expect(
-            suggestions.getByRole('button', { name: 'Brokkoli' }),
+            suggestions.getByRole('option', { name: 'Brokkoli' }),
         ).toHaveCount(0);
 
         // Escape schliesst, Fokus bleibt im Feld
@@ -119,7 +119,7 @@ test.describe('Gate C2 – Rezeptformular: Bedienung', () => {
 
         // Auswahl per Maus uebernimmt den Namen und schliesst
         await name.click();
-        await suggestions.getByRole('button', { name: 'Rote Linsen' }).click();
+        await suggestions.getByRole('option', { name: 'Rote Linsen' }).click();
         await expect(name).toHaveValue('Rote Linsen');
         await expect(suggestions).toHaveCount(0);
         // bekannte Zutat: Stift statt "neu anlegen"
