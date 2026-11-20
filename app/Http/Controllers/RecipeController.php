@@ -591,11 +591,15 @@ class RecipeController extends Controller
         $tasteDimensionId = TasteRating::dimensionId();
 
         $recipe->load([
+            'images',
             'categories',
             'recipeIngredients.ingredient',
             'ratings' => TasteRating::constrain($tasteDimensionId),
             'ingredientAlternatives.alternativeIngredient',
         ]);
+
+        // Gate C2: aktuelles Bild für Kopf und Vorschau (gleiches Format wie show())
+        $primaryImage = $recipe->images->first();
 
         // Tags aus Kategorien
         $tags = $recipe->categories->pluck('name')->all();
@@ -645,6 +649,9 @@ class RecipeController extends Controller
                 'id'               => $recipe->id,
                 'name'             => $recipe->title,
                 'description'      => $recipe->description,
+                'image'            => $primaryImage
+                    ? Storage::disk('public')->url($primaryImage->image_path)
+                    : null,
                 'duration_minutes' => $recipe->duration_minutes,
                 'servings'         => $recipe->servings,
                 // F-15: Feld „Quelle“ entfällt
