@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\User;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,10 @@ class ProfileController extends Controller
             // MustVerifyEmail immer, deshalb zaehlt der Schalter, nicht das Interface.
             'mustVerifyEmail' => User::emailVerificationRequired(),
             'status' => $request->session()->get('status'),
+            // E17: ohne Passwort (Google-Konto) wird das Löschen mit der
+            // eigenen E-Mail-Adresse bestätigt.
+            'hasPassword' => $request->user()->hasPassword(),
+            'hasGoogle' => $request->user()->google_id !== null,
         ]);
     }
 
@@ -61,11 +66,27 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
         $user = $request->user();
+
+        if ($user->hasPassword()) {
+            $request->validate([
+                'password' => ['required', 'current_password'],
+            ]);
+        } else {
+            // E17: Konto ohne Passwort -> Bestätigung durch die eigene
+            // E-Mail-Adresse (ohne Groß-/Kleinschreibung).
+            $request->validate([
+                'email' => [
+                    'required',
+                    'string',
+                    function (string $attribute, mixed $value, Closure $fail) use ($user) {
+                        if (! is_string($value) || mb_strtolower(trim($value)) !== mb_strtolower($user->email)) {
+                            $fail('Die E-Mail-Adresse stimmt nicht mit deinem Konto überein.');
+                        }
+                    },
+                ],
+            ]);
+        }
 
         Auth::logout();
 

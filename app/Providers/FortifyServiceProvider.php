@@ -84,5 +84,10 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($throttleKey);
         });
+
+        // E17: Google-Anmeldung (Weiterleitung und Rückkehr) je IP.
+        RateLimiter::for('google-login', function (Request $request) {
+            return Limit::perMinute(10)->by('google-login|'.$request->ip());
+        });
     }
 }

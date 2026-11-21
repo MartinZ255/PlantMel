@@ -108,6 +108,19 @@ class RouteRoleMatrixTest extends TestCase
     ];
 
     /**
+     * routes/web.php, Gruppe ['guest', 'throttle:google-login'] (E17, Google-Anmeldung).
+     * Gäste erreichen sie (ohne Konfiguration: Redirect auf /login, siehe
+     * tests/Feature/Auth/GoogleLoginTest.php); angemeldete Nutzer leitet
+     * `guest` auf /home.
+     *
+     * @var array<string, string>
+     */
+    public const GUEST_ROUTES = [
+        'auth.google.redirect' => 'GET',
+        'auth.google.callback' => 'GET',
+    ];
+
+    /**
      * routes/api.php: seit Slice 1b leer (F-16, E6). Kommt dort eine Route
      * hinzu, muss sie hier (Schluessel "METHODE uri" bzw. Name) mit Rollen-
      * Erwartung eingetragen werden; ApiRoutesRemovedTest schlaegt dann
@@ -295,6 +308,44 @@ class RouteRoleMatrixTest extends TestCase
         $response->assertStatus($expectedStatus);
     }
 
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function guestRoutes(): array
+    {
+        $cases = [];
+
+        foreach (self::GUEST_ROUTES as $name => $method) {
+            $cases[$name] = [$name, $method];
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('guestRoutes')]
+    public function test_guest_route_redirects_authenticated_user_home(string $name, string $method): void
+    {
+        $this->actingAsUser();
+        $before = $this->databaseFingerprint();
+
+        $response = $this->call($method, route($name));
+
+        $response->assertRedirect(route('home'));
+        $this->assertSame($before, $this->databaseFingerprint(), "Angemeldeter Nutzer hat bei {$name} Daten veraendert.");
+    }
+
+    #[DataProvider('guestRoutes')]
+    public function test_guest_route_is_reachable_for_guest(string $name, string $method): void
+    {
+        // ohne Google-Konfiguration: Hinweis statt 500
+        config(['services.google.client_id' => null, 'services.google.client_secret' => null]);
+
+        $response = $this->call($method, route($name));
+
+        $this->assertGuest();
+        $response->assertRedirect(route('login'));
+    }
+
     // ------------------------------------------------------------------
     // Struktur: Middleware je Liste und Vollstaendigkeit
     // ------------------------------------------------------------------
@@ -325,6 +376,10 @@ class RouteRoleMatrixTest extends TestCase
         foreach (array_keys(self::PUBLIC_ROUTES) as $name) {
             $this->assertSame(['web'], $this->middlewareOf($name), $name);
         }
+
+        foreach (array_keys(self::GUEST_ROUTES) as $name) {
+            $this->assertSame(['web', 'guest', 'throttle:google-login'], $this->middlewareOf($name), $name);
+        }
     }
 
     public function test_every_app_route_is_covered_by_exactly_one_matrix_list(): void
@@ -334,6 +389,7 @@ class RouteRoleMatrixTest extends TestCase
             'USER_ROUTES' => array_keys(self::USER_ROUTES),
             'SETTINGS_ROUTES' => array_keys(self::SETTINGS_ROUTES),
             'PUBLIC_ROUTES' => array_keys(self::PUBLIC_ROUTES),
+            'GUEST_ROUTES' => array_keys(self::GUEST_ROUTES),
             'API_ROUTES' => self::API_ROUTES,
             'FRAMEWORK_ROUTES' => self::FRAMEWORK_ROUTES,
         ];

@@ -74,7 +74,8 @@ class CatalogPagesTest extends TestCase
         sort($props);
         // Geteilte Props aus HandleInertiaRequests + `ingredients`
         // Slice 3: `flash` neu (F-17), `quote` und `sidebarOpen` entfallen.
-        $this->assertSame(['auth', 'errors', 'flash', 'ingredients', 'name'], $props);
+        // E17: `features` (googleLogin) neu.
+        $this->assertSame(['auth', 'errors', 'features', 'flash', 'ingredients', 'name'], $props);
     }
 
     public function test_my_ingredients_requires_login(): void

@@ -453,3 +453,22 @@ Weitere Änderungen: Playwright-Regression läuft in der CI (`.github/workflows/
 | F-98 | behoben | Rezeptliste lädt je Rezept nur das erste Bild (`images` mit `orderBy('id')->limit(1)`) | `RecipeIndexFirstImageTest` |
 | F-52 | weiter abgebaut | `ui/Card.vue` und die ungenutzten Alternativen-Endpunkte entfernt (E15, E16) | `IngredientAlternativeRoutesRemovedTest` |
 
+
+## 18. Nachtrag 2026-11-21: Anmeldung mit Google (E17, ADR-004)
+
+Branch `feat/google-login` (lokal, kein Push). Neue Funktion auf Wunsch des Auftraggebers, kein behobener Befund. Anleitung: `GOOGLE-LOGIN.md`.
+
+| Bereich | Was geändert wurde | Regressionstest |
+|---|---|---|
+| Auth | `laravel/socialite` 5.33, Routen `auth.google.redirect`/`auth.google.callback` (guest, `throttle:google-login` 10/min je IP), Zuordnung über `google_id`, sonst automatische Verknüpfung per bei Google bestätigter E-Mail, sonst neues Konto ohne Passwort und ohne Host-Recht | `tests/Feature/Auth/GoogleLoginTest.php` |
+| Schema | `users.google_id` (nullable, unique), `users.password` nullable; SQLite-Neuaufbau der Tabelle erhält Daten, Indizes und Fremdschlüssel; Rollback bricht ab, solange Konten ohne Passwort existieren | `tests/Feature/Auth/GoogleLoginMigrationTest.php` |
+| Konten ohne Passwort | Passwort-Login mit normaler Fehlermeldung, „Passwort vergessen“ setzt ein Passwort, „Passwort festlegen“ ohne aktuelles Passwort, Konto löschen mit E-Mail-Bestätigung | `tests/Feature/Auth/PasswordlessAccountTest.php` |
+| UI | Knopf mit Google-„G“ (Inline-SVG) und Trennlinie „oder“ auf Login und Registrierung, nur bei gesetzter Konfiguration (`features.googleLogin`) | `tests/e2e/regression-google-login.spec.ts`, `SharedInertiaPropsTest`, `RouteRoleMatrixTest` |
+
+### Neue Punkte
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-99 | P1 (vor dem Einschalten) | Die Datenschutzerklärung nennt Google noch nicht als Empfänger | Betreiber ergänzt `/datenschutz` nach `GOOGLE-LOGIN.md` Abschnitt 5, bevor `GOOGLE_CLIENT_ID` gesetzt wird |
+| F-100 | P2 | Die Migration baut unter SQLite die Tabelle `users` neu auf. Geprüft ist das nur lokal mit synthetischen Daten. Das Produktionsschema ist unbekannt (F-11) | vor `migrate` in Produktion Sicherung der SQLite-Datei, `migrate --pretend` und Schema-Abgleich auf einer Staging-Kopie (nur mit Freigabe) |
+| F-101 | P3 | `migrate --pretend` zeigt für den `->change()`-Schritt unter SQLite eine leere `create table "__temp__users" ()`. Das liegt daran, dass Pretend keine Spalteninfos liest. Die echte Ausführung erzeugt die vollständige Tabelle (per Query-Log geprüft) | beim Review der Pretend-Ausgabe beachten; nicht als Fehler werten |

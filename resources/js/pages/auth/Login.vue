@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import AuthShell from '@/components/auth/AuthShell.vue';
 import { authLinkClass } from '@/components/auth/authStyles';
+import GoogleAuthButton from '@/components/auth/GoogleAuthButton.vue';
 import Button from '@/components/ui/Button.vue';
 import Field from '@/components/ui/Field.vue';
 import TextInput from '@/components/ui/TextInput.vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { route } from 'ziggy-js';
 
 defineProps<{
@@ -18,6 +21,14 @@ const form = useForm({
     password: '',
     remember: false,
 });
+
+// E17: Knopf nur bei gesetzter Google-Konfiguration; „Angemeldet bleiben“
+// wird an die Weiterleitung übergeben.
+const page = usePage<AppPageProps>();
+const googleLogin = computed(() => page.props.features?.googleLogin === true);
+const googleHref = computed(() =>
+    route('auth.google.redirect', form.remember ? { remember: 1 } : {}),
+);
 
 const submit = () => {
     form.post(route('login'), {
@@ -38,6 +49,13 @@ const submit = () => {
             Willkommen
             <span class="accent-word text-primary">zurück</span>
         </template>
+
+        <GoogleAuthButton
+            v-if="googleLogin"
+            :href="googleHref"
+            label="Mit Google anmelden"
+            class="mb-5"
+        />
 
         <form
             class="flex flex-col gap-5"

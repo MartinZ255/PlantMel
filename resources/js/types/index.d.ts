@@ -28,11 +28,18 @@ export interface Flash {
     error: string | null;
 }
 
+/** E17: Schalter aus HandleInertiaRequests::share. */
+export interface Features {
+    /** Knopf „Mit Google anmelden“ nur bei gesetzter Google-Konfiguration. */
+    googleLogin: boolean;
+}
+
 export type AppPageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
     name: string;
     auth: Auth;
+    features: Features;
     flash: Flash;
 };
 

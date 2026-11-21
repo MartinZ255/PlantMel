@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\IngredientController;
@@ -48,6 +49,16 @@ Route::get('/', function () {
         'featuredRecipes' => $featuredRecipes,
     ]);
 })->name('landing');
+
+// E17 / ADR-004: Anmeldung mit Google (Laravel Socialite). Ohne Konfiguration
+// leiten beide Routen mit Hinweis auf /login um.
+Route::middleware(['guest', 'throttle:google-login'])->group(function () {
+    Route::get('/auth/google/redirect', [GoogleLoginController::class, 'redirect'])
+        ->name('auth.google.redirect');
+
+    Route::get('/auth/google/callback', [GoogleLoginController::class, 'callback'])
+        ->name('auth.google.callback');
+});
 
 // Öffentliche Rezept-Ansicht
 Route::get('/rezepte', [RecipeController::class, 'index'])

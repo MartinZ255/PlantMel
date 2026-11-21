@@ -5,7 +5,21 @@ import Field from '@/components/ui/Field.vue';
 import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import TextInput from '@/components/ui/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { route } from 'ziggy-js';
+
+/**
+ * E17: Konten aus der Google-Anmeldung haben anfangs kein Passwort. Dann
+ * heißt die Seite „Passwort festlegen“ und fragt kein aktuelles Passwort ab.
+ */
+const props = withDefaults(defineProps<{ hasPassword?: boolean }>(), {
+    hasPassword: true,
+});
+
+const pageTitle = computed(() =>
+    props.hasPassword ? 'Passwort ändern' : 'Passwort festlegen',
+);
+const verb = computed(() => (props.hasPassword ? 'ändern' : 'festlegen'));
 
 const form = useForm({
     current_password: '',
@@ -25,14 +39,14 @@ const submit = () => {
 
 <template>
     <SettingsShell
-        page-title="Passwort ändern"
-        title="Passwort ändern"
+        :page-title="pageTitle"
+        :title="pageTitle"
         description="Wähle ein sicheres Passwort für dein Konto"
         current="password"
     >
         <template #title>
             Passwort
-            <span class="accent-word text-primary">ändern</span>
+            <span class="accent-word text-primary">{{ verb }}</span>
         </template>
 
         <section
@@ -49,8 +63,15 @@ const submit = () => {
             >
                 Neues Passwort
             </h2>
-            <p class="relative mt-1 max-w-prose text-ink-muted">
+            <p
+                v-if="hasPassword"
+                class="relative mt-1 max-w-prose text-ink-muted"
+            >
                 Zur Sicherheit brauchen wir dein aktuelles Passwort.
+            </p>
+            <p v-else class="relative mt-1 max-w-prose text-ink-muted">
+                Du meldest dich bisher mit Google an. Mit einem Passwort kannst
+                du dich zusätzlich mit deiner E-Mail-Adresse anmelden.
             </p>
 
             <form
@@ -58,6 +79,7 @@ const submit = () => {
                 @submit.prevent="submit"
             >
                 <Field
+                    v-if="hasPassword"
                     id="current_password"
                     v-slot="field"
                     label="Aktuelles Passwort"
@@ -110,7 +132,7 @@ const submit = () => {
                         Zurück
                     </Button>
                     <Button type="submit" :loading="form.processing">
-                        Passwort ändern
+                        {{ pageTitle }}
                     </Button>
                 </div>
             </form>

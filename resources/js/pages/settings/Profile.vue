@@ -11,10 +11,17 @@ import { CircleCheck, TriangleAlert } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 
-defineProps<{
-    mustVerifyEmail: boolean;
-    status?: string | null;
-}>();
+const props = withDefaults(
+    defineProps<{
+        mustVerifyEmail: boolean;
+        status?: string | null;
+        /** E17: false bei Konten aus der Google-Anmeldung ohne Passwort */
+        hasPassword?: boolean;
+        /** E17: Konto ist mit Google verknüpft */
+        hasGoogle?: boolean;
+    }>(),
+    { status: null, hasPassword: true, hasGoogle: false },
+);
 
 const page = usePage<AppPageProps>();
 const user = computed(() => page.props.auth?.user ?? null);
@@ -35,9 +42,16 @@ const submit = () => {
 };
 
 // --- Konto löschen: Bestätigung im Dialog (statt window.confirm) ---------------
+// E17: ohne Passwort bestätigt die eigene E-Mail-Adresse das Löschen.
 const deleteForm = useForm({
     password: '',
+    email: '',
 });
+const deleteDescription = computed(() =>
+    props.hasPassword
+        ? 'Alle deine Daten, Sammlungen und Einstellungen werden unwiderruflich entfernt. Gib zur Bestätigung dein Passwort ein.'
+        : 'Alle deine Daten, Sammlungen und Einstellungen werden unwiderruflich entfernt. Gib zur Bestätigung deine E-Mail-Adresse ein.',
+);
 const isDeleteOpen = ref(false);
 
 const openDelete = () => {
@@ -47,14 +61,20 @@ const openDelete = () => {
 const closeDelete = () => {
     if (deleteForm.processing) return;
     isDeleteOpen.value = false;
-    deleteForm.reset('password');
+    deleteForm.reset('password', 'email');
     deleteForm.clearErrors();
 };
 const deleteAccount = () => {
-    deleteForm.delete(route('profile.destroy'), {
-        preserveScroll: true,
-        onError: () => deleteForm.reset('password'),
-    });
+    deleteForm
+        .transform((data) =>
+            props.hasPassword
+                ? { password: data.password }
+                : { email: data.email },
+        )
+        .delete(route('profile.destroy'), {
+            preserveScroll: true,
+            onError: () => deleteForm.reset('password'),
+        });
 };
 </script>
 
@@ -132,6 +152,15 @@ const deleteAccount = () => {
                         />
                     </Field>
                     <p
+                        v-if="hasGoogle"
+                        class="text-sm text-ink-muted"
+                        data-google-linked
+                    >
+                        Dein Konto ist mit Google verknüpft. Die Anmeldung mit
+                        Google funktioniert auch nach einer Änderung der
+                        E-Mail-Adresse weiter.
+                    </p>
+                    <p
                         v-if="
                             mustVerifyEmail && user?.email_verified_at === null
                         "
@@ -203,7 +232,7 @@ const deleteAccount = () => {
         <Dialog
             :open="isDeleteOpen"
             title="Konto endgültig löschen?"
-            description="Alle deine Daten, Sammlungen und Einstellungen werden unwiderruflich entfernt. Gib zur Bestätigung dein Passwort ein."
+            :description="deleteDescription"
             size="sm"
             @close="closeDelete"
         >
@@ -213,6 +242,7 @@ const deleteAccount = () => {
                 @submit.prevent="deleteAccount"
             >
                 <Field
+                    v-if="hasPassword"
                     id="delete_password"
                     v-slot="field"
                     label="Passwort zur Bestätigung"
@@ -224,6 +254,22 @@ const deleteAccount = () => {
                         v-bind="field.inputAttrs"
                         type="password"
                         autocomplete="current-password"
+                    />
+                </Field>
+                <Field
+                    v-else
+                    id="delete_email"
+                    v-slot="field"
+                    label="E-Mail-Adresse zur Bestätigung"
+                    required
+                    :hint="`Gib ${user?.email ?? 'deine E-Mail-Adresse'} ein.`"
+                    :error="deleteForm.errors.email"
+                >
+                    <TextInput
+                        v-model="deleteForm.email"
+                        v-bind="field.inputAttrs"
+                        type="email"
+                        autocomplete="off"
                     />
                 </Field>
             </form>

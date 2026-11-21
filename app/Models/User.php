@@ -20,6 +20,8 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * `is_host` ist bewusst NICHT enthalten (F-46): Host-Rechte werden nur
      * gezielt per `php artisan user:make-host` (forceFill) vergeben.
+     * `google_id` ebenfalls nicht (E17): sie wird nur im Google-Callback per
+     * forceFill gesetzt (App\Services\GoogleLogin).
      *
      * @var list<string>
      */
@@ -39,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $hidden = [
         'password',
+        'google_id',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
@@ -57,6 +60,15 @@ class User extends Authenticatable implements MustVerifyEmail
             'two_factor_confirmed_at' => 'datetime',
             'is_host' => 'boolean',
         ];
+    }
+
+    /**
+     * E17: Konten, die per Google angelegt wurden, haben zunächst kein
+     * Passwort (users.password = null).
+     */
+    public function hasPassword(): bool
+    {
+        return $this->password !== null && $this->password !== '';
     }
 
     /*

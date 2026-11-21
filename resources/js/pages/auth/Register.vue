@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import AuthShell from '@/components/auth/AuthShell.vue';
 import { authLinkClass } from '@/components/auth/authStyles';
+import GoogleAuthButton from '@/components/auth/GoogleAuthButton.vue';
 import Button from '@/components/ui/Button.vue';
 import Field from '@/components/ui/Field.vue';
 import TextInput from '@/components/ui/TextInput.vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { route } from 'ziggy-js';
+
+// E17: Knopf nur bei gesetzter Google-Konfiguration.
+const page = usePage<AppPageProps>();
+const googleLogin = computed(() => page.props.features?.googleLogin === true);
 
 const form = useForm({
     name: '',
@@ -34,6 +41,13 @@ const submit = () => {
             Dein Rezept<span class="accent-word text-primary">garten</span>
             beginnt hier
         </template>
+
+        <GoogleAuthButton
+            v-if="googleLogin"
+            :href="route('auth.google.redirect')"
+            label="Mit Google registrieren"
+            class="mb-5"
+        />
 
         <form
             class="flex flex-col gap-5"
