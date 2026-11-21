@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\User;
+use App\Services\CommunityRecipes;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,8 @@ class ProfileController extends Controller
             // eigenen E-Mail-Adresse bestätigt.
             'hasPassword' => $request->user()->hasPassword(),
             'hasGoogle' => $request->user()->google_id !== null,
+            // E18: im Lösch-Dialog ankündigen, dass eigene Community-Rezepte mitgehen
+            'communityRecipeCount' => $request->user()->communityRecipes()->count(),
         ]);
     }
 
@@ -89,6 +92,10 @@ class ProfileController extends Controller
         }
 
         Auth::logout();
+
+        // E18: eigene Community-Rezepte samt Bildern und ungenutzten
+        // Zutaten-Vorschlägen löschen (Bewertungen per Kaskade)
+        CommunityRecipes::deleteAllOf($user);
 
         $user->delete();
 

@@ -20,11 +20,14 @@ class CollectionController extends Controller
     {
         $collections = Collection::query()
             ->where('user_id', $request->user()->id)
-            ->withCount('recipes')
             // Collage: nur Rezepte mit Bild, höchstens 4 je Sammlung (Limit je
             // Sammlung per Eager Loading, keine Abfrage pro Sammlung/Rezept).
+            // E18: nur Rezepte, die der Nutzer sehen darf (z. B. kein
+            // fremdes Community-Rezept, das wieder geprüft wird)
+            ->withCount(['recipes' => fn ($query) => $query->visibleTo($request->user())])
             ->with([
                 'recipes' => fn ($query) => $query
+                    ->visibleTo($request->user())
                     ->whereHas('images')
                     ->with(['images' => fn ($images) => $images->orderBy('id')])
                     ->orderByDesc('recipes.id')
@@ -89,6 +92,8 @@ class CollectionController extends Controller
         $tasteDimensionId = TasteRating::dimensionId();
 
         $collection->load([
+            // E18: nur sichtbare Rezepte (Community-Rezepte in Prüfung bleiben verborgen)
+            'recipes' => fn ($query) => $query->visibleTo($request->user()),
             'recipes.categories',
             'recipes.ratings' => TasteRating::constrain($tasteDimensionId),
             'recipes.images',
@@ -155,6 +160,10 @@ class CollectionController extends Controller
         $data = $request->validate([
             'recipe_id' => ['required', 'exists:recipes,id'],
         ]);
+
+        // E18: nur Rezepte, die der Nutzer sehen darf (keine fremden Entwürfe)
+        $recipe = Recipe::findOrFail($data['recipe_id']);
+        abort_unless($recipe->isVisibleTo($request->user()), 404);
 
         $collection->recipes()->syncWithoutDetaching([$data['recipe_id']]);
 

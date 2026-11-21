@@ -67,7 +67,7 @@ const collectionLinks = nav.collectionLinks;
                             {{ item.label }}
                             <template v-if="item.requiresAuth && !user">
                                 <Lock
-                                    class="size-3.5 text-ink-muted"
+                                    class="hidden size-3.5 text-ink-muted xl:block"
                                     aria-hidden="true"
                                 />
                                 <span class="sr-only">
@@ -84,7 +84,7 @@ const collectionLinks = nav.collectionLinks;
                     v-if="isHost"
                     :href="route('recipes.create')"
                     size="sm"
-                    class="hidden sm:inline-flex"
+                    class="hidden lg:inline-flex"
                 >
                     <Plus class="size-4" aria-hidden="true" />
                     Rezept erstellen
@@ -107,7 +107,7 @@ const collectionLinks = nav.collectionLinks;
                         v-if="canRegister"
                         :href="route('register')"
                         size="sm"
-                        class="hidden md:inline-flex"
+                        class="hidden lg:inline-flex"
                     >
                         Registrieren
                     </Button>

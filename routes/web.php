@@ -3,14 +3,15 @@
 use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\CommunityRecipeController;
 use App\Http\Controllers\IngredientController;
+use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\RecipeImportController;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Ingredient;
 use App\Models\Recipe;
-use App\Models\RecipeImport;
 use App\Services\TasteRating;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,7 @@ Route::get('/', function () {
     // Die öffentliche Startseite bleibt auch ohne Datenbank erreichbar: Fehler
     // werden protokolliert, die Seite zeigt dann die grafische Komposition.
     $featuredRecipes = rescue(fn () => Recipe::query()
+        ->hostRecipes() // E18: keine Community-Rezepte auf der Startseite
         ->whereHas('images', fn ($q) => $q->whereNotNull('image_path')->where('image_path', '!=', ''))
         ->with([
             'categories',
@@ -66,6 +68,18 @@ Route::get('/rezepte', [RecipeController::class, 'index'])
 
 Route::get('/rezept/{recipe}', [RecipeController::class, 'show'])
     ->name('recipes.show');
+
+// E18 / ADR-005: Community-Rezepte (öffentlich: nur freigegebene)
+Route::get('/community', [CommunityRecipeController::class, 'index'])
+    ->name('community.index');
+
+Route::get('/community/rezept/{recipe}', [CommunityRecipeController::class, 'show'])
+    ->name('community.show');
+
+// Meldeweg (Art. 16 DSA): auch für Gäste, mit Rate-Limit
+Route::post('/community/rezept/{recipe}/melden', [CommunityRecipeController::class, 'report'])
+    ->middleware('throttle:recipe-reports')
+    ->name('community.report');
 
 // Öffentliche Zutaten-Suche
 Route::get('/zutatensuche', [IngredientController::class, 'index'])
@@ -110,10 +124,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/home', function (Request $request) {
         $user = $request->user();
 
-        $totalRecipes = Recipe::count();
+        // E18: Kennzahlen und „Neu“ nur aus dem Rezeptbuch des Hosts
+        $totalRecipes = Recipe::hostRecipes()->count();
         $totalCollections = Collection::where('user_id', $user->id)->count();
 
-        $latestRecipes = Recipe::with(['categories', 'images'])
+        $latestRecipes = Recipe::hostRecipes()->with(['categories', 'images'])
             ->orderByDesc('created_at')
             ->limit(4)
             ->get()
@@ -171,6 +186,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('/collections/{collection}', [CollectionController::class, 'delete'])
         ->name('collections.delete');
+
+    // E18: eigene Community-Rezepte (jeder angemeldete Nutzer)
+    Route::get('/meine-rezepte', [CommunityRecipeController::class, 'mine'])
+        ->name('community.mine');
+
+    Route::get('/community/erstellen', [CommunityRecipeController::class, 'create'])
+        ->name('community.create');
+
+    Route::post('/community', [CommunityRecipeController::class, 'store'])
+        ->middleware('throttle:community-recipes')
+        ->name('community.store');
+
+    Route::get('/community/rezept/{recipe}/bearbeiten', [CommunityRecipeController::class, 'edit'])
+        ->name('community.edit');
+
+    Route::post('/community/rezept/{recipe}', [CommunityRecipeController::class, 'update'])
+        ->name('community.update');
+
+    Route::delete('/community/rezept/{recipe}', [CommunityRecipeController::class, 'destroy'])
+        ->name('community.destroy');
+
+    Route::post('/community/rezept/{recipe}/bewertung', [CommunityRecipeController::class, 'rate'])
+        ->name('community.rate');
+
+    // TikTok-Import für Nutzer: nur mit eigenem Gemini-Schlüssel (Host: Server-Schlüssel),
+    // gleiches Limit wie der Host-Import (pro Nutzer)
+    Route::post('/community/import', [RecipeImportController::class, 'store'])
+        ->middleware('throttle:recipe-imports')
+        ->name('communityImports.store');
+
+    Route::get('/community/import/{recipeImport}', [RecipeImportController::class, 'show'])
+        ->name('communityImports.show');
 });
 
 // Host-spezifische Aktionen (Rezepte, Kategorien, Zutaten, Alternativen)
@@ -183,28 +230,12 @@ Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
         $ratingDimensions = TasteRating::dimensionsForForm();
         $categories = Category::orderBy('name')
             ->get(['id', 'name']);
-        $ingredients = Ingredient::orderBy('name')
+        // E18: nur Katalog-Zutaten (keine offenen Vorschläge)
+        $ingredients = Ingredient::approved()->orderBy('name')
             ->get(['id', 'name']);
 
-        // Ergebnis eines TikTok-Imports als Formular-Vorbelegung laden
-        $importedRecipe = null;
-        if ($request->filled('import')) {
-            $import = RecipeImport::where('id', $request->integer('import'))
-                ->where('user_id', $request->user()->id)
-                ->where('status', 'done')
-                ->first();
-            $importedRecipe = $import?->result;
-
-            // Importierte Tags auf vorhandene Kategorien mappen (Groß-/
-            // Kleinschreibung), damit die Chips im Formular aktiv sind
-            if ($importedRecipe && ! empty($importedRecipe['tags'])) {
-                $byLower = $categories->keyBy(fn ($cat) => mb_strtolower($cat->name));
-                $importedRecipe['tags'] = collect($importedRecipe['tags'])
-                    ->map(fn ($tag) => $byLower[mb_strtolower($tag)]->name ?? $tag)
-                    ->values()
-                    ->all();
-            }
-        }
+        // Ergebnis eines TikTok-Imports als Formular-Vorbelegung (eigener, fertiger Import)
+        $importedRecipe = RecipeImportController::prefillFor($request, $categories);
 
         return Inertia::render('recipes/Create', [
             'ratingDimensions' => $ratingDimensions,
@@ -252,6 +283,28 @@ Route::middleware(['auth', 'verified', 'is_host'])->group(function () {
 
     Route::delete('/ingredients/{ingredient}', [IngredientController::class, 'destroy'])
         ->name('ingredients.destroy');
+
+    // E18: Moderation der Community-Rezepte („Zu prüfen“)
+    Route::get('/moderation', [ModerationController::class, 'index'])
+        ->name('moderation.index');
+
+    Route::post('/moderation/rezept/{recipe}/freigeben', [ModerationController::class, 'approve'])
+        ->name('moderation.approve');
+
+    Route::post('/moderation/rezept/{recipe}/ablehnen', [ModerationController::class, 'reject'])
+        ->name('moderation.reject');
+
+    Route::post('/moderation/rezept/{recipe}/ausblenden', [ModerationController::class, 'hide'])
+        ->name('moderation.hide');
+
+    Route::post('/moderation/meldung/{report}/erledigt', [ModerationController::class, 'resolveReport'])
+        ->name('moderation.reports.resolve');
+
+    Route::patch('/moderation/zutat/{ingredient}', [ModerationController::class, 'renameIngredient'])
+        ->name('moderation.ingredients.rename');
+
+    Route::post('/moderation/zutat/{ingredient}/zuordnen', [ModerationController::class, 'mergeIngredient'])
+        ->name('moderation.ingredients.merge');
 
 });
 

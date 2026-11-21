@@ -69,12 +69,21 @@
                 <span v-if="disableLink">{{ recipe.name }}</span>
                 <Link
                     v-else
-                    :href="route('recipes.show', recipe.id)"
+                    :href="href ?? route('recipes.show', recipe.id)"
                     class="rounded-sm decoration-berry decoration-2 underline-offset-4 group-hover:underline after:absolute after:inset-0 after:rounded-[2rem] after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-4 focus-visible:after:outline-focus"
                 >
                     {{ recipe.name }}
                 </Link>
             </h3>
+
+            <!-- E18: Autor eines Community-Rezepts -->
+            <p
+                v-if="byline"
+                data-recipe-byline
+                class="-mt-1 text-sm text-wrap-anywhere text-ink-muted"
+            >
+                {{ byline }}
+            </p>
 
             <!-- E14: einzige Bewertung ist der Geschmack -->
             <div class="pt-0.5">
@@ -109,11 +118,17 @@ interface Props {
     disableLink?: boolean;
     /** Form der Bildmaske (1–6); ohne Angabe aus der Rezept-ID abgeleitet */
     shape?: number;
+    /** E18: Ziel des Titel-Links (Standard: Host-Rezeptseite) */
+    href?: string;
+    /** E18: Zeile unter dem Titel, z. B. „von Erika“ */
+    byline?: string | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     disableLink: false,
     shape: undefined,
+    href: undefined,
+    byline: null,
 });
 
 const shape = computed(() => {

@@ -1,7 +1,11 @@
 /** Gate C: gemeinsame Klassen der Kopfnavigation (AppHeader, CollectionsMenu). */
 
+/**
+ * E18: zwischen md und xl etwas schmaler (Abstand, Schrift), damit die
+ * Hauptnavigation mit dem Eintrag „Community“ bei 768 und 1024 px in die Kopfzeile passt.
+ */
 export const navLinkBase =
-    'relative inline-flex min-h-10 items-center gap-1.5 rounded-pebble px-3.5 text-[0.9375rem] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
+    'relative inline-flex min-h-10 items-center gap-1 rounded-pebble px-2 text-[0.875rem] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus xl:gap-1.5 xl:px-3.5 xl:text-[0.9375rem]';
 
 /**
  * C1b: aktiver Bereich als Matcha-„Kiesel“ mit Waldgrün-Text (8,5:1);

@@ -472,3 +472,34 @@ Branch `feat/google-login` (lokal, kein Push). Neue Funktion auf Wunsch des Auft
 | F-99 | P1 (vor dem Einschalten) | Die Datenschutzerklärung nennt Google noch nicht als Empfänger | Betreiber ergänzt `/datenschutz` nach `GOOGLE-LOGIN.md` Abschnitt 5, bevor `GOOGLE_CLIENT_ID` gesetzt wird |
 | F-100 | P2 | Die Migration baut unter SQLite die Tabelle `users` neu auf. Geprüft ist das nur lokal mit synthetischen Daten. Das Produktionsschema ist unbekannt (F-11) | vor `migrate` in Produktion Sicherung der SQLite-Datei, `migrate --pretend` und Schema-Abgleich auf einer Staging-Kopie (nur mit Freigabe) |
 | F-101 | P3 | `migrate --pretend` zeigt für den `->change()`-Schritt unter SQLite eine leere `create table "__temp__users" ()`. Das liegt daran, dass Pretend keine Spalteninfos liest. Die echte Ausführung erzeugt die vollständige Tabelle (per Query-Log geprüft) | beim Review der Pretend-Ausgabe beachten; nicht als Fehler werten |
+
+## 19. Nachtrag 2026-11-21: Community-Rezepte (E18, ADR-005)
+
+Branch `feat/community-rezepte` (lokal, kein Push). Neue Funktion auf Wunsch des Auftraggebers, kein behobener Befund. Beschreibung: `COMMUNITY-REZEPTE.md`.
+
+| Bereich | Was geändert wurde | Regressionstest |
+|---|---|---|
+| Schema | `recipes.type/status/user_id/…`, `ingredients.status/proposed_by`, neue Tabellen `recipe_user_ratings`, `recipe_reports`, `users.gemini_api_key`; Bestandsdaten nur über Spalten-Defaults | `tests/Feature/Community/CommunityMigrationTest.php` |
+| Sichtbarkeit | Status × Rolle, Host-Rezeptbuch ohne Community-Rezepte, Sammlungen nur sichtbare Rezepte | `CommunityVisibilityTest` |
+| Einreichen/Bearbeiten | Policy `RecipePolicy`, erneute Prüfung nach Änderung, Rate-Limit 10/h | `CommunitySubmissionTest`, `RouteRoleMatrixTest` |
+| Moderation | Freigeben, Ablehnen mit Grund, Ausblenden, Vorschläge umbenennen/zuordnen, Badge | `CommunityModerationTest` |
+| Zutaten-Vorschläge | nur im Rezept sichtbar, mit Freigabe im Katalog, ungenutzt verworfen | `IngredientProposalTest` |
+| Bewertung/Meldeweg | 1–5 Sterne außer Autor; Melden auch als Gast, 5/h | `CommunityRatingAndReportTest` |
+| Gemini-Schlüssel | verschlüsselt, maskiert, nie in Log/Payload/Session, Job nutzt Nutzerschlüssel, Server-Schlüssel nur Host | `GeminiKeyTest` |
+| Konto löschen | Community-Rezepte inkl. Bilder werden mitgelöscht, Dialog kündigt es an | `AccountDeletionCommunityTest` |
+| Leistung | Community-Liste mit konstant 7 Abfragen, 24 je Seite | `CommunityIndexQueryCountTest` |
+| UI | Seiten `community/*`, `moderation/Index`, `settings/AiImport`; Navigation „Community“, „Meine Rezepte“, „Zu prüfen“; `TikTokImportCard` aus `recipes/Create.vue` herausgelöst; Kopfzeile bei 768/1024 px einzeilig | `tests/e2e/regression-community.spec.ts` |
+
+### Neue Punkte
+
+| ID | Priorität | Beobachtung | Vorschlag |
+|---|---|---|---|
+| F-102 | P1 (vor Produktion) | Die Migration baut unter SQLite `recipes` und `ingredients` neu auf; geprüft nur lokal mit synthetischen Daten, Produktionsschema unbekannt (F-11) | Sicherung der SQLite-Datei, Probelauf auf Kopie (nur mit Freigabe) |
+| F-103 | P1 (vor dem Freischalten) | Nutzungsbedingungen für Nutzerinhalte fehlen; Datenschutzerklärung nennt Autorname, Meldungen, Bewertungen und den Nutzer-Gemini-Schlüssel noch nicht | Betreiber ergänzt nach `COMMUNITY-REZEPTE.md` Abschnitt 8 |
+| F-104 | P3 | Erledigte Meldungen werden nicht automatisch gelöscht | Aufbewahrungsfrist festlegen, ggf. Aufräumbefehl |
+| F-105 | P3 | Keine Benachrichtigung bei neuen Einreichungen oder Meldungen (nur Badge im Nutzermenü des Hosts); Autor und Meldende werden nicht per E-Mail informiert | nach Einrichtung des Mailversands (E2) ergänzen |
+| F-106 | P3 | Der Vergleich mit Katalog-Zutaten ohne Groß-/Kleinschreibung nutzt SQLite `LOWER()` und wirkt nur auf ASCII | bei Bedarf Normalisierung in PHP; die Moderation kann Dubletten zuordnen |
+| F-107 | P3 | Kopfzeile bei 768 px war schon vor E18 zu breit („Registrieren“ abgeschnitten, Baseline `guest-*-t768`) | mit E18 behoben (siehe ADR-005, Kopfzeile) |
+
+**Baselines (E18):** 29 Screenshots erneuert, jeder geprüft (Bänder vorher/nachher): Kopfzeile ab `md` mit „Community“ (t768, d1024, d1440 bei kurzen Seiten), Einstellungs-Navigation und Übersichtskarte „KI-Import“ (alle fünf Breiten bei `user-settings`). Enthalten sind zwei vorbestehende Abweichungen, die auf `master` noch unter der Toleranz von 0,1 % lagen: „Bearbeiten“ auf `user-sammlung-leer` (aus `1d4659b`) und die Zutatenzeile in `host-rezept-erstellen-t768` (aus `db26515`). `regression.spec.ts` F-04: erster Eintrag im Nutzermenü ist jetzt „Meine Rezepte“ (Test angepasst).
+

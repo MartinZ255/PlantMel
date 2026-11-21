@@ -23,6 +23,8 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 
 const nav = useAppNavigation(toRef(props, 'currentPath'));
 const { user, canRegister, startHref, startCurrent, items } = nav;
+// E18: „Zu prüfen“ (Host) und „Meine Rezepte“
+const accountItems = nav.accountItems;
 // Gate C2: global geteiltes Host-Recht statt Seiten-Prop
 const isHost = useIsHost();
 const collectionLinks = nav.collectionLinks;
@@ -188,6 +190,30 @@ const rowClass = (active: boolean) => [
                                     </Link>
                                 </li>
                             </ul>
+                        </li>
+                        <li v-for="item in accountItems" :key="item.key">
+                            <Link
+                                :href="item.href"
+                                :class="rowClass(item.current)"
+                                :aria-current="
+                                    item.current ? 'page' : undefined
+                                "
+                                :data-account-nav="item.key"
+                            >
+                                <span class="flex-1">{{ item.label }}</span>
+                                <span
+                                    v-if="item.count"
+                                    class="inline-flex min-w-6 items-center justify-center rounded-[60%_40%_55%_45%] bg-matcha px-1.5 text-xs font-semibold text-forest"
+                                    data-moderation-count
+                                    >{{ item.count
+                                    }}<span class="sr-only"> offen</span></span
+                                >
+                                <ChevronRight
+                                    v-else
+                                    class="size-4 opacity-70"
+                                    aria-hidden="true"
+                                />
+                            </Link>
                         </li>
                     </ul>
                 </nav>

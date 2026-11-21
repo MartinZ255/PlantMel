@@ -143,7 +143,8 @@ class SharedInertiaPropsTest extends TestCase
         sort($shared);
 
         // E17: `features` (Schalter für den Google-Knopf) neu.
-        $this->assertSame(['auth', 'errors', 'features', 'flash', 'name'], $shared);
+        // E18: `moderation` (Badge „Zu prüfen“, für Nicht-Hosts null) neu.
+        $this->assertSame(['auth', 'errors', 'features', 'flash', 'moderation', 'name'], $shared);
     }
 
     public function test_features_google_login_is_false_without_configuration(): void

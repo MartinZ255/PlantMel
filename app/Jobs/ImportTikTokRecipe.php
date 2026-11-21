@@ -40,6 +40,9 @@ class ImportTikTokRecipe implements ShouldQueue
 
     public const MESSAGE_GENERIC = 'Der Import ist fehlgeschlagen.';
 
+    /** E18: Nicht-Host ohne eigenen Gemini-Schlüssel. */
+    public const MESSAGE_NO_USER_KEY = 'Kein eigener Gemini-API-Schlüssel hinterlegt.';
+
     public int $timeout = 600;
 
     public int $tries = 1;
@@ -58,8 +61,11 @@ class ImportTikTokRecipe implements ShouldQueue
             return;
         }
 
+        // E18: Schlüssel des auslösenden Nutzers – Hosts den Server-Schlüssel,
+        // alle anderen nur ihren eigenen (sonst leer => „nicht konfiguriert“).
+        // Der Schlüssel steht nie im Job-Payload (nur die Import-ID).
         $importer = new TikTokRecipeImporter(
-            apiKey: (string) config('services.gemini.key'),
+            apiKey: $this->apiKey(),
             model: (string) config('services.gemini.model'),
             ytdlpPath: (string) config('services.ytdlp.path'),
         );
@@ -81,7 +87,9 @@ class ImportTikTokRecipe implements ShouldQueue
 
             $this->transition([
                 'status' => 'failed',
-                'error' => self::userMessageFor($e),
+                'error' => $e->getCode() === TikTokRecipeImporter::ERROR_NOT_CONFIGURED && $this->usesOwnKey()
+                    ? self::MESSAGE_NO_USER_KEY
+                    : self::userMessageFor($e),
             ]);
 
             throw $e;
@@ -136,6 +144,31 @@ class ImportTikTokRecipe implements ShouldQueue
     }
 
     /**
+     * E18: Schlüssel für diesen Import (siehe User::geminiKeyForImport()).
+     */
+    private function apiKey(): string
+    {
+        $user = $this->import->user()->first();
+
+        return $user?->geminiKeyForImport() ?? '';
+    }
+
+    private function usesOwnKey(): bool
+    {
+        $user = $this->import->user()->first();
+
+        return $user !== null && ! $user->is_host;
+    }
+
+    /** Eigener Schlüssel des Nutzers (nur zum Schwärzen im Log). */
+    private function ownKey(): string
+    {
+        $user = $this->import->user()->first();
+
+        return $user !== null && ! $user->is_host && $user->hasGeminiKey() ? (string) $user->gemini_api_key : '';
+    }
+
+    /**
      * Ändert den Import nur, solange er keinen Endzustand erreicht hat.
      *
      * @param  array<string, mixed>  $attributes
@@ -157,10 +190,12 @@ class ImportTikTokRecipe implements ShouldQueue
     private function logFailure(Throwable $e): void
     {
         $message = mb_substr($e->getMessage(), 0, 2000);
-        $key = (string) config('services.gemini.key');
 
-        if ($key !== '') {
-            $message = str_replace($key, '[redacted]', $message);
+        // E18: Server- UND Nutzerschlüssel nie ins Log
+        foreach ([(string) config('services.gemini.key'), $this->ownKey()] as $key) {
+            if ($key !== '') {
+                $message = str_replace($key, '[redacted]', $message);
+            }
         }
 
         Log::warning('TikTok-Import fehlgeschlagen.', [

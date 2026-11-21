@@ -34,6 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // E18: Ein (auch ungültiger) Gemini-Schlüssel landet bei einem
+        // Validierungsfehler nie als „old input“ in der Sitzung.
+        // (ergänzt die Standardliste current_password/password/…)
+        $exceptions->dontFlash('gemini_api_key');
+
         // F-68 (Slice 3): Fehlerseiten als Inertia-Seite `Error` statt roher
         // HTML-Seite (Muster aus der Inertia-Doku "Error handling").
         // - JSON-/axios-Requests behalten die JSON-Antwort.

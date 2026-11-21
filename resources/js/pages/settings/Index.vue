@@ -4,7 +4,7 @@ import Badge from '@/components/ui/Badge.vue';
 import { getInitials } from '@/composables/useInitials';
 import type { AppPageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ArrowRight, KeyRound, UserRound } from 'lucide-vue-next';
+import { ArrowRight, KeyRound, Sparkles, UserRound } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { route } from 'ziggy-js';
 
@@ -26,6 +26,14 @@ const cards = [
         text: 'Passwort ändern oder zurücksetzen',
         icon: KeyRound,
         blob: 'rounded-[42%_58%_61%_39%/52%_38%_62%_48%] group-hover:rounded-[56%_44%_48%_52%/40%_56%_44%_60%]',
+    },
+    // E18
+    {
+        route: 'settings.ai.edit',
+        title: 'KI-Import',
+        text: 'Eigenen Gemini-Schlüssel für den TikTok-Import hinterlegen',
+        icon: Sparkles,
+        blob: 'rounded-[52%_48%_38%_62%/44%_58%_42%_56%] group-hover:rounded-[40%_60%_56%_44%/58%_42%_60%_40%]',
     },
 ] as const;
 </script>

@@ -34,6 +34,11 @@ export interface Features {
     googleLogin: boolean;
 }
 
+/** E18: Badge „Zu prüfen“ (nur Hosts, sonst null). */
+export interface ModerationShared {
+    count: number;
+}
+
 export type AppPageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
@@ -41,6 +46,7 @@ export type AppPageProps<
     auth: Auth;
     features: Features;
     flash: Flash;
+    moderation?: ModerationShared | null;
 };
 
 /** Gate C1b: Rezept-Auswahl der Startseite (routes/web.php, Route `landing`). */

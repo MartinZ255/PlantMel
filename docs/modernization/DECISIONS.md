@@ -23,6 +23,7 @@
 | 2026-11-20 | Separate Endpunkte für Zutaten-Alternativen (`ingredientAlternatives.index/store/destroy`, `IngredientAlternativeController`) entfernt (E15) | Entscheidung des Auftraggebers: ungenutzte API-Routen entfernen, sofern Alternativen weiter im Rezept angezeigt werden. Das Frontend rief die Routen nie auf; Alternativen werden mit dem Rezept gespeichert (`RecipeController` store/update) und auf der Rezeptseite angezeigt. Tabelle und Daten bleiben unverändert. Kein Umbau der Routing-Architektur, nur Entfernen dreier ungenutzter Routen; reversibel per Git | umgesetzt, `IngredientAlternativeRoutesRemovedTest`, `RecipeShowTest`, `RecipeAlternativesSyncTest` |
 | 2026-11-20 | Ungenutzter Baustein `ui/Card.vue` gelöscht; Artisan-Befehle `user:make-host` und `users:mark-verified` bleiben bewusst (E16) | Entscheidung des Auftraggebers | umgesetzt |
 | 2026-11-21 | Anmeldung mit Google über Laravel Socialite zusätzlich zu Fortify; automatische Verknüpfung per verifizierter E-Mail; Konten ohne Passwort möglich (E17) | Freigabe des Auftraggebers, Details in ADR-004 | umgesetzt (Branch `feat/google-login`), Produktion offen |
+| 2026-11-21 | Community-Rezepte: Nutzer reichen Rezepte ein, Host gibt frei; eigene Seite `/community`, getrennt vom Host-Rezeptbuch; Zutaten-Vorschläge erst mit Freigabe im Katalog; KI-Import für Nutzer nur mit eigenem Gemini-Schlüssel (E18) | Entscheidung des Auftraggebers, Details in ADR-005 | umgesetzt (Branch `feat/community-rezepte`), Produktion offen |
 
 Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren.
 
@@ -121,3 +122,37 @@ Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren
 **Rollback.**
 - Code: Merge zurücknehmen bzw. `GOOGLE_CLIENT_ID` leeren (Knopf verschwindet, Routen leiten auf `/login`).
 - Schema: `php artisan migrate:rollback --step=1` entfernt `google_id` und macht `password` wieder Pflicht. Der Rollback bricht bewusst mit Fehlermeldung ab, solange Konten mit `password = null` existieren (diese Konten müssten vorher ein Passwort setzen oder gelöscht werden; keine automatische Datenänderung).
+
+## ADR-005: Community-Rezepte mit Host-Freigabe (E18)
+
+**Datum:** 2026-11-21 · **Status:** angenommen (Funktionsumfang vom Auftraggeber festgelegt), umgesetzt auf `feat/community-rezepte` · **Beschreibung:** `docs/modernization/COMMUNITY-REZEPTE.md`
+
+**Kontext.** Bisher pflegt nur der Host Rezepte. Angemeldete Nutzer sollen eigene Rezepte veröffentlichen können, ohne das Rezeptbuch des Hosts zu verändern. Nutzerinhalte brauchen Moderation, einen Meldeweg und klare Rechte. Der KI-Import (Gemini) darf für Nutzer keine Kosten auf dem Server-Schlüssel verursachen.
+
+**Entscheidung.**
+- **Ein Rezept-Modell, zwei Arten:** `recipes.type` (`host` | `community`) statt eigener Tabelle. Community-Rezepte nutzen dieselben Zutaten-, Kategorie-, Bild- und Sammlungs-Tabellen, dasselbe Textformat (ADR-001) und dasselbe Formular (`RecipeForm`, Variante `community`). Bestandsrezepte sind über den Spalten-Default `host`/`approved` eingeordnet – ohne Datenänderung.
+- **Status** `draft | pending | approved | rejected` + `rejection_reason`, `submitted_at`, `reviewed_at`, `reviewed_by`. Öffentlich nur `approved`; Autor und Host sehen alle. Jede Änderung des Autors setzt auf `pending`, Änderungen des Hosts lassen den Status.
+- **Trennung:** Host-Liste, Startseite, Home, Zutatensuche und Host-Routen filtern auf `type = host`; Community hat eigene Routen und Seiten. Nicht sichtbare Rezepte → 404.
+- **Rechte über `App\Policies\RecipePolicy`** (`view`, `update`, `delete`, `moderate`, `rate`, `report`); Moderationsrouten zusätzlich hinter `is_host`.
+- **Zutaten-Vorschläge** als `ingredients.status = proposed` (+ `proposed_by`) in der bestehenden Tabelle: `recipe_ingredients.ingredient_id` bleibt ein normaler Fremdschlüssel, Freigabe ist ein Status-Update. Katalogansichten filtern auf `approved`; ungenutzte Vorschläge werden gelöscht.
+- **Bewertung durch Nutzer** in neuer Tabelle `recipe_user_ratings`, weil `recipe_ratings` nur eine Bewertung je Rezept und Dimension erlaubt (E14) und eine Änderung des Unique-Index unter SQLite einen Tabellen-Neuaufbau bräuchte.
+- **Meldungen** in `recipe_reports` (Gäste erlaubt, Rate-Limit, keine IP gespeichert).
+- **Gemini:** `users.gemini_api_key` (Cast `encrypted`). Der Job ermittelt den Schlüssel über den Nutzer des Imports (`User::geminiKeyForImport()`): Host → Server-Schlüssel, sonst nur der eigene. Beide Schlüssel werden in Logs geschwärzt.
+- **Kopfzeile:** neuer Eintrag „Community“. Damit die Kopfzeile bei 768 und 1024 px einzeilig bleibt, sind Navigationseinträge unter `xl` etwas schmaler, das Schloss-Symbol erscheint erst ab `xl` (Text für Screenreader bleibt), „Registrieren“ und „Rezept erstellen“ (Host) stehen erst ab `lg` in der Kopfzeile (sonst über Anmeldeseite bzw. Nutzermenü erreichbar). Bei 768 px war „Registrieren“ schon vorher abgeschnitten (Baseline).
+
+**Alternativen.**
+- Eigene Tabelle `community_recipes`: doppelte Zutaten-/Bild-/Sammlungslogik; verworfen.
+- Vorschläge in eigener Tabelle: `recipe_ingredients` bräuchte eine zweite, nullable Referenz (Neuaufbau mit Änderung des NOT-NULL-Fremdschlüssels) oder Freitext; verworfen.
+- Fremdschlüssel weglassen, um den SQLite-Neuaufbau zu vermeiden: keine Integrität auf Datenbankebene; verworfen, Neuaufbau stattdessen per Test abgesichert (je Tabelle genau ein Neuaufbau).
+- Server-Schlüssel mit Kontingent je Nutzer: Kosten und Missbrauchsrisiko beim Betreiber; vom Auftraggeber verworfen.
+
+**Risiken.**
+- *SQLite-Neuaufbau* von `recipes` und `ingredients` (Laravel schaltet die Fremdschlüsselprüfung dabei ab). Geprüft mit Bestandsdaten (`CommunityMigrationTest`); vor Produktion Sicherung und Probelauf (F-102).
+- *Nutzerinhalte:* Haftung und Bildrechte; Nutzungsbedingungen und Datenschutzerklärung vor dem Freischalten ergänzen (F-103).
+- *Moderationslast:* keine Benachrichtigung außer dem Badge (F-105).
+- *`APP_KEY`-Rotation* macht hinterlegte Nutzerschlüssel unlesbar.
+
+**Rollback.**
+- Code: Merge zurücknehmen – vorher Community-Rezepte löschen, sonst zeigt der alte Code sie als Host-Rezepte; am besten zusammen mit dem Schema-Rollback.
+- Schema: `php artisan migrate:rollback --step=5`. Die Rollbacks brechen bewusst ab, solange Community-Rezepte, Vorschläge, Bewertungen, Meldungen oder hinterlegte Schlüssel existieren (keine automatische Datenänderung).
+

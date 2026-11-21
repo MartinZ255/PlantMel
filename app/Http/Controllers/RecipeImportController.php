@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ImportTikTokRecipe;
+use App\Models\Category;
 use App\Models\RecipeImport;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -12,6 +14,40 @@ use Illuminate\Support\Facades\Cache;
 class RecipeImportController extends Controller
 {
     public const MESSAGE_ALREADY_RUNNING = 'Es läuft bereits ein Import. Bitte warten, bis er abgeschlossen ist.';
+
+    public const MESSAGE_NO_USER_KEY = 'Für den Import brauchst du einen eigenen Gemini-API-Schlüssel. Du kannst ihn in den Einstellungen unter „KI-Import“ hinterlegen.';
+
+    /**
+     * Ergebnis eines eigenen, fertigen Imports (`?import=ID`) als
+     * Formular-Vorbelegung; importierte Tags werden auf vorhandene
+     * Kategorien gemappt (Groß-/Kleinschreibung), damit die Chips aktiv sind.
+     * Genutzt von `recipes.create` (Host) und `community.create` (E18).
+     *
+     * @param  EloquentCollection<int, Category>  $categories
+     * @return array<string, mixed>|null
+     */
+    public static function prefillFor(Request $request, EloquentCollection $categories): ?array
+    {
+        if (! $request->filled('import')) {
+            return null;
+        }
+
+        $import = RecipeImport::where('id', $request->integer('import'))
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'done')
+            ->first();
+        $importedRecipe = $import?->result;
+
+        if ($importedRecipe && ! empty($importedRecipe['tags'])) {
+            $byLower = $categories->keyBy(fn ($cat) => mb_strtolower($cat->name));
+            $importedRecipe['tags'] = collect($importedRecipe['tags'])
+                ->map(fn ($tag) => $byLower[mb_strtolower($tag)]->name ?? $tag)
+                ->values()
+                ->all();
+        }
+
+        return $importedRecipe;
+    }
 
     public function store(Request $request): JsonResponse
     {
@@ -24,6 +60,12 @@ class RecipeImportController extends Controller
         ]);
 
         $userId = $request->user()->id;
+
+        // E18: Der Server-Schlüssel gilt nur für Hosts. Alle anderen
+        // importieren ausschließlich mit ihrem eigenen Gemini-Schlüssel.
+        if (! $request->user()->is_host && ! $request->user()->hasGeminiKey()) {
+            return response()->json(['message' => self::MESSAGE_NO_USER_KEY], 422);
+        }
 
         // Höchstens ein laufender Import pro Nutzer (F-26). Die Sperre
         // verhindert, dass zwei gleichzeitige Anfragen beide durchkommen.
