@@ -30,5 +30,22 @@ class AppServiceProvider extends ServiceProvider
                     'message' => 'Zu viele Importe in kurzer Zeit. Bitte später erneut versuchen.',
                 ], 429, $headers));
         });
+
+        // E18: Community-Rezepte einreichen – höchstens 10 neue je Stunde und Nutzer
+        RateLimiter::for('community-recipes', function (Request $request) {
+            return Limit::perHour(10)
+                ->by('user:'.($request->user()?->id ?? $request->ip()))
+                ->response(fn () => back()
+                    ->with('error', 'Du hast in kurzer Zeit sehr viele Rezepte eingereicht. Bitte versuche es später erneut.'));
+        });
+
+        // E18: Meldungen (auch Gäste) – höchstens 5 je Stunde und Absender
+        // (Nutzer-ID bzw. IP; die IP wird nur im Cache gezählt, nicht gespeichert)
+        RateLimiter::for('recipe-reports', function (Request $request) {
+            return Limit::perHour(5)
+                ->by($request->user() ? 'user:'.$request->user()->id : 'ip:'.$request->ip())
+                ->response(fn () => back()
+                    ->with('error', 'Zu viele Meldungen in kurzer Zeit. Bitte versuche es später erneut.'));
+        });
     }
 }

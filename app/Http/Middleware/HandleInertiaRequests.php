@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CommunityRecipes;
 use App\Services\GoogleLogin;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -53,6 +54,11 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->hasSession() ? $request->session()->get('success') : null,
                 'error' => fn () => $request->hasSession() ? $request->session()->get('error') : null,
             ],
+
+            // E18: Badge „Zu prüfen“ in der Host-Navigation (nur Hosts, lazy)
+            'moderation' => fn () => $request->user()?->is_host
+                ? ['count' => CommunityRecipes::moderationCount()]
+                : null,
 
             'auth' => [
                 'user' => $request->user()

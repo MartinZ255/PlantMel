@@ -42,6 +42,9 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'google_id',
+        // E18: eigener Gemini-Schlüssel, nie serialisieren (nur geprüfte
+        // Anzeige "endet auf …" über geminiKeyHint())
+        'gemini_api_key',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
@@ -59,7 +62,47 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'is_host' => 'boolean',
+            // E18: verschlüsselt mit APP_KEY gespeichert
+            'gemini_api_key' => 'encrypted',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | E18: eigener Gemini-API-Schlüssel (KI-Import)
+    |--------------------------------------------------------------------------
+    |
+    | Nicht-Hosts importieren nur mit eigenem Schlüssel; der Server-Schlüssel
+    | (services.gemini.key) gilt ausschließlich für Hosts. Der Klartext
+    | verlässt den Server nie: Oberflächen erhalten nur geminiKeyHint().
+    |
+    */
+
+    /** Google-API-Schlüssel: "AIza" + 35 Zeichen aus A–Z, a–z, 0–9, "_", "-". */
+    public const GEMINI_KEY_PATTERN = '/^AIza[0-9A-Za-z_\-]{35}$/';
+
+    public function hasGeminiKey(): bool
+    {
+        return is_string($this->gemini_api_key) && $this->gemini_api_key !== '';
+    }
+
+    /** Die letzten vier Zeichen für die Anzeige „hinterlegt, endet auf …“. */
+    public function geminiKeyHint(): ?string
+    {
+        return $this->hasGeminiKey() ? mb_substr($this->gemini_api_key, -4) : null;
+    }
+
+    /**
+     * Schlüssel für einen Import dieses Nutzers: Hosts den Server-Schlüssel,
+     * alle anderen nur den eigenen (sonst leer).
+     */
+    public function geminiKeyForImport(): string
+    {
+        if ($this->is_host) {
+            return (string) config('services.gemini.key');
+        }
+
+        return $this->hasGeminiKey() ? $this->gemini_api_key : '';
     }
 
     /**
@@ -127,5 +170,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function collections()
     {
         return $this->hasMany(Collection::class);
+    }
+
+    /** E18: eigene Community-Rezepte (recipes.user_id). */
+    public function communityRecipes()
+    {
+        return $this->hasMany(Recipe::class, 'user_id')->where('type', Recipe::TYPE_COMMUNITY);
     }
 }

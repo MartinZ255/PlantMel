@@ -7,6 +7,7 @@ use App\Models\Collection;
 use App\Models\Ingredient;
 use App\Models\Recipe;
 use App\Models\RecipeImport;
+use App\Models\RecipeReport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route as RoutingRoute;
@@ -54,6 +55,14 @@ class RouteRoleMatrixTest extends TestCase
         'ingredients.store' => ['POST', 201],
         'ingredients.update' => ['PUT', 200],
         'ingredients.destroy' => ['DELETE', 200],
+        // E18: Moderation der Community-Rezepte
+        'moderation.index' => ['GET', 200],
+        'moderation.approve' => ['POST', 302],
+        'moderation.reject' => ['POST', 302],
+        'moderation.hide' => ['POST', 302],
+        'moderation.reports.resolve' => ['POST', 302],
+        'moderation.ingredients.rename' => ['PATCH', 302],
+        'moderation.ingredients.merge' => ['POST', 302],
     ];
 
     /**
@@ -73,6 +82,16 @@ class RouteRoleMatrixTest extends TestCase
         'collections.removeRecipe' => ['DELETE', 302],
         'collections.update' => ['PATCH', 302],
         'collections.delete' => ['DELETE', 302],
+        // E18: Community-Rezepte (jeder angemeldete Nutzer, eigene Rezepte)
+        'community.mine' => ['GET', 200],
+        'community.create' => ['GET', 200],
+        'community.store' => ['POST', 302],
+        'community.edit' => ['GET', 200],
+        'community.update' => ['POST', 302],
+        'community.destroy' => ['DELETE', 302],
+        'community.rate' => ['POST', 302],
+        'communityImports.store' => ['POST', 200],
+        'communityImports.show' => ['GET', 200],
     ];
 
     /**
@@ -89,6 +108,11 @@ class RouteRoleMatrixTest extends TestCase
         'profile.destroy' => 'DELETE',
         'user-password.edit' => 'GET',
         'user-password.update' => 'PUT',
+        // E18: eigener Gemini-Schlüssel (KI-Import)
+        'settings.ai.edit' => 'GET',
+        'settings.ai.update' => 'PUT',
+        'settings.ai.destroy' => 'DELETE',
+        'settings.ai.check' => 'POST',
     ];
 
     /**
@@ -105,6 +129,19 @@ class RouteRoleMatrixTest extends TestCase
         // Slice 4 (F-10): Rechtstexte
         'legal.imprint' => ['GET', 200],
         'legal.privacy' => ['GET', 200],
+        // E18: Community-Rezepte (nur freigegebene sichtbar)
+        'community.index' => ['GET', 200],
+        'community.show' => ['GET', 200],
+    ];
+
+    /**
+     * E18: öffentlich, aber mit Rate-Limit (Meldeweg, auch für Gäste).
+     * Wert: [HTTP-Methode, gemessener Status für einen Gast, Middleware].
+     *
+     * @var array<string, array{0: string, 1: int, 2: list<string>}>
+     */
+    public const THROTTLED_PUBLIC_ROUTES = [
+        'community.report' => ['POST', 302, ['web', 'throttle:recipe-reports']],
     ];
 
     /**
@@ -275,6 +312,7 @@ class RouteRoleMatrixTest extends TestCase
     #[DataProvider('userRoutes')]
     public function test_user_route_succeeds_for_verified_user(string $name, string $method, int $expectedStatus): void
     {
+        Queue::fake();
         $user = $this->actingAsUser();
         $url = $this->userRouteUrl($name, $user);
 
@@ -300,12 +338,32 @@ class RouteRoleMatrixTest extends TestCase
     #[DataProvider('publicRoutes')]
     public function test_public_route_is_reachable_for_guest(string $name, string $method, int $expectedStatus): void
     {
-        $parameters = $name === 'recipes.show' ? ['recipe' => Recipe::factory()->create()] : [];
+        $parameters = match ($name) {
+            'recipes.show' => ['recipe' => Recipe::factory()->create()],
+            'community.show' => ['recipe' => $this->communityRecipe(User::factory()->create())],
+            default => [],
+        };
 
         $response = $this->call($method, route($name, $parameters));
 
         $this->assertGuest();
         $response->assertStatus($expectedStatus);
+    }
+
+    public function test_throttled_public_routes_are_reachable_for_guest_and_carry_their_limit(): void
+    {
+        foreach (self::THROTTLED_PUBLIC_ROUTES as $name => [$method, $guestStatus, $middleware]) {
+            $this->assertSame($middleware, $this->middlewareOf($name), $name);
+
+            $recipe = $this->communityRecipe(User::factory()->create());
+            $response = $this->call($method, route($name, ['recipe' => $recipe]), [
+                'reason' => 'spam', 'good_faith' => '1',
+            ]);
+
+            $this->assertGuest();
+            $response->assertSessionHasNoErrors();
+            $response->assertStatus($guestStatus);
+        }
     }
 
     /**
@@ -390,6 +448,7 @@ class RouteRoleMatrixTest extends TestCase
             'SETTINGS_ROUTES' => array_keys(self::SETTINGS_ROUTES),
             'PUBLIC_ROUTES' => array_keys(self::PUBLIC_ROUTES),
             'GUEST_ROUTES' => array_keys(self::GUEST_ROUTES),
+            'THROTTLED_PUBLIC_ROUTES' => array_keys(self::THROTTLED_PUBLIC_ROUTES),
             'API_ROUTES' => self::API_ROUTES,
             'FRAMEWORK_ROUTES' => self::FRAMEWORK_ROUTES,
         ];
@@ -449,7 +508,17 @@ class RouteRoleMatrixTest extends TestCase
         $category = Category::factory()->create();
         $import = RecipeImport::factory()->done()->create(['user_id' => $owner->id]);
 
+        // E18: wartendes Community-Rezept mit Vorschlag und offener Meldung
+        $author = User::factory()->create();
+        $community = $this->communityRecipe($author, Recipe::STATUS_PENDING);
+        $proposal = new Ingredient(['name' => 'Matrix-Vorschlag']);
+        $proposal->forceFill(['status' => Ingredient::STATUS_PROPOSED, 'proposed_by' => $author->id])->save();
+        $report = RecipeReport::create(['recipe_id' => $community->id, 'reason' => 'spam']);
+
         $parameters = match ($name) {
+            'moderation.approve', 'moderation.reject', 'moderation.hide' => ['recipe' => $community],
+            'moderation.reports.resolve' => ['report' => $report],
+            'moderation.ingredients.rename', 'moderation.ingredients.merge' => ['ingredient' => $proposal],
             'recipeImports.show' => ['recipeImport' => $import],
             'recipes.edit', 'recipes.update', 'recipes.delete' => ['recipe' => $recipe],
             'categories.update', 'categories.destroy' => ['category' => $category],
@@ -480,6 +549,9 @@ class RouteRoleMatrixTest extends TestCase
             'ingredients.store', 'ingredients.update' => ['name' => 'Matrix-Zutat'],
             // ADR-002: globales Löschen nur mit Bestätigung (sonst 409)
             'categories.destroy', 'ingredients.destroy' => ['confirmed' => 1],
+            'moderation.reject' => ['reason' => 'Bitte Mengen ergänzen.'],
+            'moderation.ingredients.rename' => ['name' => 'Matrix-Vorschlag umbenannt'],
+            'moderation.ingredients.merge' => ['target' => Ingredient::factory()->create(['name' => 'Matrix-Katalog'])->name],
             default => [],
         };
     }
@@ -490,7 +562,18 @@ class RouteRoleMatrixTest extends TestCase
         $collection = Collection::factory()->create(['user_id' => $owner->id]);
         $collection->recipes()->attach($recipe->id);
 
+        // E18: eigenes Community-Rezept bzw. fremdes, freigegebenes (Bewerten)
+        $own = $this->communityRecipe($owner, Recipe::STATUS_PENDING);
+        $foreign = $this->communityRecipe(User::factory()->create());
+        $import = RecipeImport::factory()->done()->create(['user_id' => $owner->id]);
+        if ($name === 'communityImports.store') {
+            $owner->forceFill(['gemini_api_key' => 'AIza'.str_repeat('m', 35)])->save();
+        }
+
         $parameters = match ($name) {
+            'community.edit', 'community.update', 'community.destroy' => ['recipe' => $own],
+            'community.rate' => ['recipe' => $foreign],
+            'communityImports.show' => ['recipeImport' => $import],
             'collections.show', 'collections.addRecipe', 'collections.update', 'collections.delete' => ['collection' => $collection],
             'collections.removeRecipe' => ['collection' => $collection, 'recipe' => $recipe],
             default => [],
@@ -507,6 +590,13 @@ class RouteRoleMatrixTest extends TestCase
         return match ($name) {
             'collections.store', 'collections.update' => ['name' => 'Matrix-Sammlung'],
             'collections.addRecipe' => ['recipe_id' => Recipe::factory()->create()->id],
+            'community.store', 'community.update' => [
+                'name' => 'Matrix-Community-Rezept',
+                'ingredients' => [['amount' => '1', 'name' => 'Matrix-Community-Zutat']],
+                'steps' => ['Matrix-Schritt'],
+            ],
+            'community.rate' => ['value' => 4],
+            'communityImports.store' => ['url' => 'https://www.tiktok.com/@example/video/7000000000000000'],
             default => [],
         };
     }
@@ -531,6 +621,15 @@ class RouteRoleMatrixTest extends TestCase
         ksort($fingerprint);
 
         return $fingerprint;
+    }
+
+    /** E18: Community-Rezept mit Autor und Status (Standard: freigegeben). */
+    private function communityRecipe(User $author, string $status = Recipe::STATUS_APPROVED): Recipe
+    {
+        $recipe = Recipe::factory()->create();
+        $recipe->forceFill(['type' => Recipe::TYPE_COMMUNITY, 'status' => $status, 'user_id' => $author->id])->save();
+
+        return $recipe;
     }
 
     private function assertNotRedirectedToLogin(TestResponse $response): void

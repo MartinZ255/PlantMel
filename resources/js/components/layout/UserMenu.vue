@@ -6,9 +6,13 @@ import {
     dropdownPanelState,
 } from '@/components/layout/navStyles';
 import { useIsHost } from '@/components/layout/useIsHost';
+import {
+    normalizePath,
+    useAppNavigation,
+} from '@/composables/useAppNavigation';
 import { useDisclosure } from '@/composables/useDisclosure';
 import { getInitials } from '@/composables/useInitials';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { ChevronDown, Plus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
@@ -30,6 +34,12 @@ const isOpen = menu.isOpen;
 const isHost = useIsHost();
 
 const initials = computed(() => getInitials(props.name));
+
+// E18: „Zu prüfen“ (Host, mit Anzahl) und „Meine Rezepte“ aus der Navigationsquelle
+const page = usePage();
+const { accountItems } = useAppNavigation(
+    computed(() => normalizePath(page.url)),
+);
 </script>
 
 <template>
@@ -81,6 +91,23 @@ const initials = computed(() => getInitials(props.name));
                     >
                         <Plus class="size-4" aria-hidden="true" />
                         Rezept erstellen
+                    </Link>
+                </li>
+                <li v-for="item in accountItems" :key="item.key">
+                    <Link
+                        :href="item.href"
+                        :class="[dropdownItem, 'gap-2']"
+                        :aria-current="item.current ? 'page' : undefined"
+                        :data-account-nav="item.key"
+                    >
+                        <span class="min-w-0 flex-1">{{ item.label }}</span>
+                        <span
+                            v-if="item.count"
+                            class="inline-flex min-w-6 items-center justify-center rounded-[60%_40%_55%_45%] bg-berry px-1.5 text-xs font-semibold text-white"
+                            data-moderation-count
+                            >{{ item.count
+                            }}<span class="sr-only"> offen</span></span
+                        >
                     </Link>
                 </li>
                 <li>

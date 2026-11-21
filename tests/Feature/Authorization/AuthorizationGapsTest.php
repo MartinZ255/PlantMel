@@ -25,14 +25,19 @@ class AuthorizationGapsTest extends TestCase
     // tests/Feature/Auth/EmailVerificationDisabledTest.php (AUS, Default).
 
     /**
-     * F-45 (Designentscheidung E7 offen): Rezepte haben keinen Besitzer, jeder
-     * Host darf jedes Rezept loeschen.
+     * F-45 (Designentscheidung E7 offen): Host-Rezepte haben keinen Besitzer,
+     * jeder Host darf jedes Host-Rezept loeschen.
+     *
+     * E18: `recipes.user_id` existiert seit den Community-Rezepten, ist aber
+     * nur bei Community-Rezepten gesetzt (Autor); Host-Rezepte bleiben ohne.
      */
     public function test_f45_any_host_can_delete_any_recipe_because_recipes_have_no_owner(): void
     {
-        $this->assertFalse(Schema::hasColumn('recipes', 'user_id'));
+        $this->assertTrue(Schema::hasColumn('recipes', 'user_id'));
 
         $recipe = Recipe::factory()->create();
+        $this->assertNull($recipe->fresh()->user_id);
+        $this->assertSame(Recipe::TYPE_HOST, $recipe->fresh()->type);
         $this->actingAsHost();
 
         $this->delete(route('recipes.delete', $recipe))

@@ -19,8 +19,15 @@ const props = withDefaults(
         hasPassword?: boolean;
         /** E17: Konto ist mit Google verknüpft */
         hasGoogle?: boolean;
+        /** E18: eigene Community-Rezepte, die mitgelöscht werden */
+        communityRecipeCount?: number;
     }>(),
-    { status: null, hasPassword: true, hasGoogle: false },
+    {
+        status: null,
+        hasPassword: true,
+        hasGoogle: false,
+        communityRecipeCount: 0,
+    },
 );
 
 const page = usePage<AppPageProps>();
@@ -47,10 +54,18 @@ const deleteForm = useForm({
     password: '',
     email: '',
 });
+// E18: eigene Community-Rezepte (inkl. Bilder) werden mitgelöscht
+const communityNotice = computed(() =>
+    props.communityRecipeCount === 0
+        ? ''
+        : props.communityRecipeCount === 1
+          ? ' Auch dein Community-Rezept wird samt Bild gelöscht.'
+          : ` Auch deine ${props.communityRecipeCount} Community-Rezepte werden samt Bildern gelöscht.`,
+);
 const deleteDescription = computed(() =>
     props.hasPassword
-        ? 'Alle deine Daten, Sammlungen und Einstellungen werden unwiderruflich entfernt. Gib zur Bestätigung dein Passwort ein.'
-        : 'Alle deine Daten, Sammlungen und Einstellungen werden unwiderruflich entfernt. Gib zur Bestätigung deine E-Mail-Adresse ein.',
+        ? `Alle deine Daten, Sammlungen und Einstellungen werden unwiderruflich entfernt.${communityNotice.value} Gib zur Bestätigung dein Passwort ein.`
+        : `Alle deine Daten, Sammlungen und Einstellungen werden unwiderruflich entfernt.${communityNotice.value} Gib zur Bestätigung deine E-Mail-Adresse ein.`,
 );
 const isDeleteOpen = ref(false);
 

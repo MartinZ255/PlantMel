@@ -3,7 +3,7 @@ import AppLayout from '@/components/layout/AppLayout.vue';
 import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
 import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import { Link } from '@inertiajs/vue3';
-import { KeyRound, LayoutGrid, UserRound } from 'lucide-vue-next';
+import { KeyRound, LayoutGrid, Sparkles, UserRound } from 'lucide-vue-next';
 import { route } from 'ziggy-js';
 
 /**
@@ -17,7 +17,7 @@ defineProps<{
     pageTitle: string;
     title: string;
     description: string;
-    current: 'index' | 'profile' | 'password';
+    current: 'index' | 'profile' | 'password' | 'ai';
 }>();
 
 const sections = [
@@ -33,6 +33,13 @@ const sections = [
         label: 'Passwort',
         route: 'user-password.edit',
         icon: KeyRound,
+    },
+    // E18: eigener Gemini-Schlüssel
+    {
+        key: 'ai',
+        label: 'KI-Import',
+        route: 'settings.ai.edit',
+        icon: Sparkles,
     },
 ] as const;
 </script>

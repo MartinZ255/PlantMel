@@ -1,7 +1,12 @@
 <template>
     <!-- novalidate: Pflichtfelder sind markiert, geprüft wird auf dem Server
          (die Meldungen erscheinen am Feld und in der Zusammenfassung) -->
-    <form class="min-w-0" data-recipe-form novalidate @submit.prevent="submit">
+    <form
+        class="min-w-0"
+        data-recipe-form
+        novalidate
+        @submit.prevent="submit('submit')"
+    >
         <!-- F-38: Ansage nach dem Umsortieren („Schritt 2 ist jetzt Schritt 1“) -->
         <p class="sr-only" role="status" aria-live="polite" data-reorder-status>
             {{ reorderAnnouncement }}
@@ -377,6 +382,19 @@
                             Pflicht; leere Zeilen werden beim Speichern
                             ignoriert.
                         </p>
+                        <p
+                            v-if="isCommunity"
+                            id="ingredients-proposal-hint"
+                            data-proposal-hint
+                            class="mt-1.5"
+                        >
+                            Wähle Zutaten aus der Liste. Fehlt eine, schreib sie
+                            einfach hin: Sie wird als
+                            <strong class="font-semibold text-ink"
+                                >neuer Vorschlag</strong
+                            >
+                            markiert und mit deinem Rezept geprüft.
+                        </p>
                     </template>
                     <p
                         v-if="errorFor('ingredients')"
@@ -561,9 +579,28 @@
                                 <div
                                     class="col-start-2 flex flex-wrap items-center gap-1.5 sm:col-start-4"
                                 >
+                                    <!-- E18: Community – unbekannte Zutat wird Vorschlag (kein Katalog-Zugriff) -->
+                                    <span
+                                        v-if="
+                                            isCommunity &&
+                                            ingredient.name.trim() &&
+                                            !findIngredientByName(
+                                                ingredient.name,
+                                            )
+                                        "
+                                        data-proposed-ingredient
+                                        class="inline-flex min-h-11 items-center gap-1.5 rounded-seed bg-berry-surface px-3 text-sm font-semibold text-berry"
+                                    >
+                                        <Sparkles
+                                            class="size-4"
+                                            aria-hidden="true"
+                                        />
+                                        Neuer Vorschlag
+                                    </span>
                                     <!-- + oder Stift abhängig davon, ob die Zutat existiert -->
                                     <button
-                                        v-if="
+                                        v-else-if="
+                                            !isCommunity &&
                                             ingredient.name.trim() &&
                                             !findIngredientByName(
                                                 ingredient.name,
@@ -587,6 +624,7 @@
 
                                     <button
                                         v-else-if="
+                                            !isCommunity &&
                                             findIngredientByName(
                                                 ingredient.name,
                                             )
@@ -915,9 +953,15 @@
                     tone="plain"
                 >
                     <template #hint>
-                        Optional. Antippen wählt eine Kategorie aus; der Stift
-                        daneben öffnet das Bearbeiten (am Rechner auch per
-                        Doppelklick auf die Kategorie).
+                        <template v-if="isCommunity">
+                            Optional. Antippen wählt eine passende Kategorie
+                            aus. Neue Kategorien legt das PlantMel-Team an.
+                        </template>
+                        <template v-else>
+                            Optional. Antippen wählt eine Kategorie aus; der
+                            Stift daneben öffnet das Bearbeiten (am Rechner auch
+                            per Doppelklick auf die Kategorie).
+                        </template>
                     </template>
                     <div
                         class="flex flex-wrap gap-2.5"
@@ -936,12 +980,14 @@
                                 :pressed="form.tags.includes(category.name)"
                                 @click="toggleTag(category.name)"
                                 @dblclick.stop="
+                                    !isCommunity &&
                                     openTagEditModal(category, $event)
                                 "
                             >
                                 {{ category.name }}
                             </SeedToggle>
                             <button
+                                v-if="!isCommunity"
                                 :ref="(el) => setTagEditButton(category.id, el)"
                                 type="button"
                                 data-tag-edit
@@ -956,7 +1002,18 @@
                         </span>
                     </div>
 
-                    <div class="mt-6 flex max-w-xl min-w-0 flex-col gap-1.5">
+                    <p
+                        v-if="isCommunity && tagsError"
+                        id="tags-error"
+                        data-field-error
+                        class="mt-4 text-sm font-medium text-danger"
+                    >
+                        {{ tagsError }}
+                    </p>
+                    <div
+                        v-if="!isCommunity"
+                        class="mt-6 flex max-w-xl min-w-0 flex-col gap-1.5"
+                    >
                         <label
                             for="tag-draft"
                             class="text-sm font-semibold text-ink"
@@ -1014,7 +1071,7 @@
 
                 <!-- 7 · Bewertung: EINE Sterne-Eingabe „Geschmack“ (optional, zurücksetzbar) -->
                 <FormSection
-                    v-if="tasteDimension"
+                    v-if="tasteDimension && !isCommunity"
                     id="abschnitt-bewertung"
                     name="ratings"
                     title-id="ratings-title"
@@ -1102,7 +1159,20 @@
                                         : 'Fertig gesammelt?'
                                 }}
                             </p>
-                            <p class="mt-1 text-base text-on-forest-muted">
+                            <p
+                                v-if="isCommunity"
+                                data-review-notice
+                                class="mt-1 max-w-xl text-base text-on-forest-muted"
+                            >
+                                {{
+                                    reviewNotice ??
+                                    'Nach dem Einreichen prüft das PlantMel-Team dein Rezept. Öffentlich erscheint es erst nach der Freigabe.'
+                                }}
+                            </p>
+                            <p
+                                v-else
+                                class="mt-1 text-base text-on-forest-muted"
+                            >
                                 Felder können jederzeit später bearbeitet
                                 werden.
                             </p>
@@ -1161,6 +1231,16 @@
                                 Zurücksetzen
                             </Button>
                             <Button
+                                v-if="isCommunity && !hideDraft"
+                                variant="outline-light"
+                                data-save-draft
+                                :disabled="form.processing"
+                                @click="submit('draft')"
+                            >
+                                <FilePen class="size-4" aria-hidden="true" />
+                                Als Entwurf speichern
+                            </Button>
+                            <Button
                                 type="submit"
                                 variant="lime"
                                 size="lg"
@@ -1168,9 +1248,13 @@
                             >
                                 <Check class="size-5" aria-hidden="true" />
                                 {{
-                                    mode === 'edit'
-                                        ? 'Rezept aktualisieren'
-                                        : 'Rezept speichern'
+                                    submitLabel
+                                        ? submitLabel
+                                        : isCommunity
+                                          ? 'Zur Prüfung einreichen'
+                                          : mode === 'edit'
+                                            ? 'Rezept aktualisieren'
+                                            : 'Rezept speichern'
                                 }}
                             </Button>
                         </div>
@@ -1236,11 +1320,13 @@ import {
     ChevronUp,
     CircleAlert,
     Clock,
+    FilePen,
     GripVertical,
     ImagePlus,
     Pencil,
     Plus,
     RotateCcw,
+    Sparkles,
     Star,
     Tag,
     Trash2,
@@ -1316,7 +1402,23 @@ const props = defineProps<{
     cancelHref?: string | null;
     // F-56: URL des aktuellen Bildes für die Vorschau (falls vorhanden)
     currentImage?: string | null;
+    /**
+     * E18: `community` = Formular für Community-Rezepte: keine Katalog-
+     * Bearbeitung (Zutaten/Kategorien anlegen, umbenennen, löschen), keine
+     * eigene Bewertung, unbekannte Zutaten werden als Vorschlag markiert,
+     * Knöpfe „Als Entwurf speichern“ und „Zur Prüfung einreichen“
+     * (Feld `intent`). Standard `host`: Verhalten unverändert.
+     */
+    variant?: 'host' | 'community';
+    /** E18: Hinweis neben den Knöpfen (z. B. erneute Prüfung nach Änderungen) */
+    reviewNotice?: string | null;
+    /** E18: Beschriftung des Absende-Knopfs überschreiben */
+    submitLabel?: string | null;
+    /** E18: Knopf „Als Entwurf speichern“ ausblenden (z. B. Host bearbeitet fremdes Rezept) */
+    hideDraft?: boolean;
 }>();
+
+const isCommunity = computed(() => props.variant === 'community');
 
 // Gate C2: gemeinsame Klassen der Eingabefelder (Kiesel-Ecken, 16 px+, 44 px hoch)
 const fieldBase =
@@ -1359,7 +1461,7 @@ const chapters = computed(() => [
     { id: 'abschnitt-zubereitung', label: 'Zubereitung' },
     { id: 'abschnitt-notizen', label: 'Notizen' },
     { id: 'abschnitt-kategorien', label: 'Kategorien' },
-    ...(tasteDimension.value
+    ...(tasteDimension.value && !isCommunity.value
         ? [{ id: 'abschnitt-bewertung', label: 'Bewertung' }]
         : []),
 ]);
@@ -1635,7 +1737,9 @@ const errorEntries = computed<ErrorEntry[]>(() => {
     // Gate C2: Reihenfolge wie im Formular (Kategorien und Bewertung am Ende)
     Object.keys(errors)
         .filter((k) => k === 'tags' || k.startsWith('tags.'))
-        .forEach((k) => add(k, 'Tags', 'tag-draft'));
+        .forEach((k) =>
+            add(k, 'Tags', isCommunity.value ? 'tags-label' : 'tag-draft'),
+        );
 
     // Sprungziel ist die Sternegruppe; `focusField` setzt den Fokus auf ihr
     // gewähltes bzw. erstes Optionsfeld
@@ -2148,7 +2252,7 @@ const isEmptyIngredient = (row: IngredientRow) =>
     !String(row.amount ?? '').trim() &&
     (row.alternativeIngredientIds ?? []).length === 0;
 
-const submit = () => {
+const submit = (intent: 'draft' | 'submit' = 'submit') => {
     const method = props.submitMethod;
 
     const ingredientRows = form.ingredients
@@ -2176,14 +2280,17 @@ const submit = () => {
             ],
         })),
         steps: stepRows.map(({ step }) => step),
+        // E18: Community – Entwurf speichern oder zur Prüfung einreichen
+        ...(isCommunity.value ? { intent } : {}),
         // Nur die Geschmacks-Bewertung senden ({ [dimensionId]: value | null });
         // ältere Werte anderer Dimensionen aus den Edit-Props fallen weg
-        ratings: tasteDimension.value
-            ? {
-                  [tasteDimension.value.id]:
-                      data.ratings[tasteDimension.value.id] ?? null,
-              }
-            : {},
+        ratings:
+            tasteDimension.value && !isCommunity.value
+                ? {
+                      [tasteDimension.value.id]:
+                          data.ratings[tasteDimension.value.id] ?? null,
+                  }
+                : {},
     }));
 
     const options = {

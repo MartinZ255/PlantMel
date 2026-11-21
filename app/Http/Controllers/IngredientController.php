@@ -11,7 +11,8 @@ class IngredientController extends Controller
 {
     public function index()
     {
-        $ingredients = Ingredient::orderBy('name')
+        // E18: nur Katalog-Zutaten, keine offenen Vorschläge aus Community-Rezepten
+        $ingredients = Ingredient::approved()->orderBy('name')
             ->get(['id', 'name'])
             ->map(function (Ingredient $ingredient) {
                 return [
@@ -27,6 +28,21 @@ class IngredientController extends Controller
 
     public function store(Request $request)
     {
+        // E18: Legt der Host eine Zutat an, die als Vorschlag existiert,
+        // übernimmt er diesen Vorschlag in den Katalog (statt 422 „vergeben“).
+        $proposal = is_string($request->input('name'))
+            ? Ingredient::proposed()->where('name', trim($request->input('name')))->first()
+            : null;
+        if ($proposal !== null) {
+            $proposal->forceFill(['status' => Ingredient::STATUS_APPROVED])->save();
+
+            return response()->json([
+                'id' => $proposal->id,
+                'name' => $proposal->name,
+                'description' => $proposal->description,
+            ], 201);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:ingredients,name'],
             'description' => ['nullable', 'string'],

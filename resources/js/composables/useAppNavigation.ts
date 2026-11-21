@@ -15,7 +15,12 @@ export function normalizePath(url: string): string {
 }
 
 export interface MainNavItem {
-    key: 'recipes' | 'ingredients' | 'collections' | 'myIngredients';
+    key:
+        | 'recipes'
+        | 'community'
+        | 'ingredients'
+        | 'collections'
+        | 'myIngredients';
     label: string;
     href: string;
     /** Nur für Angemeldete nutzbar (Gäste werden zur Anmeldung geleitet) */
@@ -24,6 +29,16 @@ export interface MainNavItem {
     current: boolean;
     /** Bereich aktiv (Unterseiten), nur optisch hervorgehoben */
     sectionActive: boolean;
+}
+
+/** E18: Konto-Einträge (Nutzermenü, Mobilmenü): „Zu prüfen“ (Host) und „Meine Rezepte“. */
+export interface AccountNavItem {
+    key: 'moderation' | 'myRecipes';
+    label: string;
+    href: string;
+    current: boolean;
+    /** Anzahl für das Badge (nur „Zu prüfen“), sonst null */
+    count: number | null;
 }
 
 export function useAppNavigation(currentPath: Ref<string>) {
@@ -48,6 +63,7 @@ export function useAppNavigation(currentPath: Ref<string>) {
     const items = computed<MainNavItem[]>(() => {
         const p = currentPath.value;
         const recipes = route('recipes.index');
+        const community = route('community.index');
         const ingredients = route('IngredientSearch');
         const collectionsIndex = route('collections.index');
         const myIngredients = route('myIngredients');
@@ -60,6 +76,15 @@ export function useAppNavigation(currentPath: Ref<string>) {
                 current: isCurrent(recipes),
                 sectionActive:
                     isCurrent(recipes) || /^\/rezept(\/|e\/)/.test(p),
+            },
+            // E18: Community-Rezepte (öffentlich)
+            {
+                key: 'community',
+                label: 'Community',
+                href: community,
+                requiresAuth: false,
+                current: isCurrent(community),
+                sectionActive: /^\/community(\/|$)/.test(p),
             },
             {
                 key: 'ingredients',
@@ -88,6 +113,32 @@ export function useAppNavigation(currentPath: Ref<string>) {
         ];
     });
 
+    // E18: „Zu prüfen“ nur für Hosts (Anzahl aus der geteilten Prop
+    // `moderation`), „Meine Rezepte“ für alle Angemeldeten
+    const accountItems = computed<AccountNavItem[]>(() => {
+        if (!user.value) return [];
+        const items: AccountNavItem[] = [];
+        if (user.value.is_host) {
+            const href = route('moderation.index');
+            items.push({
+                key: 'moderation',
+                label: 'Zu prüfen',
+                href,
+                current: isCurrent(href),
+                count: page.props.moderation?.count ?? 0,
+            });
+        }
+        const mine = route('community.mine');
+        items.push({
+            key: 'myRecipes',
+            label: 'Meine Rezepte',
+            href: mine,
+            current: isCurrent(mine),
+            count: null,
+        });
+        return items;
+    });
+
     const collectionLinks = computed(() =>
         collections.value.map((c) => {
             const href = route('collections.show', c.id);
@@ -101,6 +152,7 @@ export function useAppNavigation(currentPath: Ref<string>) {
         startHref,
         startCurrent,
         items,
+        accountItems,
         collectionLinks,
         isCurrent,
     };
