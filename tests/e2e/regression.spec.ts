@@ -446,7 +446,15 @@ test.describe('Nutzer 2 (eigene Session)', () => {
                 ? document.activeElement.textContent?.trim()
                 : null,
         );
-        expect(focusedText).toBe('Einstellungen');
+        // E18: erster Eintrag für Nicht-Hosts ist jetzt „Meine Rezepte“
+        // (vor „Einstellungen“); geprüft wird weiter: Tab erreicht das offene Menü.
+        expect(focusedText).toBe('Meine Rezepte');
+        await page.keyboard.press('Tab');
+        expect(
+            await page.evaluate(() =>
+                document.activeElement?.textContent?.trim(),
+            ),
+        ).toBe('Einstellungen');
         await Promise.all([
             page.waitForURL('**/settings'),
             dropdown(page).getByRole('link', { name: 'Einstellungen' }).click(),

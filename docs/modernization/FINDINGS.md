@@ -501,3 +501,5 @@ Branch `feat/community-rezepte` (lokal, kein Push). Neue Funktion auf Wunsch des
 | F-106 | P3 | Der Vergleich mit Katalog-Zutaten ohne Groß-/Kleinschreibung nutzt SQLite `LOWER()` und wirkt nur auf ASCII | bei Bedarf Normalisierung in PHP; die Moderation kann Dubletten zuordnen |
 | F-107 | P3 | Kopfzeile bei 768 px war schon vor E18 zu breit („Registrieren“ abgeschnitten, Baseline `guest-*-t768`) | mit E18 behoben (siehe ADR-005, Kopfzeile) |
 
+**Baselines (E18):** 29 Screenshots erneuert, jeder geprüft (Bänder vorher/nachher): Kopfzeile ab `md` mit „Community“ (t768, d1024, d1440 bei kurzen Seiten), Einstellungs-Navigation und Übersichtskarte „KI-Import“ (alle fünf Breiten bei `user-settings`). Enthalten sind zwei vorbestehende Abweichungen, die auf `master` noch unter der Toleranz von 0,1 % lagen: „Bearbeiten“ auf `user-sammlung-leer` (aus `1d4659b`) und die Zutatenzeile in `host-rezept-erstellen-t768` (aus `db26515`). `regression.spec.ts` F-04: erster Eintrag im Nutzermenü ist jetzt „Meine Rezepte“ (Test angepasst).
+
