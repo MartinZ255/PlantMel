@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import BrandLogo from '@/components/brand/BrandLogo.vue';
 import AppFooter from '@/components/layout/AppFooter.vue';
-import BrandLogo from '@/components/layout/BrandLogo.vue';
 import BlobBackdrop from '@/components/ui/BlobBackdrop.vue';
 import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import type { AppPageProps } from '@/types';
@@ -73,7 +73,7 @@ const statusText = computed(() => props.status || null);
             <div
                 class="relative flex flex-col gap-6 px-5 pt-5 pb-10 sm:px-8 sm:pt-6 lg:h-full lg:px-12 lg:pt-10 lg:pb-12 xl:px-16"
             >
-                <BrandLogo :href="route('landing')" tone="on-forest" />
+                <BrandLogo :href="route('landing')" tone="light" />
 
                 <!-- Komposition nur ab lg: großer Matcha-Blob mit Blatt, Beeren-Korn, Moos-Kiesel -->
                 <div
