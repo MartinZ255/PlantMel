@@ -25,11 +25,15 @@ return new class extends Migration
             $table->string('type', 20)->default('host');
             // draft | pending | approved | rejected
             $table->string('status', 20)->default('approved');
-            $table->foreignId('user_id')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable();
             $table->text('rejection_reason')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('reviewed_at')->nullable();
-            $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('reviewed_by')->nullable();
+
+            // beide Fremdschlüssel zusammen: unter SQLite nur EIN Neuaufbau
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreign('reviewed_by')->references('id')->on('users')->nullOnDelete();
         });
 
         Schema::table('recipes', function (Blueprint $table) {

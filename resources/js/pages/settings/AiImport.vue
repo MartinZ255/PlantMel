@@ -25,7 +25,10 @@ const form = useForm({ gemini_api_key: '' });
 const save = () => {
     form.put(route('settings.ai.update'), {
         preserveScroll: true,
-        onFinish: () => form.reset('gemini_api_key'),
+        // Schlüssel nie im Formular stehen lassen (auch nicht nach Fehlern)
+        onFinish: () => {
+            form.gemini_api_key = '';
+        },
     });
 };
 

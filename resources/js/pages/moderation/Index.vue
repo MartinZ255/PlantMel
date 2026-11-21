@@ -613,7 +613,7 @@ const proposalCount = (r: PendingRecipe) =>
             "
             @close="closeReject"
         >
-            <form id="reject-form" @submit.prevent="sendReject">
+            <form id="reject-form" novalidate @submit.prevent="sendReject">
                 <Field
                     id="reject-reason"
                     v-slot="field"

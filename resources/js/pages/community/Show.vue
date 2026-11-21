@@ -753,6 +753,7 @@ const sendReport = () => {
         >
             <form
                 id="report-form"
+                novalidate
                 class="flex flex-col gap-5"
                 data-report-form
                 @submit.prevent="sendReport"
