@@ -38,7 +38,7 @@
                 class="relative mx-auto flex w-full max-w-(--content-max) flex-col gap-8 px-4 pt-6 pb-10 sm:px-6 md:flex-row md:items-end md:justify-between lg:px-8"
             >
                 <div class="min-w-0">
-                    <BrandLogo tone="on-forest" />
+                    <BrandLogo tone="light" />
                     <p
                         class="mt-4 max-w-sm font-display text-xl leading-snug text-on-forest"
                     >
@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import BrandLogo from '@/components/layout/BrandLogo.vue';
+import BrandLogo from '@/components/brand/BrandLogo.vue';
 import LeafOrnament from '@/components/ui/LeafOrnament.vue';
 import WaveDivider from '@/components/ui/WaveDivider.vue';
 import { Link } from '@inertiajs/vue3';
