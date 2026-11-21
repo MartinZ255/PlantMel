@@ -6,6 +6,8 @@
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
+        "brand:apply": "node scripts/brand/generate-icons.mjs --apply",
+        "brand:icons": "node scripts/brand/generate-icons.mjs",
         "e2e": "playwright test",
         "e2e:update": "playwright test --update-snapshots",
         "format": "prettier --write resources/",

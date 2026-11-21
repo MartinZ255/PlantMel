@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Platzhalter: heutiges PlantMel-Signet (Keimling im Waldgrün-Blob), nur fuer Tests der Icon-Pipeline -->
+  <path fill="#143D2D" d="M58 0 A42 54 0 0 1 100 54 A52 46 0 0 1 48 100 A48 54 0 0 1 0 46 A58 46 0 0 1 58 0 Z"/>
+  <g transform="translate(19.444 19.444) scale(2.5463)" fill="#C8E28A">
+    <path d="M12 21 V 11.5" stroke="#C8E28A" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    <path d="M11.6 13.6 C 6.8 13.8 4.2 11 4 6.6 C 8.6 6.4 11.4 9 11.6 13.6 Z"/>
+    <path d="M12.4 11.4 C 12.4 6.6 15.2 3.8 20 3.6 C 20.1 8.4 17.2 11.3 12.4 11.4 Z"/>
+  </g>
+</svg>

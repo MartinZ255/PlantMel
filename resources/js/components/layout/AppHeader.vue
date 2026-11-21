@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BrandLogo from '@/components/layout/BrandLogo.vue';
+import BrandLogo from '@/components/brand/BrandLogo.vue';
 import CollectionsMenu from '@/components/layout/CollectionsMenu.vue';
 import { navLinkBase, navLinkState } from '@/components/layout/navStyles';
 import { useIsHost } from '@/components/layout/useIsHost';
