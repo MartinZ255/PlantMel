@@ -40,6 +40,17 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
+    // E17 / ADR-004: Anmeldung mit Google (Laravel Socialite). Ohne
+    // GOOGLE_CLIENT_ID und GOOGLE_CLIENT_SECRET ist die Funktion aus (Knopf
+    // ausgeblendet, Routen leiten auf /login). Ein relativer Redirect wird von
+    // Socialite mit url()->to() zur absoluten URL der Anwendung ergänzt;
+    // in Produktion besser absolut setzen (docs/modernization/GOOGLE-LOGIN.md).
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
+    ],
+
     'ytdlp' => [
         'path' => env('YTDLP_PATH', 'yt-dlp'),
     ],

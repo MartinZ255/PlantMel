@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\GoogleLogin;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -39,6 +40,11 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
 
             'name' => config('app.name'),
+
+            // E17: Knopf "Mit Google anmelden" nur bei gesetzter Konfiguration.
+            'features' => [
+                'googleLogin' => GoogleLogin::enabled(),
+            ],
 
             // F-17: Erfolgs- und Fehlermeldungen aus `->with('success'|'error', …)`.
             // Lazy ausgewertet; null, wenn nichts gesetzt ist oder keine Session

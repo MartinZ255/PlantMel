@@ -61,6 +61,11 @@ export const E2E_ENV: Record<string, string> = {
     MAIL_MAILER: 'array', // keine echten E-Mails
     GEMINI_API_KEY: '', // keine KI-Aufrufe
     YTDLP_PATH: 'e2e-ytdlp-disabled', // nicht existierendes Programm
+    // E17: Dummy-Werte, damit der Google-Knopf erscheint. Nicht geheim, bei
+    // Google ungueltig; die Tests verfolgen die Weiterleitung zu Google nie.
+    GOOGLE_CLIENT_ID: 'e2e-google-client-id.invalid',
+    GOOGLE_CLIENT_SECRET: 'e2e-google-client-secret-not-real',
+    GOOGLE_REDIRECT_URI: `${BASE_URL}/auth/google/callback`,
     VITE_APP_NAME: 'Laravel',
 };
 

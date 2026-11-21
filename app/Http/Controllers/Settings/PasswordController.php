@@ -14,9 +14,13 @@ class PasswordController extends Controller
     /**
      * Show the user's password settings page.
      */
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
-        return Inertia::render('settings/Password');
+        // E17: Konten aus der Google-Anmeldung haben anfangs kein Passwort;
+        // dann zeigt die Seite "Passwort festlegen" ohne aktuelles Passwort.
+        return Inertia::render('settings/Password', [
+            'hasPassword' => $request->user()->hasPassword(),
+        ]);
     }
 
     /**
@@ -24,8 +28,12 @@ class PasswordController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
+        $hasPassword = $request->user()->hasPassword();
+
         $validated = $request->validate([
-            'current_password' => ['required', 'current_password'],
+            // E17: ohne bestehendes Passwort gibt es nichts zu bestätigen;
+            // ein mitgeschicktes current_password wird dann ignoriert.
+            ...($hasPassword ? ['current_password' => ['required', 'current_password']] : []),
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
@@ -33,6 +41,6 @@ class PasswordController extends Controller
             'password' => $validated['password'],
         ]);
 
-        return back()->with('success', 'Passwort geändert.');
+        return back()->with('success', $hasPassword ? 'Passwort geändert.' : 'Passwort festgelegt.');
     }
 }

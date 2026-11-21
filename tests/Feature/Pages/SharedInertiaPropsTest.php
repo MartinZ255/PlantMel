@@ -142,6 +142,28 @@ class SharedInertiaPropsTest extends TestCase
         $shared = array_values(array_diff($props, ['stats', 'latestRecipes']));
         sort($shared);
 
-        $this->assertSame(['auth', 'errors', 'flash', 'name'], $shared);
+        // E17: `features` (Schalter für den Google-Knopf) neu.
+        $this->assertSame(['auth', 'errors', 'features', 'flash', 'name'], $shared);
+    }
+
+    public function test_features_google_login_is_false_without_configuration(): void
+    {
+        config(['services.google.client_id' => null, 'services.google.client_secret' => null]);
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('features', ['googleLogin' => false])
+            );
+    }
+
+    public function test_features_google_login_needs_client_id_and_secret(): void
+    {
+        config(['services.google.client_id' => 'test-client-id', 'services.google.client_secret' => null]);
+        $this->get(route('login'))->assertInertia(fn (Assert $page) => $page->where('features.googleLogin', false));
+
+        config(['services.google.client_id' => 'test-client-id', 'services.google.client_secret' => 'test-secret']);
+        $this->get(route('login'))->assertInertia(fn (Assert $page) => $page->where('features.googleLogin', true));
+        $this->get(route('register'))->assertInertia(fn (Assert $page) => $page->where('features.googleLogin', true));
     }
 }

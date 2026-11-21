@@ -22,6 +22,7 @@
 | 2026-11-19 | Rezepte werden nur noch mit 1–5 Sternen für den Geschmack bewertet, keine Bewertungskategorien mehr (E14) | Entscheidung des Auftraggebers. Die Dimension wird per Name gefunden (`config/plantmel.php`, `rating_dimension` = „Geschmack“; fehlt sie, gibt es keine Bewertung). Keine Migration, nichts gelöscht: Bewertungen anderer Dimensionen bleiben in `recipe_ratings`, werden aber nicht mehr angezeigt oder eingerechnet; `update` ersetzt nur noch die Geschmacks-Bewertung. Reversibel durch Rücknahme des Codes | umgesetzt (Backend + Rezeptdetail), Formular folgt |
 | 2026-11-20 | Separate Endpunkte für Zutaten-Alternativen (`ingredientAlternatives.index/store/destroy`, `IngredientAlternativeController`) entfernt (E15) | Entscheidung des Auftraggebers: ungenutzte API-Routen entfernen, sofern Alternativen weiter im Rezept angezeigt werden. Das Frontend rief die Routen nie auf; Alternativen werden mit dem Rezept gespeichert (`RecipeController` store/update) und auf der Rezeptseite angezeigt. Tabelle und Daten bleiben unverändert. Kein Umbau der Routing-Architektur, nur Entfernen dreier ungenutzter Routen; reversibel per Git | umgesetzt, `IngredientAlternativeRoutesRemovedTest`, `RecipeShowTest`, `RecipeAlternativesSyncTest` |
 | 2026-11-20 | Ungenutzter Baustein `ui/Card.vue` gelöscht; Artisan-Befehle `user:make-host` und `users:mark-verified` bleiben bewusst (E16) | Entscheidung des Auftraggebers | umgesetzt |
+| 2026-11-21 | Anmeldung mit Google über Laravel Socialite zusätzlich zu Fortify; automatische Verknüpfung per verifizierter E-Mail; Konten ohne Passwort möglich (E17) | Freigabe des Auftraggebers, Details in ADR-004 | umgesetzt (Branch `feat/google-login`), Produktion offen |
 
 Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren.
 
@@ -89,3 +90,34 @@ Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren
 - **Bilder:** Die Startseite zeigt echte Rezeptbilder aus der Datenbank (neue Prop `featuredRecipes`, kleine Backend-Ergänzung), statt nur Formen.
 
 **Unverändert aus ADR-003:** Tailwind-v4-Tokens, Bausteine unter `components/ui/`, Navigation oben, Barrierefreiheit, Vorgehen in zwei Schritten (Musterseiten zur Abnahme, dann Ausrollen).
+
+## ADR-004: Anmeldung mit Google (Laravel Socialite) neben Fortify (E17)
+
+**Datum:** 2026-11-21 · **Status:** angenommen (vom Auftraggeber freigegeben), umgesetzt auf `feat/google-login` · **Anleitung:** `docs/modernization/GOOGLE-LOGIN.md`
+
+**Kontext.** Nutzer sollen sich zusätzlich zu E-Mail und Passwort mit ihrem Google-Konto anmelden und registrieren können. CLAUDE.md verlangt für Änderungen am Auth-System ein ADR.
+
+**Entscheidung.**
+- **Fortify bleibt** das Auth-System (Login, Registrierung, Passwort vergessen, E-Mail-Verifizierung, Logout). Google kommt als zusätzlicher Weg über das offizielle Paket `laravel/socialite` (OAuth 2.0 / OpenID Connect, Scopes nur `openid`, `email`, `profile`).
+- Zwei Routen unter Middleware `guest` und `throttle:google-login`: `GET /auth/google/redirect` (`auth.google.redirect`) und `GET /auth/google/callback` (`auth.google.callback`), Controller `App\Http\Controllers\Auth\GoogleLoginController`.
+- **Schalter:** Der Knopf erscheint nur, wenn `services.google.client_id` und `client_secret` gesetzt sind (geteilte Prop `features.googleLogin`). Sonst leiten beide Routen mit Hinweis auf `/login` um (kein 500).
+- **Zuordnung im Callback:** nur mit von Google als verifiziert gemeldeter E-Mail (`email_verified` bzw. `verified_email`). Reihenfolge: gleiche `google_id` → anmelden; sonst gleiche E-Mail (ohne Groß-/Kleinschreibung) → `google_id` **automatisch verknüpfen** (Entscheidung des Auftraggebers), `email_verified_at` setzen, falls leer; sonst neues Konto ohne Passwort und ohne Host-Recht (wie normale Registrierung).
+- **Schema (additiv):** `users.google_id` (string, nullable, unique) und `users.password` nullable. Keine Datenänderung.
+- **Konten ohne Passwort:** Passwort-Login schlägt mit der normalen Fehlermeldung fehl; „Passwort vergessen“ setzt ein Passwort; Einstellungen bieten „Passwort festlegen“ ohne aktuelles Passwort; Konto löschen wird durch Eingabe der eigenen E-Mail-Adresse bestätigt.
+- **E-Mail-Änderung im Profil** bleibt erlaubt. Schlüssel für Google ist `google_id`, nicht die E-Mail; die Google-Anmeldung funktioniert nach einer Änderung weiter. Die Verknüpfung wird dabei nicht gelöst.
+
+**Alternativen.**
+- Eigene OAuth-Implementierung ohne Paket: mehr Code, mehr Fehlerquellen (state, Token-Austausch); verworfen.
+- Separate Tabelle `social_accounts` (mehrere Anbieter je Nutzer): flexibler, aber für einen einzigen Anbieter überdimensioniert; bei weiteren Anbietern neu bewerten.
+- Verknüpfung nur nach Passwort-Bestätigung statt automatisch: sicherer gegen Fehlzuordnung, aber umständlicher; vom Auftraggeber verworfen. Die Pflicht zur von Google verifizierten E-Mail mindert das Risiko.
+- Wechsel des Auth-Systems (z. B. Breeze/Jetstream/Passport): nicht nötig, verworfen.
+
+**Risiken.**
+- *Automatische Verknüpfung:* Wer die Google-Adresse eines bestehenden PlantMel-Kontos kontrolliert, erhält Zugriff auf dieses Konto. Das gilt aber ohnehin über „Passwort vergessen“ (Zugriff auf das Postfach). Akzeptiert.
+- *SQLite und `->change()`:* Laravel baut die Tabelle `users` dafür neu auf (neue Tabelle, Daten kopieren, alte löschen, umbenennen). Bei eingeschalteten Fremdschlüsseln würde ein `DROP TABLE users` die Kaskaden in `comments`, `collections`, `recipe_imports` auslösen. Laravel schaltet dafür die Fremdschlüsselprüfung ab; per Test abgesichert (`GoogleLoginMigrationTest`). Vor dem Einspielen in Produktion: Backup der SQLite-Datei (ROADMAP: Migrationen nur mit gesonderter Freigabe, F-11).
+- *Datenschutz:* Google wird als weiterer Empfänger personenbezogener Daten genannt werden müssen (Datenschutzerklärung durch den Betreiber, siehe GOOGLE-LOGIN.md).
+- *Konten ohne Passwort:* Funktionen, die ein Passwort verlangen (Passwort-Bestätigung), sind für sie nicht nutzbar; derzeit nutzt keine Route `password.confirm`.
+
+**Rollback.**
+- Code: Merge zurücknehmen bzw. `GOOGLE_CLIENT_ID` leeren (Knopf verschwindet, Routen leiten auf `/login`).
+- Schema: `php artisan migrate:rollback --step=1` entfernt `google_id` und macht `password` wieder Pflicht. Der Rollback bricht bewusst mit Fehlermeldung ab, solange Konten mit `password = null` existieren (diese Konten müssten vorher ein Passwort setzen oder gelöscht werden; keine automatische Datenänderung).
