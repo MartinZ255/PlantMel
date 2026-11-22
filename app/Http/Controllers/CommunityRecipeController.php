@@ -9,10 +9,11 @@ use App\Models\Ingredient;
 use App\Models\IngredientAlternative;
 use App\Models\Recipe;
 use App\Models\RecipeImage;
+use App\Models\RecipeRating;
 use App\Models\RecipeReport;
-use App\Models\RecipeUserRating;
 use App\Models\User;
 use App\Services\CommunityRecipes;
+use App\Services\TasteRating;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,8 @@ use Throwable;
 
 /**
  * E18 / ADR-005: Community-Rezepte – öffentliche Liste und Detailseite,
- * Einreichen/Bearbeiten/Löschen eigener Rezepte, Bewerten und Melden.
+ * Einreichen/Bearbeiten/Löschen eigener Rezepte (inkl. eigener
+ * Geschmacks-Bewertung wie bei Host-Rezepten, E14) und Melden.
  *
  * Sichtbarkeit und Rechte: App\Policies\RecipePolicy. Nicht sichtbare
  * Rezepte antworten mit 404 (verrät nichts über Entwürfe anderer).
@@ -56,14 +58,17 @@ class CommunityRecipeController extends Controller
         $excludeIngredients = $this->normalizeStringList($request->query('excludeIngredients', []));
         $tags = $this->normalizeStringList($request->query('tags', []));
 
+        // E14: nur Geschmacks-Bewertungen (vom Autor vergeben)
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $query = Recipe::query()
             ->publishedCommunity()
             ->with([
                 'categories',
                 'author:id,name',
+                'ratings' => TasteRating::constrain($tasteDimensionId),
                 'images' => fn ($query) => $query->orderBy('id')->limit(1),
-            ])
-            ->withAvg('userRatings', 'value');
+            ]);
 
         if ($search && trim($search) !== '') {
             $like = '%'.trim($search).'%';
@@ -109,7 +114,7 @@ class CommunityRecipeController extends Controller
             ->map(fn (Recipe $recipe) => [
                 'id' => $recipe->id,
                 'name' => $recipe->title,
-                'rating' => $recipe->user_ratings_avg_value ? (int) round((float) $recipe->user_ratings_avg_value) : 0,
+                'rating' => TasteRating::roundedForList($recipe->ratings, $tasteDimensionId),
                 'tags' => $recipe->categories->pluck('name')->all(),
                 'time' => $recipe->duration_minutes ? $recipe->duration_minutes.' Min' : '–',
                 'image' => $this->imageUrl($recipe->images->first()),
@@ -143,9 +148,12 @@ class CommunityRecipeController extends Controller
         $user = $request->user();
         abort_unless(Gate::forUser($user)->allows('view', $recipe), 404);
 
+        $tasteDimensionId = TasteRating::dimensionId();
+
         $recipe->load([
             'images',
             'recipeIngredients.ingredient',
+            'ratings' => TasteRating::constrain($tasteDimensionId),
             'categories',
             'ingredientAlternatives.alternativeIngredient',
             'author:id,name',
@@ -173,10 +181,9 @@ class CommunityRecipeController extends Controller
 
         [$steps, $notes] = $this->parseInstructions($recipe->instructions);
 
-        $ratings = RecipeUserRating::where('recipe_id', $recipe->id);
-        $ratingCount = (clone $ratings)->count();
-        $ratingAvg = $ratingCount > 0 ? round((float) (clone $ratings)->avg('value'), 1) : null;
-        $myRating = $user ? (clone $ratings)->where('user_id', $user->id)->value('value') : null;
+        // E14: einzige Bewertung ist Geschmack, vergeben vom Autor (wie beim Host)
+        $ratingCount = $recipe->ratings->count();
+        $ratingAvg = $ratingCount > 0 ? round($recipe->ratings->avg('value'), 1) : null;
 
         $primaryImage = $recipe->images->first();
 
@@ -191,7 +198,6 @@ class CommunityRecipeController extends Controller
                 'categories' => $recipe->categories->pluck('name')->all(),
                 'rating' => $ratingAvg,
                 'ratingCount' => $ratingCount,
-                'myRating' => $myRating !== null ? (int) $myRating : null,
                 'ingredients' => $ingredients,
                 'steps' => $steps,
                 'notes' => $notes,
@@ -207,7 +213,6 @@ class CommunityRecipeController extends Controller
                 'edit' => $canManage,
                 'delete' => $canManage,
                 'moderate' => $user !== null && Gate::forUser($user)->allows('moderate', $recipe),
-                'rate' => $user !== null && Gate::forUser($user)->allows('rate', $recipe),
                 'report' => Gate::forUser($user)->allows('report', $recipe),
                 'collect' => $recipe->isApproved() || $canManage,
             ],
@@ -255,6 +260,8 @@ class CommunityRecipeController extends Controller
         $categories = Category::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('community/Create', [
+            // E14: nur die Geschmacks-Dimension (0 oder 1 Eintrag)
+            'ratingDimensions' => TasteRating::dimensionsForForm(),
             'categories' => $categories,
             'ingredients' => Ingredient::approved()->orderBy('name')->get(['id', 'name']),
             'importedRecipe' => RecipeImportController::prefillFor($request, $categories),
@@ -294,6 +301,9 @@ class CommunityRecipeController extends Controller
                     CommunityRecipes::communityIngredientResolver($user),
                 );
 
+                // E14: eigene Geschmacks-Bewertung des Autors (optional)
+                $this->syncTasteRating($recipe, $validated['ratings'] ?? []);
+
                 if ($request->hasFile('image')) {
                     $storedImagePath = $request->file('image')->store('recipes', 'public');
                     RecipeImage::create(['recipe_id' => $recipe->id, 'image_path' => $storedImagePath]);
@@ -316,7 +326,11 @@ class CommunityRecipeController extends Controller
         $this->ensureCommunity($recipe);
         $this->authorizeManage($request->user(), $recipe);
 
-        $recipe->load(['images', 'categories', 'recipeIngredients.ingredient', 'ingredientAlternatives', 'author:id,name']);
+        $tasteDimensionId = TasteRating::dimensionId();
+        $recipe->load([
+            'images', 'categories', 'recipeIngredients.ingredient', 'ingredientAlternatives', 'author:id,name',
+            'ratings' => TasteRating::constrain($tasteDimensionId),
+        ]);
 
         $alternativesByIngredient = $recipe->ingredientAlternatives
             ->groupBy('ingredient_id')
@@ -326,6 +340,7 @@ class CommunityRecipeController extends Controller
         $isAuthor = $recipe->isAuthoredBy($request->user());
 
         return Inertia::render('community/Edit', [
+            'ratingDimensions' => TasteRating::dimensionsForForm(),
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'ingredients' => Ingredient::approved()->orderBy('name')->get(['id', 'name']),
             'recipe' => [
@@ -346,12 +361,17 @@ class CommunityRecipeController extends Controller
                     ->all(),
                 'steps' => $steps,
                 'notes' => $noteLines !== [] ? implode("\n", $noteLines) : null,
-                'ratings' => [],
+                // Map dimension_id => Wert (nur Geschmack, E14)
+                'ratings' => $recipe->ratings
+                    ->groupBy('dimension_id')
+                    ->map(fn ($group) => (int) $group->avg('value'))
+                    ->all(),
                 'status' => $recipe->status,
                 'rejectionReason' => $recipe->rejection_reason,
                 'author' => $recipe->author?->name,
             ],
-            // Autor: Speichern eines freigegebenen Rezepts verbirgt es bis zur erneuten Freigabe
+            // Autor: Speichern eines freigegebenen Rezepts verbirgt es bis zur erneuten Freigabe.
+            // Nur der Autor bewertet; bearbeitet der Host, bleibt die Bewertung unberührt.
             'isAuthor' => $isAuthor,
             'requiresReview' => $isAuthor,
         ]);
@@ -398,6 +418,13 @@ class CommunityRecipeController extends Controller
                     CommunityRecipes::communityIngredientResolver($recipe->author ?? $request->user()),
                 );
 
+                // E14: Die Bewertung ist die des Autors. Wie im Host-Formular gilt
+                // die Payload als Soll-Zustand (fehlt/null = entfernen) – aber nur
+                // für den Autor; speichert der Host ein fremdes Rezept, bleibt sie.
+                if ($isAuthor) {
+                    $this->syncTasteRating($recipe, $validated['ratings'] ?? []);
+                }
+
                 if ($request->hasFile('image')) {
                     $oldImages = $recipe->images()->get();
                     $replacedImagePaths = $oldImages->pluck('image_path')->filter()->all();
@@ -438,33 +465,8 @@ class CommunityRecipeController extends Controller
     }
 
     // ------------------------------------------------------------------
-    // Bewerten und Melden
+    // Melden
     // ------------------------------------------------------------------
-
-    public function rate(Request $request, Recipe $recipe): RedirectResponse
-    {
-        $this->ensureCommunity($recipe);
-        $user = $request->user();
-        abort_unless(Gate::forUser($user)->allows('view', $recipe), 404);
-        abort_unless(Gate::forUser($user)->allows('rate', $recipe), 403, 'Eigene Rezepte kannst du nicht bewerten.');
-
-        $validated = $request->validate([
-            'value' => ['nullable', 'integer', 'min:1', 'max:5'],
-        ]);
-
-        if (($validated['value'] ?? null) === null) {
-            RecipeUserRating::where('recipe_id', $recipe->id)->where('user_id', $user->id)->delete();
-
-            return back()->with('success', 'Bewertung entfernt.');
-        }
-
-        RecipeUserRating::updateOrCreate(
-            ['recipe_id' => $recipe->id, 'user_id' => $user->id],
-            ['value' => (int) $validated['value']],
-        );
-
-        return back()->with('success', 'Danke für deine Bewertung.');
-    }
 
     public function report(Request $request, Recipe $recipe): RedirectResponse
     {
@@ -500,8 +502,8 @@ class CommunityRecipeController extends Controller
     // ------------------------------------------------------------------
 
     /**
-     * Gleiche Regeln wie das Host-Formular (F-22), ohne Bewertung des
-     * Autors; Alternativen nur aus dem Katalog; Kategorien nur vorhandene
+     * Gleiche Regeln wie das Host-Formular (F-22) inkl. Geschmacks-Bewertung
+     * (E14); Alternativen nur aus dem Katalog; Kategorien nur vorhandene
      * (unbekannte Namen werden ignoriert, Nutzer legen keine an).
      *
      * @return array<string, mixed>
@@ -528,13 +530,44 @@ class CommunityRecipeController extends Controller
             'notes' => ['nullable', 'string', 'max:65535'],
             'image' => ['nullable', 'image', 'max:16384'], // 16 MB wie Host-Formular
             'intent' => ['nullable', 'string', Rule::in(['draft', 'submit'])],
+            // E14: { [Geschmacks-Dimension]: 1–5 | null }, wie im Host-Formular
+            'ratings' => ['array', $this->ratingDimensionKeysRule(TasteRating::dimensionId())],
+            'ratings.*' => ['nullable', 'integer', 'min:1', 'max:5'],
         ]);
 
         $validated['tags'] ??= [];
         $validated['steps'] ??= [];
         $validated['ingredients'] ??= [];
+        $validated['ratings'] ??= [];
 
         return $validated;
+    }
+
+    /**
+     * Geschmacks-Bewertung nach Payload setzen oder entfernen (E14, wie
+     * RecipeController::update). Bewertungen anderer Dimensionen bleiben.
+     *
+     * @param  array<int|string, mixed>  $ratings
+     */
+    private function syncTasteRating(Recipe $recipe, array $ratings): void
+    {
+        $tasteDimensionId = TasteRating::dimensionId();
+        if ($tasteDimensionId === null) {
+            return;
+        }
+
+        $value = $this->tasteValueFrom($ratings, $tasteDimensionId);
+
+        if ($value === null) {
+            $recipe->ratings()->where('dimension_id', $tasteDimensionId)->delete();
+
+            return;
+        }
+
+        RecipeRating::updateOrCreate(
+            ['recipe_id' => $recipe->id, 'dimension_id' => $tasteDimensionId],
+            ['value' => $value],
+        );
     }
 
     /** @param  array<int, string>  $tags */

@@ -3,8 +3,9 @@
 namespace Tests\Feature\Community;
 
 use App\Models\Category;
+use App\Models\RatingDimension;
 use App\Models\RecipeImage;
-use App\Models\RecipeUserRating;
+use App\Models\RecipeRating;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -23,21 +24,22 @@ class CommunityIndexQueryCountTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * count, eine Seite Rezepte (inkl. Ø-Bewertung als Unterabfrage),
-     * Kategorien, Autoren, Bilder, Tag-Liste, Tag-Statistik.
+     * Geschmacks-Dimension, count, eine Seite Rezepte, Kategorien, Autoren,
+     * Bewertungen (Geschmack), Bilder, Tag-Liste, Tag-Statistik.
      */
-    private const EXPECTED_GUEST_QUERIES = 7;
+    private const EXPECTED_GUEST_QUERIES = 9;
 
     private function seedRecipes(int $count): void
     {
         $vegan = Category::firstOrCreate(['name' => 'Vegan']);
-        $rater = User::factory()->create();
+        $taste = RatingDimension::firstOrCreate(['name' => 'Geschmack']);
 
         for ($i = 0; $i < $count; $i++) {
             $recipe = $this->communityRecipe(User::factory()->create());
             $recipe->categories()->attach($vegan);
             RecipeImage::factory()->create(['recipe_id' => $recipe->id]);
-            RecipeUserRating::create(['recipe_id' => $recipe->id, 'user_id' => $rater->id, 'value' => 4]);
+            // E14: Bewertung des Autors über die Geschmacks-Dimension
+            RecipeRating::create(['recipe_id' => $recipe->id, 'dimension_id' => $taste->id, 'value' => 4]);
         }
     }
 

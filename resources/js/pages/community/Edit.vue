@@ -96,7 +96,7 @@
             <RecipeForm
                 mode="edit"
                 variant="community"
-                :rating-dimensions="[]"
+                :rating-dimensions="ratingDimensions"
                 :categories="categories"
                 :ingredients="ingredients"
                 :recipe="recipe"
@@ -106,6 +106,7 @@
                 :current-image="recipe.image ?? null"
                 :review-notice="reviewNotice"
                 :hide-draft="!isAuthor"
+                :hide-rating="!isAuthor"
                 :submit-label="isAuthor ? null : 'Änderungen speichern'"
             />
         </div>
@@ -125,6 +126,11 @@ import { computed } from 'vue';
 import { route } from 'ziggy-js';
 
 const props = defineProps<{
+    ratingDimensions: {
+        id: number;
+        name: string;
+        description?: string | null;
+    }[];
     categories: { id: number; name: string }[];
     ingredients: { id: number; name: string }[];
     recipe: {

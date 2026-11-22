@@ -1071,7 +1071,7 @@
 
                 <!-- 7 · Bewertung: EINE Sterne-Eingabe „Geschmack“ (optional, zurücksetzbar) -->
                 <FormSection
-                    v-if="tasteDimension && !isCommunity"
+                    v-if="tasteDimension && !hideRating"
                     id="abschnitt-bewertung"
                     name="ratings"
                     title-id="ratings-title"
@@ -1416,6 +1416,11 @@ const props = defineProps<{
     submitLabel?: string | null;
     /** E18: Knopf „Als Entwurf speichern“ ausblenden (z. B. Host bearbeitet fremdes Rezept) */
     hideDraft?: boolean;
+    /**
+     * E18: Abschnitt „Bewertung“ ausblenden – der Host bearbeitet ein fremdes
+     * Community-Rezept; die Bewertung gehört dem Autor (Server ignoriert sie).
+     */
+    hideRating?: boolean;
 }>();
 
 const isCommunity = computed(() => props.variant === 'community');
@@ -1461,7 +1466,7 @@ const chapters = computed(() => [
     { id: 'abschnitt-zubereitung', label: 'Zubereitung' },
     { id: 'abschnitt-notizen', label: 'Notizen' },
     { id: 'abschnitt-kategorien', label: 'Kategorien' },
-    ...(tasteDimension.value && !isCommunity.value
+    ...(tasteDimension.value && !props.hideRating
         ? [{ id: 'abschnitt-bewertung', label: 'Bewertung' }]
         : []),
 ]);
@@ -2285,7 +2290,7 @@ const submit = (intent: 'draft' | 'submit' = 'submit') => {
         // Nur die Geschmacks-Bewertung senden ({ [dimensionId]: value | null });
         // ältere Werte anderer Dimensionen aus den Edit-Props fallen weg
         ratings:
-            tasteDimension.value && !isCommunity.value
+            tasteDimension.value && !props.hideRating
                 ? {
                       [tasteDimension.value.id]:
                           data.ratings[tasteDimension.value.id] ?? null,

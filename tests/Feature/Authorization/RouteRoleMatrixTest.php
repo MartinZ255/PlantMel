@@ -89,7 +89,6 @@ class RouteRoleMatrixTest extends TestCase
         'community.edit' => ['GET', 200],
         'community.update' => ['POST', 302],
         'community.destroy' => ['DELETE', 302],
-        'community.rate' => ['POST', 302],
         'communityImports.store' => ['POST', 200],
         'communityImports.show' => ['GET', 200],
     ];
@@ -562,9 +561,8 @@ class RouteRoleMatrixTest extends TestCase
         $collection = Collection::factory()->create(['user_id' => $owner->id]);
         $collection->recipes()->attach($recipe->id);
 
-        // E18: eigenes Community-Rezept bzw. fremdes, freigegebenes (Bewerten)
+        // E18: eigenes Community-Rezept
         $own = $this->communityRecipe($owner, Recipe::STATUS_PENDING);
-        $foreign = $this->communityRecipe(User::factory()->create());
         $import = RecipeImport::factory()->done()->create(['user_id' => $owner->id]);
         if ($name === 'communityImports.store') {
             $owner->forceFill(['gemini_api_key' => 'AIza'.str_repeat('m', 35)])->save();
@@ -572,7 +570,6 @@ class RouteRoleMatrixTest extends TestCase
 
         $parameters = match ($name) {
             'community.edit', 'community.update', 'community.destroy' => ['recipe' => $own],
-            'community.rate' => ['recipe' => $foreign],
             'communityImports.show' => ['recipeImport' => $import],
             'collections.show', 'collections.addRecipe', 'collections.update', 'collections.delete' => ['collection' => $collection],
             'collections.removeRecipe' => ['collection' => $collection, 'recipe' => $recipe],
@@ -595,7 +592,6 @@ class RouteRoleMatrixTest extends TestCase
                 'ingredients' => [['amount' => '1', 'name' => 'Matrix-Community-Zutat']],
                 'steps' => ['Matrix-Schritt'],
             ],
-            'community.rate' => ['value' => 4],
             'communityImports.store' => ['url' => 'https://www.tiktok.com/@example/video/7000000000000000'],
             default => [],
         };

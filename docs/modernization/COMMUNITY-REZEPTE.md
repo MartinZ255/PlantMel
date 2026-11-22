@@ -6,7 +6,7 @@ Stand: 2026-11-21 · Entscheidung E18 / ADR-005 (`DECISIONS.md`) · Branch `feat
 
 ## 1. Was die Funktion macht
 
-- **Neue öffentliche Seite „Community“** (`/community`, Kopfnavigation „Community“): Liste der freigegebenen Community-Rezepte mit Suche, Kategorie- und Zutatenfiltern und 24 Rezepten je Seite (wie `/rezepte`). Detailseite `/community/rezept/{id}` mit Autor („von …“), Badge „Community“, Zutaten zum Abhaken, Schritten, Bewertung und Meldeknopf.
+- **Neue öffentliche Seite „Community“** (`/community`, Kopfnavigation „Community“): Liste der freigegebenen Community-Rezepte mit Suche, Kategorie- und Zutatenfiltern und 24 Rezepten je Seite (wie `/rezepte`). Detailseite `/community/rezept/{id}` mit Autor („von …“), Badge „Community“, Zutaten zum Abhaken, Schritten, Geschmacks-Bewertung des Autors und Meldeknopf.
 - **Das Rezeptbuch des Hosts bleibt getrennt:** `/rezepte`, Startseite, `/home` und die Zutatensuche zeigen weiterhin nur Host-Rezepte. `/rezept/{id}` eines Community-Rezepts leitet auf die Community-Seite um (bzw. 404, wenn es nicht sichtbar ist), die Host-Bearbeitungsrouten antworten für Community-Rezepte mit 404.
 - **Jeder angemeldete Nutzer** kann Rezepte einreichen (`/community/erstellen`), eigene bearbeiten und löschen und sieht sie unter **„Meine Rezepte“** (`/meine-rezepte`, Nutzermenü und Mobilmenü) mit Status und ggf. Ablehnungsgrund.
 - **Der Host** moderiert unter **„Zu prüfen“** (`/moderation`, Eintrag mit Anzahl im Nutzermenü und Mobilmenü) und kann jedes Community-Rezept bearbeiten oder löschen.
@@ -38,7 +38,8 @@ Stand: 2026-11-21 · Entscheidung E18 / ADR-005 (`DECISIONS.md`) · Branch `feat
 
 ## 4. Bewertung, Sammlungen, Meldeweg
 
-- **Bewertung:** Angemeldete Nutzer außer dem Autor bewerten freigegebene Community-Rezepte mit 1–5 Sternen (Geschmack), je Nutzer eine Bewertung (änderbar, entfernbar). Gespeichert in `recipe_user_ratings`; Host-Rezepte behalten ihre Bewertung in `recipe_ratings` (E14, unverändert).
+- **Bewertung (wie Host-Rezepte, E14):** Der Autor vergibt im Community-Formular optional 1–5 Sterne „Geschmack“ und kann sie mit „Bewertung entfernen“ zurücksetzen. Gespeichert in `recipe_ratings` über die Geschmacks-Dimension (`TasteRating`); Liste und Detailseite zeigen sie wie bei Host-Rezepten („Bewertung von …“). Andere Nutzer bewerten nicht (Änderungswunsch des Auftraggebers vom 2026-11-22; die zuvor gebaute Nutzerbewertung `recipe_user_ratings` ist entfernt).
+- **Host bearbeitet ein fremdes Community-Rezept:** Der Abschnitt „Bewertung“ ist ausgeblendet und der Server ignoriert `ratings` – die Bewertung des Autors bleibt unverändert. Begründung: Im Host-Formular gilt die gesendete Bewertung als Soll-Zustand (fehlt sie, wird sie gelöscht); Host-Rezepte haben keinen Autor, dort ist der Host der Bewertende. Bei Community-Rezepten würde dieselbe Regel die Bewertung des Autors bei jedem Speichern durch den Host überschreiben oder löschen. Bearbeitet der Host sein eigenes Community-Rezept, bewertet er als Autor.
 - **Sammlungen:** freigegebene Community-Rezepte (und eigene) lassen sich wie Host-Rezepte speichern.
 - **Melden:** Auf jeder öffentlichen Community-Rezeptseite „Rezept melden“ – auch ohne Konto. Pflicht: Grund und Bestätigung „nach bestem Wissen richtig“; Beschreibung Pflicht bei „rechtswidrig“, „Urheberrecht“ und „Etwas anderes“; E-Mail für Rückfragen optional. Höchstens 5 Meldungen je Stunde und Absender (Nutzer bzw. IP, nur im Cache gezählt). Es wird **keine IP-Adresse gespeichert**.
 - Der Host sieht offene Meldungen in der Moderation und kann das Rezept **ausblenden** (zurück auf „wird geprüft“), **löschen** oder die Meldung als **erledigt** markieren.
@@ -54,7 +55,7 @@ Stand: 2026-11-21 · Entscheidung E18 / ADR-005 (`DECISIONS.md`) · Branch `feat
 
 ## 6. Konto löschen
 
-Beim Löschen des Kontos werden alle eigenen Community-Rezepte samt Bildern, die eigenen Bewertungen und ungenutzte Vorschläge gelöscht; der Lösch-Dialog kündigt das mit Anzahl an. Meldungen des Nutzers bleiben für die Moderation erhalten, verlieren aber den Personenbezug (`user_id = null`).
+Beim Löschen des Kontos werden alle eigenen Community-Rezepte samt Bildern, deren Bewertungen (per Kaskade) und ungenutzte Vorschläge gelöscht; der Lösch-Dialog kündigt das mit Anzahl an. Meldungen des Nutzers bleiben für die Moderation erhalten, verlieren aber den Personenbezug (`user_id = null`).
 
 ## 7. Datenmodell (additiv, SQLite-kompatibel)
 
@@ -62,11 +63,10 @@ Beim Löschen des Kontos werden alle eigenen Community-Rezepte samt Bildern, die
 |---|---|---|
 | `recipes` | `type` (`host`/`community`, Default `host`), `status` (Default `approved`), `user_id` (FK users, cascade), `rejection_reason`, `submitted_at`, `reviewed_at`, `reviewed_by` (FK users, set null); Indizes `(type, status)`, `user_id` | über Spalten-Defaults `host`/`approved`, keine UPDATEs |
 | `ingredients` | `status` (`approved`/`proposed`, Default `approved`), `proposed_by` (FK users, set null); Index `status` | über Default `approved` |
-| `recipe_user_ratings` | neu: `recipe_id`, `user_id`, `value`, unique `(recipe_id, user_id)` | – |
 | `recipe_reports` | neu: `recipe_id`, `user_id` (nullable), `reason`, `message`, `contact_email`, `status`, `resolved_at`, `resolved_by` | – |
 | `users` | `gemini_api_key` (TEXT, verschlüsselt) | NULL |
 
-Unter SQLite baut Laravel `recipes` und `ingredients` wegen der neuen Fremdschlüssel je **einmal** neu auf (mit `PRAGMA foreign_keys = 0` während des Umbaus). `CommunityMigrationTest` prüft mit Bestandsdaten und eingeschalteten Fremdschlüsseln: alle Daten, Indizes und Fremdschlüssel bleiben, Kaskaden wirken weiter, Rollback stellt das alte Schema wieder her. Die Rollbacks brechen bewusst ab, solange Community-Rezepte, Vorschläge, Bewertungen, Meldungen oder hinterlegte Schlüssel existieren.
+Unter SQLite baut Laravel `recipes` und `ingredients` wegen der neuen Fremdschlüssel je **einmal** neu auf (mit `PRAGMA foreign_keys = 0` während des Umbaus). `CommunityMigrationTest` prüft mit Bestandsdaten und eingeschalteten Fremdschlüsseln: alle Daten, Indizes und Fremdschlüssel bleiben, Kaskaden wirken weiter, Rollback stellt das alte Schema wieder her. Die Rollbacks brechen bewusst ab, solange Community-Rezepte, Vorschläge, Meldungen oder hinterlegte Schlüssel existieren. Bewertungen von Community-Rezepten liegen in der bestehenden Tabelle `recipe_ratings` und hängen am Rezept.
 
 **Vor dem Einspielen in Produktion:** Sicherung der SQLite-Datei, `php artisan migrate --pretend` (zeigt für den Neuaufbau unter SQLite unvollständige `__temp__`-Tabellen, siehe F-101 – kein Fehler), Probelauf auf einer Kopie (nur mit Freigabe).
 
@@ -80,7 +80,7 @@ Keine Rechtsberatung. Vor dem Freischalten prüfen bzw. ergänzen:
 4. **Datenschutzerklärung ergänzen** (`/datenschutz`, Vorlage `RECHTSTEXTE.md`):
    - Veröffentlichung des **Anzeigenamens** als Autor bei freigegebenen Community-Rezepten (Art. 6 Abs. 1 lit. b DSGVO, Teil des Dienstes); Hinweis, dass Nutzer im Profil einen Spitznamen wählen können.
    - **Meldungen:** gespeichert werden Grund, Text, optionale E-Mail und ggf. die Nutzer-ID, **keine IP-Adresse**; die IP wird nur kurzzeitig im Cache für das Rate-Limit gezählt. Aufbewahrung festlegen (z. B. Löschung erledigter Meldungen nach 6 Monaten – derzeit keine automatische Löschung, siehe F-104).
-   - **Bewertungen:** je Nutzer gespeichert, öffentlich nur als Durchschnitt und Anzahl.
+   - **Bewertung:** Der Autor bewertet sein eigenes Rezept; sie erscheint öffentlich zusammen mit seinem Anzeigenamen.
    - **Eigener Gemini-Schlüssel:** verschlüsselt gespeichert, nur für Importe des Nutzers verwendet. Beim Import werden die TikTok-Beschreibung und ggf. das Video **mit dem Schlüssel des Nutzers** an Google (Gemini API) übermittelt; Verantwortlich für die Nutzung des Google-Kontos ist der Nutzer, die Verarbeitung auf PlantMel-Seite gehört zum Dienst. Google als Empfänger nennen (wie beim Host-Import und F-48).
 5. **Altersgrenze und Inhalte Minderjähriger:** ggf. in den Nutzungsbedingungen regeln.
 6. **Moderation organisieren:** Wer prüft wie schnell? Das Badge „Zu prüfen“ erscheint nur im Nutzermenü des Hosts; es gibt keine E-Mail-Benachrichtigung (F-105).
@@ -91,7 +91,7 @@ Keine Rechtsberatung. Vor dem Freischalten prüfen bzw. ergänzen:
 |---|---|---|
 | `community.index`, `community.show` | `GET /community`, `GET /community/rezept/{id}` | öffentlich |
 | `community.report` | `POST /community/rezept/{id}/melden` | öffentlich, `throttle:recipe-reports` |
-| `community.mine`, `community.create`, `community.store` (`throttle:community-recipes`, 10/h), `community.edit`, `community.update`, `community.destroy`, `community.rate` | `/meine-rezepte`, `/community/erstellen`, `POST /community`, `/community/rezept/{id}/bearbeiten`, `POST/DELETE /community/rezept/{id}`, `POST …/bewertung` | angemeldet (`auth`, `verified`); Policy `RecipePolicy` |
+| `community.mine`, `community.create`, `community.store` (`throttle:community-recipes`, 10/h), `community.edit`, `community.update`, `community.destroy` | `/meine-rezepte`, `/community/erstellen`, `POST /community`, `/community/rezept/{id}/bearbeiten`, `POST/DELETE /community/rezept/{id}` | angemeldet (`auth`, `verified`); Policy `RecipePolicy` |
 | `communityImports.store` (`throttle:recipe-imports`), `communityImports.show` | `POST /community/import`, `GET /community/import/{id}` | angemeldet, nur mit eigenem Schlüssel (Host: Server-Schlüssel) |
 | `moderation.*` | `/moderation`, `POST …/freigeben`, `…/ablehnen`, `…/ausblenden`, `…/meldung/{id}/erledigt`, `PATCH/POST /moderation/zutat/{id}[/zuordnen]` | Host (`is_host`) |
 | `settings.ai.*` | `GET/PUT/DELETE /settings/ki-import`, `POST /settings/ki-import/pruefen` (PUT/POST `throttle:6,1`) | angemeldet |

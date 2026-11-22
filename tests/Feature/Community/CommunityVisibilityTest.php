@@ -79,7 +79,7 @@ class CommunityVisibilityTest extends TestCase
                 ->where('recipe.status', 'approved')
                 ->where('recipe.isOwn', true)
                 ->where('can.edit', true)
-                ->where('can.rate', false));
+                ->missing('can.rate'));
     }
 
     public function test_public_list_contains_only_approved_community_recipes(): void

@@ -4,60 +4,18 @@ namespace Tests\Feature\Community;
 
 use App\Models\Recipe;
 use App\Models\RecipeReport;
-use App\Models\RecipeUserRating;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\Community\Concerns\CreatesCommunityRecipes;
 use Tests\TestCase;
 
 /**
- * E18: Geschmacks-Bewertung durch andere Nutzer und Meldeweg (Art. 16 DSA).
+ * E18: Meldeweg (Art. 16 DSA) – auch für Gäste, mit Rate-Limit, ohne IP.
  */
-class CommunityRatingAndReportTest extends TestCase
+class CommunityReportTest extends TestCase
 {
     use CreatesCommunityRecipes;
     use RefreshDatabase;
-
-    public function test_users_rate_once_and_average_is_shown(): void
-    {
-        $recipe = $this->communityRecipe(User::factory()->create());
-
-        $first = $this->actingAsUser();
-        $this->post(route('community.rate', $recipe), ['value' => 5])->assertSessionHas('success');
-        $this->post(route('community.rate', $recipe), ['value' => 4]); // ersetzt
-        $this->actingAsUser();
-        $this->post(route('community.rate', $recipe), ['value' => 2]);
-
-        $this->assertSame(2, RecipeUserRating::count());
-        $this->actingAs($first)->get(route('community.show', $recipe))
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('recipe.rating', 3)
-                ->where('recipe.ratingCount', 2)
-                ->where('recipe.myRating', 4)
-                ->where('can.rate', true));
-
-        $this->post(route('community.rate', $recipe), ['value' => null]);
-        $this->assertSame(1, RecipeUserRating::count());
-        $this->get(route('community.index'))
-            ->assertInertia(fn (Assert $page) => $page->where('recipes.0.rating', 2));
-    }
-
-    public function test_author_guest_and_unpublished_cannot_be_rated(): void
-    {
-        $author = User::factory()->create();
-        $recipe = $this->communityRecipe($author);
-        $pending = $this->communityRecipe($author, Recipe::STATUS_PENDING);
-
-        $this->post(route('community.rate', $recipe), ['value' => 5])->assertRedirect(route('login'));
-        $this->actingAs($author)->post(route('community.rate', $recipe), ['value' => 5])->assertForbidden();
-        $this->actingAsUser();
-        $this->post(route('community.rate', $pending), ['value' => 5])->assertNotFound();
-        $this->post(route('community.rate', $recipe), ['value' => 6])->assertSessionHasErrors('value');
-        $this->post(route('community.rate', Recipe::factory()->create()), ['value' => 5])->assertNotFound();
-
-        $this->assertSame(0, RecipeUserRating::count());
-    }
 
     public function test_guest_can_report_published_recipe(): void
     {

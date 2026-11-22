@@ -207,9 +207,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/community/rezept/{recipe}', [CommunityRecipeController::class, 'destroy'])
         ->name('community.destroy');
 
-    Route::post('/community/rezept/{recipe}/bewertung', [CommunityRecipeController::class, 'rate'])
-        ->name('community.rate');
-
     // TikTok-Import für Nutzer: nur mit eigenem Gemini-Schlüssel (Host: Server-Schlüssel),
     // gleiches Limit wie der Host-Import (pro Nutzer)
     Route::post('/community/import', [RecipeImportController::class, 'store'])

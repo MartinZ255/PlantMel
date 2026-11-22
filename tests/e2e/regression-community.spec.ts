@@ -92,10 +92,9 @@ test.describe('E18 Community-Rezepte', () => {
                 name: 'Schlüssel unter „KI-Import“ hinterlegen',
             }),
         ).toHaveAttribute('href', /\/settings\/ki-import$/);
-        // keine Katalog-Bearbeitung, keine eigene Bewertung
+        // keine Katalog-Bearbeitung
         await expect(user.page.locator('#tag-draft')).toHaveCount(0);
         await expect(user.page.locator('[data-tag-edit]')).toHaveCount(0);
-        await expect(user.page.locator('#abschnitt-bewertung')).toHaveCount(0);
 
         await user.page.locator('#name').fill(title);
         await user.page
@@ -114,6 +113,20 @@ test.describe('E18 Community-Rezepte', () => {
             .locator('[data-step-text]')
             .first()
             .fill('Linsen garen.');
+        const ratingSection = user.page.locator(
+            '[data-form-section="ratings"]',
+        );
+        const taste = ratingSection.getByRole('radiogroup', {
+            name: 'Geschmack',
+        });
+        const stars = taste.getByRole('radio');
+        await expect(stars).toHaveCount(5);
+        await stars.nth(0).focus();
+        await user.page.keyboard.press('Space');
+        await user.page.keyboard.press('ArrowRight');
+        await user.page.keyboard.press('ArrowRight');
+        await user.page.keyboard.press('ArrowRight');
+        await expect(stars.nth(3)).toBeChecked();
         await Promise.all([
             user.page.waitForURL(/\/community\/rezept\/\d+$/),
             user.page
@@ -191,20 +204,23 @@ test.describe('E18 Community-Rezepte', () => {
             'erneut geprüft',
         );
 
-        // 6) Andere Nutzer bewerten, der Autor nicht
+        // 6) Bewertung des Autors wie bei Host-Rezepten; kein Widget für andere
+        await guest.goto(`/community/rezept/${id}`);
+        await settle(guest);
+        await expect(guest.locator('[data-recipe-rating]')).toContainText(
+            'Bewertung von ' + DATA.users.user.name,
+        );
+        await expect(guest.locator('[data-recipe-rating]')).toContainText('4');
         const user2 = await roleContext(browser, 'user2');
         await user2.page.goto(`/community/rezept/${id}`);
         await settle(user2.page);
-        await user2.page
-            .locator('[data-rate-recipe]')
-            .getByRole('radio', { name: /4/ })
-            .check({ force: true });
-        await user2.page.locator('[data-save-rating]').click();
-        await expect(user2.page.getByRole('status').first()).toContainText(
-            'Danke für deine Bewertung',
-        );
-        await user.page.goto(`/community/rezept/${id}`);
-        await expect(user.page.locator('[data-rate-recipe]')).toHaveCount(0);
+        await expect(user2.page.getByRole('radio')).toHaveCount(0);
+        // Host bearbeitet ein fremdes Rezept: kein Bewertungs-Abschnitt
+        await host.page.goto(`/community/rezept/${id}/bearbeiten`);
+        await settle(host.page);
+        await expect(
+            host.page.locator('[data-form-section="ratings"]'),
+        ).toHaveCount(0);
 
         await Promise.all([
             user.context.close(),
