@@ -26,13 +26,13 @@ import {
     Trash2,
     Users,
 } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 
 /**
  * E18: Detailseite eines Community-Rezepts. Gleicher Aufbau wie die
  * Host-Rezeptseite, zusätzlich: Autor („von …“), Badge „Community“,
- * Status für Autor und Host, Bewertung durch andere Nutzer, Meldeweg.
+ * Status für Autor und Host, Geschmacks-Bewertung des Autors (E14), Meldeweg.
  */
 type Status = 'draft' | 'pending' | 'approved' | 'rejected';
 
@@ -47,7 +47,6 @@ const props = defineProps<{
         categories: string[];
         rating: number | null;
         ratingCount: number;
-        myRating: number | null;
         ingredients: {
             amount: string | null;
             name: string | null;
@@ -67,7 +66,6 @@ const props = defineProps<{
         edit: boolean;
         delete: boolean;
         moderate: boolean;
-        rate: boolean;
         report: boolean;
         collect: boolean;
     };
@@ -143,25 +141,6 @@ const statusInfo = computed(() => {
 
 // --- Sammlung ----------------------------------------------------------------
 const isCollectionModalOpen = ref(false);
-
-// --- Bewerten ----------------------------------------------------------------
-const myRating = ref<number | null>(props.recipe.myRating);
-watch(
-    () => props.recipe.myRating,
-    (v) => (myRating.value = v),
-);
-const rating = ref(false);
-const saveRating = (value: number | null) => {
-    rating.value = true;
-    router.post(
-        route('community.rate', recipe.value.id),
-        { value },
-        {
-            preserveScroll: true,
-            onFinish: () => (rating.value = false),
-        },
-    );
-};
 
 // --- Löschen -----------------------------------------------------------------
 const isDeleteOpen = ref(false);
@@ -592,92 +571,48 @@ const sendReport = () => {
                     </ul>
                 </Reveal>
 
-                <!-- Bewertung: Durchschnitt und eigene Sterne -->
-                <section aria-labelledby="recipe-ratings-title" class="mt-16">
+                <!-- Bewertung (E14): Geschmack, vom Autor vergeben – wie bei Host-Rezepten -->
+                <Reveal
+                    as="section"
+                    aria-labelledby="recipe-ratings-title"
+                    class="mt-16"
+                    data-recipe-rating
+                >
                     <h2
                         id="recipe-ratings-title"
                         class="font-display-wonk text-3xl font-semibold text-ink sm:text-4xl"
                     >
                         Bewertung
                     </h2>
-                    <div class="mt-6 grid gap-6 md:grid-cols-2">
-                        <div
-                            class="relative flex flex-wrap items-center gap-x-6 gap-y-3 overflow-hidden rounded-[2.5rem_2rem_2.75rem_2.25rem] bg-berry-surface p-6"
+                    <div
+                        v-if="hasRating"
+                        class="relative mt-6 flex max-w-md flex-wrap items-center gap-x-6 gap-y-3 overflow-hidden rounded-[2.5rem_2rem_2.75rem_2.25rem] bg-berry-surface p-6"
+                    >
+                        <!-- große Ziffer rein grafisch; Text steht in StarRating -->
+                        <span
+                            class="font-display-wonk text-7xl leading-none font-semibold text-berry"
+                            aria-hidden="true"
+                            >{{ formatRating(recipe.rating) }}</span
                         >
-                            <template v-if="hasRating">
-                                <span
-                                    class="font-display-wonk text-7xl leading-none font-semibold text-berry"
-                                    aria-hidden="true"
-                                    >{{ formatRating(recipe.rating) }}</span
-                                >
-                                <div class="flex min-w-0 flex-col gap-1.5">
-                                    <p
-                                        class="font-display text-xl font-semibold text-ink"
-                                    >
-                                        Geschmack
-                                    </p>
-                                    <StarRating :value="recipe.rating" />
-                                    <p class="text-sm text-ink-muted">
-                                        {{
-                                            recipe.ratingCount === 1
-                                                ? '1 Bewertung'
-                                                : `${recipe.ratingCount} Bewertungen`
-                                        }}
-                                    </p>
-                                </div>
-                            </template>
-                            <p v-else class="text-lg text-ink">
-                                Noch nicht bewertet
+                        <div class="relative flex min-w-0 flex-col gap-1.5">
+                            <p
+                                class="font-display text-xl font-semibold text-ink"
+                            >
+                                Geschmack
+                            </p>
+                            <StarRating :value="recipe.rating" />
+                            <p
+                                v-if="recipe.author"
+                                class="text-sm text-wrap-anywhere text-ink-muted"
+                            >
+                                Bewertung von {{ recipe.author }}
                             </p>
                         </div>
-
-                        <div
-                            v-if="can.rate"
-                            class="rounded-[2rem_2.5rem_2.25rem_2rem] bg-surface p-6 shadow-card"
-                            data-rate-recipe
-                        >
-                            <StarRating
-                                v-model="myRating"
-                                mode="input"
-                                label="Deine Bewertung: Geschmack"
-                            />
-                            <div class="mt-4 flex flex-wrap gap-2">
-                                <Button
-                                    :disabled="myRating === null"
-                                    :loading="rating"
-                                    data-save-rating
-                                    @click="saveRating(myRating)"
-                                >
-                                    Bewertung speichern
-                                </Button>
-                                <Button
-                                    v-if="recipe.myRating !== null"
-                                    variant="ghost"
-                                    :disabled="rating"
-                                    @click="saveRating(null)"
-                                >
-                                    Bewertung entfernen
-                                </Button>
-                            </div>
-                        </div>
-                        <p
-                            v-else-if="recipe.isOwn"
-                            class="self-center text-ink-muted"
-                        >
-                            Eigene Rezepte kannst du nicht bewerten.
-                        </p>
-                        <p
-                            v-else-if="recipe.status === null && can.report"
-                            class="self-center text-ink-muted"
-                        >
-                            <Link
-                                :href="route('login')"
-                                class="font-semibold text-primary underline underline-offset-4"
-                                >Melde dich an</Link
-                            >, um dieses Rezept zu bewerten.
-                        </p>
                     </div>
-                </section>
+                    <p v-else class="mt-3 text-lg text-ink-muted">
+                        Noch nicht bewertet
+                    </p>
+                </Reveal>
 
                 <!-- Meldeweg -->
                 <section

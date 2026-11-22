@@ -135,7 +135,8 @@ Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren
 - **Trennung:** Host-Liste, Startseite, Home, Zutatensuche und Host-Routen filtern auf `type = host`; Community hat eigene Routen und Seiten. Nicht sichtbare Rezepte → 404.
 - **Rechte über `App\Policies\RecipePolicy`** (`view`, `update`, `delete`, `moderate`, `rate`, `report`); Moderationsrouten zusätzlich hinter `is_host`.
 - **Zutaten-Vorschläge** als `ingredients.status = proposed` (+ `proposed_by`) in der bestehenden Tabelle: `recipe_ingredients.ingredient_id` bleibt ein normaler Fremdschlüssel, Freigabe ist ein Status-Update. Katalogansichten filtern auf `approved`; ungenutzte Vorschläge werden gelöscht.
-- **Bewertung durch Nutzer** in neuer Tabelle `recipe_user_ratings`, weil `recipe_ratings` nur eine Bewertung je Rezept und Dimension erlaubt (E14) und eine Änderung des Unique-Index unter SQLite einen Tabellen-Neuaufbau bräuchte.
+- **Bewertung wie bei Host-Rezepten (E14):** Der Autor vergibt im Formular optional 1–5 Sterne „Geschmack“ (zurücksetzbar), gespeichert in `recipe_ratings` über `TasteRating`. Andere Nutzer bewerten nicht. Bearbeitet der Host ein fremdes Community-Rezept, ist der Abschnitt ausgeblendet und der Server ignoriert `ratings`: Im Host-Formular gilt die Payload als Soll-Zustand (fehlt die Bewertung, wird sie gelöscht) – das passt für Host-Rezepte ohne Autor, würde bei Community-Rezepten aber die Bewertung des Autors überschreiben.
+- **Revision 2026-11-22 (Änderungswunsch des Auftraggebers):** Die zunächst gebaute Bewertung durch andere Nutzer (`recipe_user_ratings`, Route `community.rate`, Widget auf der Detailseite) ist vollständig entfernt; die Migration war noch nirgends gelaufen und wurde gelöscht.
 - **Meldungen** in `recipe_reports` (Gäste erlaubt, Rate-Limit, keine IP gespeichert).
 - **Gemini:** `users.gemini_api_key` (Cast `encrypted`). Der Job ermittelt den Schlüssel über den Nutzer des Imports (`User::geminiKeyForImport()`): Host → Server-Schlüssel, sonst nur der eigene. Beide Schlüssel werden in Logs geschwärzt.
 - **Kopfzeile:** neuer Eintrag „Community“. Damit die Kopfzeile bei 768 und 1024 px einzeilig bleibt, sind Navigationseinträge unter `xl` etwas schmaler, das Schloss-Symbol erscheint erst ab `xl` (Text für Screenreader bleibt), „Registrieren“ und „Rezept erstellen“ (Host) stehen erst ab `lg` in der Kopfzeile (sonst über Anmeldeseite bzw. Nutzermenü erreichbar). Bei 768 px war „Registrieren“ schon vorher abgeschnitten (Baseline).
@@ -145,6 +146,7 @@ Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren
 - Vorschläge in eigener Tabelle: `recipe_ingredients` bräuchte eine zweite, nullable Referenz (Neuaufbau mit Änderung des NOT-NULL-Fremdschlüssels) oder Freitext; verworfen.
 - Fremdschlüssel weglassen, um den SQLite-Neuaufbau zu vermeiden: keine Integrität auf Datenbankebene; verworfen, Neuaufbau stattdessen per Test abgesichert (je Tabelle genau ein Neuaufbau).
 - Server-Schlüssel mit Kontingent je Nutzer: Kosten und Missbrauchsrisiko beim Betreiber; vom Auftraggeber verworfen.
+- Bewertung durch alle angemeldeten Nutzer (eigene Tabelle je Nutzer und Rezept): gebaut und auf Wunsch des Auftraggebers wieder entfernt (Revision 2026-11-22).
 
 **Risiken.**
 - *SQLite-Neuaufbau* von `recipes` und `ingredients` (Laravel schaltet die Fremdschlüsselprüfung dabei ab). Geprüft mit Bestandsdaten (`CommunityMigrationTest`); vor Produktion Sicherung und Probelauf (F-102).
@@ -154,5 +156,5 @@ Neue Entscheidungen als ADR mit Alternativen, Risiken und Rollback dokumentieren
 
 **Rollback.**
 - Code: Merge zurücknehmen – vorher Community-Rezepte löschen, sonst zeigt der alte Code sie als Host-Rezepte; am besten zusammen mit dem Schema-Rollback.
-- Schema: `php artisan migrate:rollback --step=5`. Die Rollbacks brechen bewusst ab, solange Community-Rezepte, Vorschläge, Bewertungen, Meldungen oder hinterlegte Schlüssel existieren (keine automatische Datenänderung).
+- Schema: `php artisan migrate:rollback --step=4`. Die Rollbacks brechen bewusst ab, solange Community-Rezepte, Vorschläge, Meldungen oder hinterlegte Schlüssel existieren (keine automatische Datenänderung).
 

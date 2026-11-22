@@ -305,46 +305,6 @@ class RecipeController extends Controller
         ]);
     }
 
-    /**
-     * Regel für `ratings` (F-22, verschärft durch E14): Erlaubt ist nur der
-     * Schlüssel der Geschmacks-Dimension. Jeder andere Schlüssel – auch eine
-     * existierende andere Dimension – ist ein Validierungsfehler (422).
-     * Fehlt die Geschmacks-Dimension, ist nur eine leere Map erlaubt.
-     */
-    private function ratingDimensionKeysRule(?int $tasteDimensionId): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) use ($tasteDimensionId): void {
-            if (! is_array($value) || $value === []) {
-                return;
-            }
-
-            foreach (array_keys($value) as $key) {
-                // exakter Vergleich: „05“ o. Ä. wäre sonst gültig, beim Speichern aber nicht auffindbar
-                if ($tasteDimensionId === null || (string) $key !== (string) $tasteDimensionId) {
-                    $fail('Bewertet werden kann nur der Geschmack.');
-
-                    return;
-                }
-            }
-        };
-    }
-
-    /**
-     * Liest den Geschmacks-Wert (1–5) aus den validierten Ratings oder null.
-     *
-     * @param  array<int|string, mixed>  $ratings
-     */
-    private function tasteValueFrom(array $ratings, ?int $tasteDimensionId): ?int
-    {
-        if ($tasteDimensionId === null) {
-            return null;
-        }
-
-        $value = $ratings[$tasteDimensionId] ?? null;
-
-        return $value === null ? null : (int) $value;
-    }
-
     // Gate D2: tote Methode create() entfernt – keine Route zeigte darauf,
     // `recipes.create` ist eine Closure in routes/web.php.
 

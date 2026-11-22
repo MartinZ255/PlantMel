@@ -10,7 +10,7 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * E18 / ADR-005: die fünf Community-Migrationen unter SQLite mit
+ * E18 / ADR-005: die vier Community-Migrationen unter SQLite mit
  * Bestandsdaten (Produktion nutzt SQLite).
  *
  * Wie GoogleLoginMigrationTest bewusst OHNE RefreshDatabase: eigene
@@ -27,7 +27,6 @@ class CommunityMigrationTest extends TestCase
     private const MIGRATIONS = [
         '2026_11_21_140000_add_community_columns_to_recipes_table',
         '2026_11_21_140100_add_proposal_columns_to_ingredients_table',
-        '2026_11_21_140200_create_recipe_user_ratings_table',
         '2026_11_21_140300_create_recipe_reports_table',
         '2026_11_21_140400_add_gemini_api_key_to_users_table',
     ];

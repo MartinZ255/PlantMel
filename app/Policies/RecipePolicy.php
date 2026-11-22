@@ -38,12 +38,6 @@ class RecipePolicy
         return $user->is_host && $recipe->isCommunity();
     }
 
-    /** Bewerten: angemeldet, nicht der Autor, nur freigegebene Community-Rezepte. */
-    public function rate(User $user, Recipe $recipe): bool
-    {
-        return $recipe->isCommunity() && $recipe->isApproved() && ! $recipe->isAuthoredBy($user);
-    }
-
     /** Melden: jeder (auch Gäste), nur öffentliche Community-Rezepte. */
     public function report(?User $user, Recipe $recipe): bool
     {

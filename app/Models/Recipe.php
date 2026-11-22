@@ -170,12 +170,6 @@ class Recipe extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
-    /** E18: Geschmacks-Bewertungen der Nutzer (nur Community-Rezepte). */
-    public function userRatings(): HasMany
-    {
-        return $this->hasMany(RecipeUserRating::class);
-    }
-
     public function reports(): HasMany
     {
         return $this->hasMany(RecipeReport::class);

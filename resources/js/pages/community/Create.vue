@@ -81,7 +81,7 @@
                 ref="recipeForm"
                 mode="create"
                 variant="community"
-                :rating-dimensions="[]"
+                :rating-dimensions="ratingDimensions"
                 :categories="categories"
                 :ingredients="ingredients"
                 :recipe="importedRecipe ?? null"
@@ -121,6 +121,11 @@ interface ImportedRecipe {
 }
 
 defineProps<{
+    ratingDimensions: {
+        id: number;
+        name: string;
+        description?: string | null;
+    }[];
     categories: { id: number; name: string }[];
     ingredients: { id: number; name: string }[];
     importedRecipe?: ImportedRecipe | null;
